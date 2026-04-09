@@ -1,0 +1,52 @@
+services:
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: health-redis
+    ports:
+      - "$REDIS_HOST:$REDIS_PORT:6380"
+    volumes:
+      - redis-data:/data
+      - ~/.redis-certs:/certs:ro  # read-only
+    environment:
+      REDIS_ARGS: >-
+        --requirepass ${REDIS_PASSWORD}
+        --tls-port 6380
+        --port 0
+        --tls-cert-file /certs/redis.pem
+        --tls-key-file /certs/redis.key
+        --tls-ca-cert-file /certs/rootCA.pem
+        --tls-auth-clients yes
+        --appendonly yes
+        --maxmemory 900mb
+        --maxmemory-policy allkeys-lfu
+        --loglevel notice
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"      # max. 1 core
+          memory: 1G        # hard limit
+        reservations:       # guaranteed
+          cpus: "0.10"
+          memory: 256M
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - >-
+          redis-cli
+          -p 6380
+          --tls
+          --cacert /certs/rootCA.pem
+          --cert /certs/client-cert.pem
+          --key /certs/client.key
+          -a "$REDIS_PASSWORD"
+          --no-auth-warning
+          ping 2>/dev/null | grep -q PONG
+      interval: 5m
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  redis-data:
+    driver: local
