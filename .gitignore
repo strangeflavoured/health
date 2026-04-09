@@ -1,0 +1,6 @@
+*.
+!/.gitignore
+*__pycache__/
+docs/_build
+docs/_autosummary
+apple_health_export/
