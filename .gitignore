@@ -1,6 +1,11 @@
 *.
 !/.gitignore
 *__pycache__/
+.env
+.venv/
+*.zip
+
 docs/_build
 docs/_autosummary
+
 apple_health_export/

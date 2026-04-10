@@ -1,0 +1,6 @@
+-r requirements.txt
+-r requirements-dev-indirect.txt
+
+hashin==1.0.5 \
+    --hash=sha256:33f74f0e033cfc928dce246ccb1de8e38b45916b313678137306cccbfeeee47f \
+    --hash=sha256:d1b9985addd3554ec85fd5b4e749b6faf577d49ac865a4ebda591ebf1e8f4d8a
