@@ -1,0 +1,72 @@
+name: vulture – dead code detection
+
+on:
+  pull_request:
+    # Only trigger when Python source files actually change.
+    # Skipping on docs/config saves minutes on non-code PRs.
+    paths:
+      - "src/**/*.py"
+      - "app/**/*.py"
+      - "vulture_allowlist.py"
+      - "pyproject.toml"
+
+  schedule:
+    # Full weekly scan every Monday at 04:00 UTC.
+    # Runs independently of PRs to catch dead code introduced via merges
+    # that didn't individually trip the PR filter.
+    - cron: "0 4 * * 1"
+
+  workflow_dispatch:   # manual trigger for ad-hoc runs
+
+# Cancel in-progress run on the same PR if a new commit is pushed.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  vulture:
+    name: Dead code scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python + pip cache ────────────────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      # ── 3. Install Vulture only – no full requirements needed for analysis ──
+      # Pinned hash for reproducibility; update with:
+      #   pip download vulture && pip hash vulture-*.whl
+      - name: Install Vulture
+        run: pip install vulture==2.14
+
+      # ── 4. Run Vulture ───────────────────────────────────────────────────────
+      # Config is read from pyproject.toml [tool.vulture] automatically.
+      # vulture_allowlist.py suppresses intentional false positives.
+      # Exit code 1 = dead code found → workflow fails with clear log output.
+      # No artifact upload needed: the log output is the report.
+      - name: Run Vulture
+        run: |
+          vulture src/ vulture_allowlist.py \
+            --min-confidence 80 \
+            --format "{path}:{lineno}: {message} (confidence: {confidence}%)"
+
+      # ── 5. Auto-update allowlist (PR runs only, non-blocking) ───────────────
+      # Regenerates the allowlist from current dead code and posts it as a
+      # job summary so developers can copy-paste intentional suppressions.
+      # Does NOT commit automatically – that decision stays with the developer.
+      - name: Generate allowlist suggestion
+        if: failure() && github.event_name == 'pull_request'
+        run: |
+          echo "## Vulture allowlist suggestions" >> $GITHUB_STEP_SUMMARY
+          echo "Add these to \`vulture_allowlist.py\` if they are intentional:" >> $GITHUB_STEP_SUMMARY
+          echo '```python' >> $GITHUB_STEP_SUMMARY
+          vulture src/ --make-whitelist >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY

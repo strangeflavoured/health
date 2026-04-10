@@ -1,0 +1,46 @@
+[tool.vulture]
+# ── Scan targets ──────────────────────────────────────────────────────────────
+# List source directories explicitly. Excludes tests/, venv/, migrations/,
+# and Docker entrypoint scripts that are invoked by the container runtime
+# rather than by Python imports.
+paths = [
+    "src",
+    "vulture_allowlist.py",   # always include so suppressions are validated
+]
+
+# ── Confidence threshold ──────────────────────────────────────────────────────
+# 80% filters out most false positives from dynamic attribute access while
+# still catching genuinely unused functions and variables.
+# Lower to 60 temporarily if you want a noisier but more thorough audit.
+min_confidence = 80
+
+# ── Ignored names ─────────────────────────────────────────────────────────────
+# Patterns matched against the symbol name (not path). Use for framework
+# conventions that Vulture cannot trace statically.
+ignore_names = [
+    # FastAPI / Flask route handlers registered via decorators
+    "*_router",
+    # Pydantic / dataclass fields accessed via __fields__ or model_fields
+    "model_*",
+    # Pytest fixtures injected by name
+    "conftest",
+    # Click CLI entry points
+    "cli",
+    # Redis-Stack: OM field descriptors accessed via class, not instance
+    "*Field",
+]
+
+# ── Ignored paths ─────────────────────────────────────────────────────────────
+# Glob patterns relative to the project root.
+ignore_decorators = [
+    # Any symbol decorated with these is kept – Vulture won't flag it.
+    "@app.route",
+    "@router.get",
+    "@router.post",
+    "@router.put",
+    "@router.delete",
+    "@router.patch",
+    "@celery.task",
+    "@app.on_event",           # FastAPI lifespan events
+    "@pytest.fixture",
+]

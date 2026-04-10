@@ -43,7 +43,8 @@ ignore = [
     "ANN102",
 ]
 exclude = [
-    "README.md"
+    "README.md",
+    "vulture_allowlist.py",
 ]
 
 [lint.per-file-ignores]
