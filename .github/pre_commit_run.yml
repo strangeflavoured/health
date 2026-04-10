@@ -1,0 +1,91 @@
+name: pre-commit
+
+on:
+  pull_request:
+    # ── Negative filter: skip if ONLY these file types changed ──────────────
+    # The workflow still runs if any non-listed file is touched alongside these.
+    paths-ignore:
+      - "**/*.md"
+      - "**/*.rst"
+      - "**/*.txt"
+      - ".gitignore"
+      - ".gitattributes"
+      - "LICENSE"
+      - "CHANGELOG"
+      - "NOTICE"
+      - "docs/**"
+
+  workflow_dispatch:
+    inputs:
+      all_files:
+        description: "Run on all files (--all-files)?"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+# ── Concurrency: cancel in-progress run on same PR when new commit is pushed ──
+# Falls back to run ID for push/dispatch events so those are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    name: Run pre-commit hooks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15          # hard ceiling – prevents runaway jobs billing minutes silently
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Full history needed for accurate `git diff` on PRs
+          fetch-depth: 0
+
+      # ── 2. Python setup with pip cache ────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"           # caches ~/.cache/pip keyed on requirements files
+
+      # ── 3. pre-commit environment cache ───────────────────────────────────
+      # Cache key: OS + Python version + hash of .pre-commit-config.yaml
+      # The cache is invalidated automatically when hooks or their revs change.
+      - name: Cache pre-commit environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-py3.12-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            pre-commit-${{ runner.os }}-py3.12-
+
+      # ── 4. Install pre-commit ──────────────────────────────────────────────
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      # ── 5a. PR run – changed files only ───────────────────────────────────
+      # Uses `--from-ref`/`--to-ref` to scope hooks to the PR diff only.
+      # This is significantly cheaper than --all-files on large repos.
+      - name: Run pre-commit (changed files only)
+        if: github.event_name == 'pull_request'
+        run: |
+          pre-commit run \
+            --from-ref ${{ github.event.pull_request.base.sha }} \
+            --to-ref   ${{ github.event.pull_request.head.sha }}
+
+      # ── 5b. Manual trigger – full or scoped run ────────────────────────────
+      - name: Run pre-commit (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ inputs.all_files }}" = "true" ]; then
+            echo "Running on all files..."
+            pre-commit run --all-files
+          else
+            echo "Running on HEAD diff only..."
+            pre-commit run --from-ref HEAD~1 --to-ref HEAD
+          fi
