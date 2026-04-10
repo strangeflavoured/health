@@ -99,3 +99,27 @@ updates:
         update-types:
           - "minor"
           - "patch"
+
+    # ── pre-commit hooks (.pre-commit-config.yaml) ───────────────────────────────
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "monthly"   # monthly is sufficient
+      day: "monday"         # first Monday of the month
+      time: "03:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "ci-efficient"
+      - "automation"
+    commit-message:
+      prefix: "chore: pre-commit"
+      include: "scope"
+    groups:
+      pre-commit-hooks:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
