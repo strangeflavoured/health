@@ -1,0 +1,125 @@
+version: 2
+
+updates:
+
+  # ── GitHub Actions ───────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "ci-efficient"
+      - "enhancement"
+    commit-message:
+      prefix: "Actions"
+      include: "scope"
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ── Python / pip ─────────────────────────────────────────────────────────────
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "ci-efficient"
+      - "enhancement"
+    commit-message:
+      prefix: "Pip"
+      include: "scope"
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+    # ── Docker (repo root – docker-compose.yml) ──────────────────────────────────
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "ci-efficient"
+      - "enhancement"
+    commit-message:
+      prefix: "Docker"
+      include: "scope"
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ── Docker (.github/workflows – action container images) ─────────────────────
+  # Covers `container:` and `image:` references inside workflow files,
+  # e.g. container: redis:7 or jobs.<id>.container.image: postgres:16
+  - package-ecosystem: "docker"
+    directory: "/.github/workflows"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "ci-efficient"
+      - "enhancement"
+    commit-message:
+      prefix: "Docker"
+      include: "scope"
+    groups:
+      docker-workflow-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+    # ── pre-commit hooks (.pre-commit-config.yaml) ───────────────────────────────
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "monthly"   # monthly is sufficient
+      day: "monday"         # first Monday of the month
+      time: "03:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 1
+    labels:
+      - "dependencies"
+      - "ci-efficient"
+      - "automation"
+    commit-message:
+      prefix: "chore: pre-commit"
+      include: "scope"
+    groups:
+      pre-commit-hooks:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
