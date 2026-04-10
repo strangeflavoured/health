@@ -27,6 +27,6 @@ repos:
         exclude: "tests/|docs/|example/"
 
   - repo: https://github.com/jendrikseipp/vulture
-    rev: v2.3
+    rev: v2.16
     hooks:
       - id: vulture
