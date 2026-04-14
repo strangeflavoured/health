@@ -55,8 +55,7 @@ jobs:
       - name: Run Vulture
         run: |
           vulture src/ vulture_allowlist.py \
-            --min-confidence 80 \
-            --format "{path}:{lineno}: {message} (confidence: {confidence}%)"
+            --min-confidence 80
 
       # ── 5. Auto-update allowlist (PR runs only, non-blocking) ───────────────
       # Regenerates the allowlist from current dead code and posts it as a
