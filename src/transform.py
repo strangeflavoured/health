@@ -1,0 +1,207 @@
+"""Apple Health DataFrame transformation pipeline.
+
+All public and private functions in this module accept a ``df`` argument that
+refers to the same underlying :class:`~pandas.DataFrame` and mutate it
+in-place.  No copies are created, keeping peak RAM proportional to the
+export size rather than a multiple of it.
+"""
+
+import logging
+
+import numpy as np
+import pandas as pd
+
+from categorical import _NA_VALUE, MissingUnit, categorical_identifiers
+
+logger = logging.getLogger(__name__)
+
+
+def _transform(df: pd.DataFrame) -> None:
+    """Clean and reshape *df* in-place for upload to Redis TimeSeries.
+
+    Applies the following steps in order:
+
+    1. Drop rows whose ``value`` field is ``NaN`` (:func:`_drop_null_values`).
+    2. Resolve categorical string values to signed integers or NaN and assign the
+       ``"Categorical"`` sentinel unit (:func:`_handle_categorical_units`).
+    3. Convert ``startDate`` and ``endDate`` from ``datetime64`` to Unix
+       timestamps in whole seconds (:func:`_timestamps_to_unix`).
+
+    Args:
+        df: The raw health records DataFrame as produced by the extract step;
+            mutated in-place.
+
+    Caveat:
+        Not thread-safe — all mutations are applied directly to the shared
+        DataFrame without locking.
+
+    Example::
+
+        _transform(df)
+        # df["startDate"] and df["endDate"] are now int64 Unix timestamps
+
+    """
+    logger.info("Transforming export data...")
+    df = _drop_null_values(df)
+    _handle_categorical_units(df)
+    df["startDate"] = _timestamps_to_unix(df["startDate"])
+    df["endDate"] = _timestamps_to_unix(df["endDate"])
+
+
+def _drop_null_values(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop rows with a ``NaN`` ``value`` field and log the count.
+
+    Returns the original DataFrame if no rows were dropped.
+
+    Args:
+        df: Health records DataFrame; rows with a ``NaN`` ``value`` are
+            removed.
+
+    Returns:
+        Truncated or original DataFrame.
+
+    Caveat:
+        If *all* rows have a ``NaN`` ``value``, *df* will be empty after
+        this call.  Subsequent steps handle an empty DataFrame gracefully.
+
+    Example::
+
+        before = len(df)
+        df = _drop_null_values(df)
+        print(f"Dropped {before - len(df)} rows")
+
+    """
+    null_mask = pd.isna(df["value"])
+    n_dropped = int(null_mask.sum())
+    if n_dropped:
+        df = df.drop(index=df.index[null_mask])
+        logger.warning("Dropped %d rows with missing 'value'.", n_dropped)
+
+    return df
+
+
+def _handle_categorical_units(df: pd.DataFrame) -> None:
+    """Assign integer values and a sentinel unit to categorical records.
+
+    Rows without a ``unit`` value are treated as categorical.  Their string ``value``
+    is resolved to a signed integer/NaN via
+    :data:`~categorical.categorical_identifiers`, and their ``unit`` is set to
+    :attr:`~categorical.MissingUnit.CATEGORICAL`.
+
+    Args:
+        df: Health records DataFrame; the ``value`` and ``unit`` columns are
+            mutated in-place for categorical rows.
+
+    Raises:
+        NotImplementedError: If ``NaN`` values are found in any column other
+            than ``unit``, indicating an unexpected schema change.
+        ValueError: If a row without a unit has a numeric ``value``; only
+            categorical string values are expected in that position.
+
+    Caveat:
+        A warning is logged (and the row left unmodified) if a ``type`` or
+        ``value`` string is absent from the categorical registry.
+
+    Example::
+
+        _handle_categorical_units(df)
+        # Categorical rows now have integer values and unit == "Categorical"
+
+    """
+    null_columns: pd.Index = df.columns[df.isna().any()]
+    if not null_columns.isin(["unit"]).all():
+        unexpected = null_columns.difference(["unit"]).tolist()
+        raise NotImplementedError(
+            f"Unexpected columns NaN (schema may have changed): {unexpected}"
+        )
+
+    no_unit: pd.Series = df["unit"].isna()
+    if not no_unit.any():
+        return
+
+    numeric_mask = pd.to_numeric(df.loc[no_unit, "value"], errors="coerce").notna()
+    if numeric_mask.any():
+        raise ValueError(
+            "Some records without a unit have a numeric value; "
+            "expected only categorical strings."
+        )
+
+    try:
+        _map_categories(df, no_unit)
+    except KeyError:
+        logger.warning(
+            "Categorical mapping failed: unknown identifier or value.",
+            exc_info=True,
+        )
+
+    df.loc[no_unit, "unit"] = MissingUnit.CATEGORICAL.value
+
+
+def _timestamps_to_unix(series: pd.Series) -> pd.Series:
+    """Convert a ``datetime64`` Series to Unix timestamps in whole seconds.
+
+    Divides the nanosecond epoch integer representation by 10⁹ using integer
+    floor division to avoid floating-point rounding errors.
+
+    Args:
+        series: A ``datetime64[ns]`` pandas Series.
+
+    Returns:
+        An ``int64`` Series of Unix timestamps in **seconds**.
+
+    Example::
+
+        unix_ts = _timestamps_to_unix(df["startDate"])
+        # unix_ts.dtype == int64
+
+    """
+    return (series.astype("int64") // 1_000_000_000).astype("int64")
+
+
+def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
+    """Replace categorical string values with signed integer or NaN values in-place.
+
+    Iterates over each unique ``type`` in the categorical slice, looks up the
+    corresponding :class:`~enum.Enum` class in
+    :data:`~categorical.categorical_identifiers`, and maps every string value
+    to its equivalent.
+
+    Args:
+        df: Health records DataFrame; the ``value`` column is mutated in-place
+            for rows selected by *no_unit*.
+        no_unit: Boolean mask selecting categorical rows (those with no
+            ``unit`` value).
+
+    Raises:
+        KeyError: If a ``type`` string is absent from
+            :data:`~categorical.categorical_identifiers`, or if a ``value``
+            string is not a valid member name of the corresponding
+            :class:`~enum.Enum`.
+
+    Caveat:
+        The ``groupby`` call creates a temporary copy of the categorical
+        slice; the slice size is expected to be small relative to the full
+        DataFrame.
+
+    Example::
+
+        _map_categories(df, df["unit"].isna())
+        # df.loc[no_unit, "value"] now contains signed numbers
+
+    """
+    categorical_slice = df.loc[no_unit, ["type", "value"]]
+
+    for type_name, group in categorical_slice.groupby("type"):
+        enum_cls = categorical_identifiers[type_name]
+        lookup: dict[str, int] = {member.name: member.value for member in enum_cls}
+        mapped = group["value"].map(lookup)
+
+        # group.value that has no key in enum_cls is mapped to NaN
+        if mapped.isna().any():
+            missing = group.loc[mapped.isna(), "value"].unique().tolist()
+            raise KeyError(f"Unknown value(s) for type '{type_name}': {missing}")
+
+        # replace standin value _NA_VALUE with NaN
+        mapped = mapped.replace(_NA_VALUE, np.nan)
+
+        df.loc[group.index, "value"] = mapped
