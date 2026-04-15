@@ -1,3 +1,56 @@
+[tool.ruff.lint]
+# https://docs.astral.sh/ruff/rules/
+select = [
+    # flake8-builtins
+    "A",
+    # flake8-annotations
+    "ANN",
+    # flake8-unused-arguments
+    "ARG",
+    # flake8-bugbear
+    "B",
+    # flake8-blind-except
+    "BLE",
+    # pydocstyle
+    "D",
+    # pycodestyle error
+    "E",
+    # Pyflakes
+    "F",
+    # flake8-boolean-trap
+    "FBT",
+    # isort
+    "I",
+    # pep8-naming
+    "N",
+    # NumPy-specific rules
+    "NPY",
+    # pandas-vet
+    "PD",
+    # flake8-bandit
+    "S",
+    # flake8-simplify
+    "SIM",
+    # pyupgrade
+    "UP",
+    # pycodestyle warnings
+    "W",
+]
+ignore = [
+    # missing type annotation for `self`
+    "ANN101",
+    # missing type annotation for `cls`
+    "ANN102",
+]
+exclude = [
+    "vulture_allowlist.py",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore annotations rules and lowercase function names in test directory
+"tests/*" = ["ANN", "D", "N802", "S101"]
+"docs/*" = ["D100"]
+
 [tool.vulture]
 # ── Scan targets ──────────────────────────────────────────────────────────────
 # List source directories explicitly. Excludes tests/, venv/, migrations/,
