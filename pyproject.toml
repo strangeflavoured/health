@@ -41,6 +41,8 @@ ignore = [
     "ANN101",
     # missing type annotation for `cls`
     "ANN102",
+    # missing docstring for __init__
+    "D107",
 ]
 exclude = [
     "vulture_allowlist.py",
