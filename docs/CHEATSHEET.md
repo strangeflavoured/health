@@ -12,15 +12,15 @@ docker compose logs -f redis
 
 ### Mit Redis-CLI verbinden
 ```bash
-# Passwort aus .env lesen
+# read redis environment variables
 source .env
 
 redis-cli \
-  -p 6380 \
+  -p ${REDIS_PORT} \
   --tls \
-  --cacert  ~/.redis-certs/rootCA.pem \
-  --cert    ~/.redis-certs/client-cert.pem \
-  --key     ~/.redis-certs/client.key \
+  --cacert  ${REDIS_CERTS_DIR}/${REDIS_TLS_CA_CERT} \
+  --cert    ${REDIS_CERTS_DIR}/${REDIS_CLIENT_CERT} \
+  --key     ${REDIS_CERTS_DIR}/${REDIS_CLIENT_KEY} \
   -a "$REDIS_PASSWORD" \
   --no-auth-warning
 ```
