@@ -40,3 +40,28 @@ docker inspect --format='{{.State.Health.Status}}' health-redis
 docker compose down          # stoppt Container, Volume bleibt erhalten
 docker compose down -v       # stoppt Container UND löscht das Volume (Datenverlust!)
 ```
+
+### Backup
+Create a `dump.rdb` via the redis-cli:
+```bash
+# read redis environment variables
+source .env
+
+redis-cli \
+  -p ${REDIS_PORT} \
+  --tls \
+  --cacert  ${REDIS_CERTS_DIR}/${REDIS_TLS_CA_CERT} \
+  --cert    ${REDIS_CERTS_DIR}/${REDIS_CLIENT_CERT} \
+  --key     ${REDIS_CERTS_DIR}/${REDIS_CLIENT_KEY} \
+  -a "$REDIS_PASSWORD" \
+  --no-auth-warning \
+  BGSAVE
+```
+Find the mount point via
+```bash
+docker volume inspect health_redis-data
+```
+and copy the file via
+```bash
+sudo cp /mount/point/path/dump.rdb /backup/path/dump_name.rdb
+```
