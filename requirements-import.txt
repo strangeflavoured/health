@@ -1,4 +1,4 @@
--r requirements-indirect.txt
+-r requirements-import-indirect.txt
 apple-health-exporter==1.2.0 \
     --hash=sha256:9a388f0822cd423111544bc6b4e2fc7d9e73c065409934a333d266cd123fdc0b \
     --hash=sha256:fcfa3ed99650bb8a70276e7f6760a5a481b744a55bd25184134b02658da25250

@@ -1,19 +1,4 @@
-##  Redis Stack Server
-## Setup
-### Sicheres Passwort generieren und in `.env` eintragen
-```bash
-echo "REDIS_PASSWORD=$(openssl rand -base64 32)" >> .env
-```
-
-
-### .env vor unbefugtem Zugriff schützen
-```bash
-chmod 600 .env
-```
-
-TLS Zertifikate generieren (siehe [REDIS_TLS.md](REDIS_TLS.md)).
-
-## Cheatsheet
+##  Docker/Redis Stack Cheatsheet
 ### Container starten
 ```bash
 docker compose up -d

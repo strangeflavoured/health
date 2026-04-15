@@ -1,59 +1,91 @@
-## Getting started
+# Getting started
+The data import of this project relies on [apple_health_exporter](https://github.com/mganjoo/apple-health-exporter)
+which requires Python 3.11. For the analysis infrastructure I will be using Python 3.12, which requires a separation
+of requirements and environments for this project.
 
-### Prerequisites
+## Prerequisites
 
-Make sure you have Python 3.11 installed:
-
-    sudo apt install python3.11
-
-Make sure you have pip3 installed:
+Make sure you have Python 3.11  and 3.12 installed:
+```bash
+sudo apt install python3.11 & sudo apt install python 3.12
 ```
-sudo apt install pip3
+
+Make sure you have pip installed:
+```bash
+sudo apt install pip
 ```
 
-### Set up virtual environment
+## Set up virtual environments
 
 Clone repository and cd into it:
-```
-    git clone git@github.com:strangeflavoured/health.git && cd "$(basename "$_" .git)"
-```
-
-Create a virtual environment and activate it:
-```
-    python3.11 -m venv .venv --prompt health && source .venv/bin/activate
+```bash
+git clone git@github.com:strangeflavoured/health.git && cd "$(basename "$_" .git)"
 ```
 
-Update pip3 and install requirements:
-```
-    pip3 install --upgrade pip
-    pip3 install --require-hashes -r requirements.txt
-```
-
-### Set up Redis
-First [install docker compose](https://docs.docker.com/compose/install). Then add a `.env` file to the root directory which contains
-
-```
-    REDIS_PASSWORD="your_super_secret_password"
+Create virtual environments for import and analysis:
+```bash
+python3.11 -m venv .venv3.11 --prompt health-import
+python3.12 -m venv .venv3.12 --prompt health-analysis
 ```
 
-Pull the latest redis-stack-server and run docker compose:
+Activate each environment, update pip and install requirements:
+```bash
+source .venv3.11/bin/activate
+pip install --upgrade pip
+pip install --require-hashes -r requirements-import.txt
+deactivate
 ```
-    docker pull redis/redis-stack-server:latest && docker compose up -d
-```
-
-The container can be closed with
-```
-    docker compose down
-```
-
-### Development tools
-
-Install ruff and pre-commit:
-```
-    pip install pre-commit ruff
+```bash
+source .venv3.12/bin/activate
+pip install --upgrade pip
+pip install --require-hashes -r requirements-analysis.txt
+deactivate
 ```
 
-Before a commit, run ruff and pre-commit and fix code style issues:
+## Set up Redis Stack
+First [install docker compose](https://docs.docker.com/compose/install).
+Pull the latest redis-stack-server:
+```bash
+docker pull redis/redis-stack-server:latest
 ```
-    ruff check && pre-commit run
+Then add a `.env` file to the root directory which contains the following variables:
+```dotenv
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6380
+REDIS_DB=0
+```
+Generate a safe password and add it to `.env`
+```bash
+echo "REDIS_PASSWORD=$(openssl rand -base64 32)" >> .env
+```
+`.env` can be protected from unauthorised access by running
+
+```bash
+chmod 600 .env
+```
+Generate [TLS certificates](docs/REDIS_TLS.md) and start up [docker container](docs/CHEATSHEET.md).
+
+## Import
+
+Enter the import environment:
+```bash
+source .venv3.11/bin/activate
+```
+
+## Analysis
+
+```bash
+source .venv3.12/bin/activate
+```
+
+## Development
+### Install dev requirements
+
+```bash
+pip install --require-hashes -r requirements-dev.txt
+```
+
+Before a commit, run the following tools and fix issues:
+```bash
+ruff check && pre-commit run && vulture
 ```
