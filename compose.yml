@@ -47,6 +47,21 @@ services:
       retries: 5
       start_period: 10s
 
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: health-redisinsight
+    ports:
+      - "${REDIS_HOST}:${REDIS_INSIGHT_PORT}:5540"
+    volumes:
+      - redisinsight-data:/data
+      - ${REDIS_CERTS_DIR}:/certs:ro
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   redis-data:
+    driver: local
+  redisinsight-data:
     driver: local
