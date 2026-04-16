@@ -68,7 +68,7 @@ Generate [TLS certificates](docs/REDIS_TLS.md) and add the directory and file na
 REDIS_CERTS_DIR=~/.redis-certs
 REDIS_SERVER_CERT=redis.pem
 REDIS_SERVER_KEY=redis.key
-REDIS_TLS_CA_CERT=rootCA.pem
+REDIS_CA_CERT=rootCA.pem
 REDIS_CLIENT_CERT=client-cert.pem
 REDIS_CLIENT_KEY=client.key
 ```
