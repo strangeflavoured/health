@@ -18,7 +18,7 @@ source .env
 redis-cli \
   -p ${REDIS_PORT} \
   --tls \
-  --cacert  ${REDIS_CERTS_DIR}/${REDIS_TLS_CA_CERT} \
+  --cacert  ${REDIS_CERTS_DIR}/${REDIS_CA_CERT} \
   --cert    ${REDIS_CERTS_DIR}/${REDIS_CLIENT_CERT} \
   --key     ${REDIS_CERTS_DIR}/${REDIS_CLIENT_KEY} \
   -a "$REDIS_PASSWORD" \
@@ -50,7 +50,7 @@ source .env
 redis-cli \
   -p ${REDIS_PORT} \
   --tls \
-  --cacert  ${REDIS_CERTS_DIR}/${REDIS_TLS_CA_CERT} \
+  --cacert  ${REDIS_CERTS_DIR}/${REDIS_CA_CERT} \
   --cert    ${REDIS_CERTS_DIR}/${REDIS_CLIENT_CERT} \
   --key     ${REDIS_CERTS_DIR}/${REDIS_CLIENT_KEY} \
   -a "$REDIS_PASSWORD" \

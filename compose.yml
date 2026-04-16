@@ -14,7 +14,7 @@ services:
         --port 0
         --tls-cert-file /certs/${REDIS_SERVER_CERT}
         --tls-key-file /certs/${REDIS_SERVER_KEY}
-        --tls-ca-cert-file /certs/${REDIS_TLS_CA_CERT}
+        --tls-ca-cert-file /certs/${REDIS_CA_CERT}
         --tls-auth-clients yes
         --appendonly yes
         --maxmemory 900mb
@@ -36,7 +36,7 @@ services:
           redis-cli
           -p 6380
           --tls
-          --cacert /certs/${REDIS_TLS_CA_CERT}
+          --cacert /certs/${REDIS_CA_CERT}
           --cert /certs/${REDIS_CLIENT_CERT}
           --key /certs/${REDIS_CLIENT_KEY}
           -a "$REDIS_PASSWORD"
