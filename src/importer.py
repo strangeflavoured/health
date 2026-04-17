@@ -10,7 +10,13 @@ from pyarrow import feather
 from redis.commands.timeseries import TimeSeries
 
 from connection import redis_connect
-from models import BatchFailure, DuplicatePolicy, UploadFailure, failures_to_json
+from models import (
+    BatchFailure,
+    DuplicatePolicy,
+    UploadFailure,
+    failures_from_json,
+    failures_to_json,
+)
 from pipeline import upload_batch
 from transform import transform
 
@@ -218,13 +224,13 @@ class HealthDataImporter:
         """Wrapper for :func:`_load`."""  # noqa: D401
         return _load(df, r, duplicate_policy)
 
-    def _update_failure_file(self) -> None:
+    def _update_failures_file(self) -> None:
         if self.failures:
-            self._write_failure_file(self.failures)
+            self._write_failures_file(self.failures)
         else:
-            self._delete_failure_file()
+            self._delete_failures_file()
 
-    def _write_failure_file(self, failures: list[UploadFailure]) -> None:
+    def _write_failures_file(self, failures: list[UploadFailure]) -> None:
         """Serialise *failures* and write them to :attr:`failures_file`.
 
         Overwrites any existing file so the file always reflects the current state.
@@ -241,7 +247,7 @@ class HealthDataImporter:
         self.failures_file.write_text(failures_to_json(failures), encoding="utf-8")
         logger.info("Wrote %d failure(s) to %s", len(failures), self.failures_file)
 
-    def _delete_failure_file(self) -> None:
+    def _delete_failures_file(self) -> None:
         """Delete :attr:`failures_file` if it exists.
 
         Called after a fully successful load or a fully successful retry to
@@ -254,6 +260,32 @@ class HealthDataImporter:
         if self.failures_file.exists():
             self.failures_file.unlink()
             logger.info("Deleted failures file %s (all resolved).", self.failures_file)
+
+    def _read_failures_file(self) -> list[UploadFailure]:
+        """Read and deserialise the failures file.
+
+        Returns:
+            List of :class:`~models.UploadFailure` objects.
+
+        Raises:
+            FileNotFoundError: If :attr:`failures_file` does not exist.
+            ValueError: If the file contains an unrecognised ``kind`` value.
+
+        Example::
+
+            failures = importer._read_failures_file()
+
+        """
+        if not self.failures_file.exists():
+            raise FileNotFoundError(
+                f"Failures file not found: {self.failures_file}\n"
+                "Run etl() or update() first, or check that the file has "
+                "not been manually deleted or moved."
+            )
+        text = self.failures_file.read_text(encoding="utf-8")
+        failures = failures_from_json(text)
+        logger.info("Read %d failure(s) from %s", len(failures), self.failures_file)
+        return failures
 
 
 def _load(
