@@ -4,9 +4,11 @@ from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
+import redis
 from apple_health_exporter import health_xml_to_feather
 from pyarrow import feather
 
+from connection import redis_connect
 from transform import transform
 
 logger = logging.getLogger(__name__)
@@ -19,6 +21,7 @@ class HealthDataImporter:
         data_dir: str = "data",
         in_file: str = "export.zip",
         out_file: str = "export.feather",
+        connection: redis.Redis | None = None,
     ) -> None:
 
         base = Path.cwd() if working_dir is None else Path(working_dir)
@@ -29,6 +32,64 @@ class HealthDataImporter:
 
         self.zip_file: Path = self.data_dir / in_file
         self.output_file: Path = self.data_dir / out_file
+        self.connection: redis.Redis | None = connection
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def connect(
+        self,
+        url: str | None = None,
+        *,
+        tls: bool = False,
+        tls_client_cert: str | None = None,
+        tls_client_key: str | None = None,
+        tls_ca_cert: str | None = None,
+        tls_check_hostname: bool = True,
+        force: bool = False,
+    ) -> redis.Redis:
+        """Return the cached Redis connection, creating one if necessary.
+
+        All ``tls_*`` and ``url`` arguments are forwarded directly to
+        :func:`~connection.redis_connect`; see that function for full
+        documentation on connection modes and TLS path resolution.
+
+        Args:
+            url: Full Redis connection URL.  ``None`` uses env-var mode.
+            tls: Wrap the connection in TLS.
+            tls_client_cert: Path to PEM client certificate (mTLS only).
+            tls_client_key: Path to PEM client private key (mTLS only).
+            tls_ca_cert: Path to CA bundle; ``None`` uses the system store.
+            tls_check_hostname: Enforce SNI hostname verification.
+                **Do not set to** ``False`` **in production.**
+            force: When ``True``, always create a fresh connection even if
+                one is already cached in :attr:`connection`.
+
+        Returns:
+            A connected :class:`redis.Redis` instance.
+
+        Raises:
+            ~connection.RedisEnvError: If env-var mode is used and a required
+                variable is missing.
+            ~connection.TLSConfigError: If TLS is active and TLS paths cannot
+                be resolved.
+
+        Example::
+
+            r = importer.connect(tls=True)
+
+        """
+        if self.connection is None or force:
+            self.connection = redis_connect(
+                url=url,
+                tls=tls,
+                tls_client_cert=tls_client_cert,
+                tls_client_key=tls_client_key,
+                tls_ca_cert=tls_ca_cert,
+                tls_check_hostname=tls_check_hostname,
+            )
+        return self.connection
 
     # ------------------------------------------------------------------
     # Private helpers
