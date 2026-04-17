@@ -209,6 +209,15 @@ class HealthDataImporter:
         """Wrapper for :func:`transform.transform`."""  # noqa: D401
         transform(df)
 
+    @staticmethod
+    def _load(
+        df: pd.DataFrame,
+        r: redis.Redis,
+        duplicate_policy: DuplicatePolicy = DuplicatePolicy.FIRST,
+    ) -> list[UploadFailure]:
+        """Wrapper for :func:`_load`."""  # noqa: D401
+        return _load(df, r, duplicate_policy)
+
     def _update_failure_file(self) -> None:
         if self.failures:
             self._write_failure_file(self.failures)
