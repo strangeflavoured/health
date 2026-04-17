@@ -13,6 +13,7 @@ from connection import redis_connect
 from models import (
     BatchFailure,
     DuplicatePolicy,
+    RowFailure,
     UploadFailure,
     failures_from_json,
     failures_to_json,
@@ -157,6 +158,93 @@ class HealthDataImporter:
                 len(self.failures),
                 len(df),
             )
+
+        if persist_failures:
+            self._update_failures_file()
+
+    def retry_failed(self, *, persist_failures: bool = True) -> None:
+        """Re-attempt uploading every data point recorded in :attr:`failures_file`.
+
+        Reads the failures JSON file written by the most recent :meth:`etl`,
+        :meth:`update`, or previous :meth:`retry_failed` call which **overwrites**
+        :attr:`failures`. This method can be called in a completely separate Python
+        session as long as the failures file and the Feather cache still exist::
+
+            # New session — no need to re-run etl()
+            importer = HealthDataImporter()
+            df = feather.read_feather("data/export.feather")
+            importer.retry_failed()
+
+        Retry behaviour:
+
+        Loads dataframe from `self.out_file` and finds entries that failed to upload,
+        and passes this subset to :meth:`_load`.
+
+        After the retry:
+
+        * If **all** previously failed data points now succeed, the failures
+          file is **deleted**.
+        * If **some** failures remain, the file is **overwritten** with only
+          the still-failing entries.
+
+        Args:
+            persist_failures: Persist a file that contains which data could not
+                be uploaded as a JSON file.
+
+        Raises:
+            FileNotFoundError: When neither the Feather cache nor the source
+                ZIP can be found, or if :attr:`failures_file` does not exist.
+            NotImplementedError: If ``NaN`` values are found in any column other
+                than ``unit``, indicating an unexpected schema change.
+            ValueError: If a row without a unit has a numeric ``value``; only
+                categorical string values are expected in that position.
+
+        Example::
+
+            importer.retry_failed()
+            if not importer.failures:
+                print("All failures resolved.")
+
+        """
+        logger.warning(
+            "Starting retry_failed.\nThis will only"
+            " produce correct results if feather file"
+            " has not changed since previous run."
+        )
+
+        # Always read from disk so the method works across sessions.
+        self.failures = self._read_failures_file()
+        if not self.failures:
+            self._delete_failures_file()
+            logger.warning("retry_failed: failures file is empty, nothing to retry.")
+            return None
+
+        df = self._extract(write_feather=False)
+        self._transform(df)
+
+        type_selectors = []
+        row_selectors = []
+        for f in self.failures:
+            if isinstance(f, BatchFailure):
+                type_selectors.append(f.data_type)
+            elif isinstance(f, RowFailure):
+                row_selectors.append(f.row_index)
+
+        retry_df = df[df["type"].isin(type_selectors) | df.index.isin(row_selectors)]
+
+        r = self.connect()
+        n_before = len(self.failures)
+        self.failures = self._load(
+            df=retry_df, r=r, duplicate_policy=DuplicatePolicy.FIRST
+        )
+
+        n_resolved = n_before - len(self.failures)
+        logger.info(
+            "retry_failed complete: %d/%d failure(s) resolved, %d remaining.",
+            n_resolved,
+            n_before,
+            len(self.failures),
+        )
 
         if persist_failures:
             self._update_failures_file()
