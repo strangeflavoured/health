@@ -10,7 +10,7 @@ from pyarrow import feather
 from redis.commands.timeseries import TimeSeries
 
 from connection import redis_connect
-from models import BatchFailure, DuplicatePolicy, UploadFailure
+from models import BatchFailure, DuplicatePolicy, UploadFailure, failures_to_json
 from pipeline import upload_batch
 from transform import transform
 
@@ -24,6 +24,7 @@ class HealthDataImporter:
         data_dir: str = "data",
         in_file: str = "export.zip",
         out_file: str = "export.feather",
+        failures_file: str = "upload_failures.json",
         connection: redis.Redis | None = None,
     ) -> None:
 
@@ -35,7 +36,11 @@ class HealthDataImporter:
 
         self.zip_file: Path = self.data_dir / in_file
         self.output_file: Path = self.data_dir / out_file
+        self.failures_file: Path = self.data_dir / failures_file
         self.connection: redis.Redis | None = connection
+
+        # In-memory mirror of the failures file.
+        self.failures: list[UploadFailure] = []
 
     # ------------------------------------------------------------------
     # Public API
@@ -147,6 +152,43 @@ class HealthDataImporter:
     def _transform(df: pd.DataFrame) -> None:
         """Wrapper for :func:`transform.transform`."""  # noqa: D401
         transform(df)
+
+    def _update_failure_file(self) -> None:
+        if self.failures:
+            self._write_failure_file(self.failures)
+        else:
+            self._delete_failure_file()
+
+    def _write_failure_file(self, failures: list[UploadFailure]) -> None:
+        """Serialise *failures* and write them to :attr:`failures_file`.
+
+        Overwrites any existing file so the file always reflects the current state.
+
+        Args:
+            failures: List of :class:`~models.UploadFailure` objects to
+                persist.
+
+        Example::
+
+            importer._write_failures_file(importer.failures)
+
+        """
+        self.failures_file.write_text(failures_to_json(failures), encoding="utf-8")
+        logger.info("Wrote %d failure(s) to %s", len(failures), self.failures_file)
+
+    def _delete_failure_file(self) -> None:
+        """Delete :attr:`failures_file` if it exists.
+
+        Called after a fully successful load or a fully successful retry to
+        ensure no stale file misleads a future :meth:`retry_failed` call.
+
+        Example::
+
+            importer._delete_failures_file()
+        """
+        if self.failures_file.exists():
+            self.failures_file.unlink()
+            logger.info("Deleted failures file %s (all resolved).", self.failures_file)
 
 
 def _load(
