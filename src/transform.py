@@ -1,5 +1,8 @@
 """Apple Health DataFrame transformation pipeline.
 
+Provides public function `transform` that handles necessary transformations
+of raw Apple Health export data.
+
 All public and private functions in this module accept a ``df`` argument that
 refers to the same underlying :class:`~pandas.DataFrame` and mutate it
 in-place.  No copies are created, keeping peak RAM proportional to the
@@ -8,15 +11,14 @@ export size rather than a multiple of it.
 
 import logging
 
-import numpy as np
 import pandas as pd
 
-from categorical import _NA_VALUE, MissingUnit, categorical_identifiers
+from categorical import MissingUnit, categorical_identifier_maps
 
 logger = logging.getLogger(__name__)
 
 
-def _transform(df: pd.DataFrame) -> None:
+def transform(df: pd.DataFrame) -> None:
     """Clean and reshape *df* in-place for upload to Redis TimeSeries.
 
     Applies the following steps in order:
@@ -37,7 +39,7 @@ def _transform(df: pd.DataFrame) -> None:
 
     Example::
 
-        _transform(df)
+        transform(df)
         # df["startDate"] and df["endDate"] are now int64 Unix timestamps
 
     """
@@ -159,12 +161,7 @@ def _timestamps_to_unix(series: pd.Series) -> pd.Series:
 
 
 def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
-    """Replace categorical string values with signed integer or NaN values in-place.
-
-    Iterates over each unique ``type`` in the categorical slice, looks up the
-    corresponding :class:`~enum.Enum` class in
-    :data:`~categorical.categorical_identifiers`, and maps every string value
-    to its equivalent.
+    """Replace categorical string values with signed integer values in-place.
 
     Args:
         df: Health records DataFrame; the ``value`` column is mutated in-place
@@ -174,9 +171,9 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
 
     Raises:
         KeyError: If a ``type`` string is absent from
-            :data:`~categorical.categorical_identifiers`, or if a ``value``
+            :data:`~categorical.categorical_identifier_maps`, or if a ``value``
             string is not a valid member name of the corresponding
-            :class:`~enum.Enum`.
+            :class:`~categorical.HKCategoryTypeIdentifier`.
 
     Caveat:
         The ``groupby`` call creates a temporary copy of the categorical
@@ -191,17 +188,20 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
     """
     categorical_slice = df.loc[no_unit, ["type", "value"]]
 
-    for type_name, group in categorical_slice.groupby("type"):
-        enum_cls = categorical_identifiers[type_name]
-        lookup: dict[str, int] = {member.name: member.value for member in enum_cls}
-        mapped = group["value"].map(lookup)
+    result = [
+        categorical_identifier_maps[a][b]
+        for a, b in zip(
+            categorical_slice["type"], categorical_slice["value"], strict=True
+        )
+    ]
 
-        # group.value that has no key in enum_cls is mapped to NaN
-        if mapped.isna().any():
-            missing = group.loc[mapped.isna(), "value"].unique().tolist()
-            raise KeyError(f"Unknown value(s) for type '{type_name}': {missing}")
+    if (missing := pd.isna(result)).any():
+        missing_values = (
+            categorical_slice.loc[missing]
+            .groupby("type")
+            .agg({"value": set})
+            .value.to_dict()
+        )
+        raise KeyError(f"Unknown value(s) for type(s): {missing_values}")
 
-        # replace standin value _NA_VALUE with NaN
-        mapped = mapped.replace(_NA_VALUE, np.nan)
-
-        df.loc[group.index, "value"] = mapped
+    df.loc[categorical_slice.index, "value"] = result

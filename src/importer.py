@@ -39,7 +39,7 @@ from models import (
     _failures_to_json,
 )
 from pipeline import _upload_batch
-from transform import _transform
+from transform import transform
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +184,7 @@ class HealthDataImporter:
 
         """
         df = self._extract(write_feather=write_feather)
-        _transform(df)
+        transform(df)
         self.failures = self._load(df, self.connect())
 
         if self.failures:
@@ -263,7 +263,7 @@ class HealthDataImporter:
                 row_selectors.append(f.row_index)
 
         df = self._extract(write_feather=False)
-        _transform(df)
+        transform(df)
         retry_df = df[df["type"].isin(type_selectors) | df.index.isin(row_selectors)]
 
         r = self.connect()
@@ -306,7 +306,7 @@ class HealthDataImporter:
 
         """
         df = self._extract(write_feather=write_feather)
-        _transform(df)
+        transform(df)
         self.failures = self._load(
             df, self.connect(), duplicate_policy=DuplicatePolicy.LAST
         )
