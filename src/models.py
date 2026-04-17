@@ -9,6 +9,7 @@ This module defines:
 * :func:`failures_to_json` / :func:`failures_from_json` — persistence helpers.
 """
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -219,3 +220,26 @@ class BatchFailure:
 #: failure.  Used as the element type of the failures list returned by
 #: :meth:`~HealthDataImporter._load` and stored on the importer instance.
 UploadFailure = RowFailure | BatchFailure
+
+
+# ---------------------------------------------------------------------------
+# JSON persistence helpers
+# ---------------------------------------------------------------------------
+
+
+def failures_to_json(failures: list[UploadFailure]) -> str:
+    """Serialise a list of :class:`UploadFailure` objects to a JSON string.
+
+    Args:
+        failures: List of :class:`RowFailure` or :class:`BatchFailure` objects.
+
+    Returns:
+        A pretty-printed JSON string suitable for writing to disk.
+
+    Example::
+
+        text = failures_to_json([BatchFailure("HR", "timeout")])
+        Path("failures.json").write_text(text)
+
+    """
+    return json.dumps([f.to_dict() for f in failures], indent=2)
