@@ -35,8 +35,8 @@ from models import (
     DuplicatePolicy,
     RowFailure,
     UploadFailure,
-    _failures_from_json,
-    _failures_to_json,
+    failures_from_json,
+    failures_to_json,
 )
 from pipeline import _upload_batch
 from transform import transform
@@ -465,7 +465,7 @@ class HealthDataImporter:
             importer._write_failures_file(importer.failures)
 
         """
-        self.failures_file.write_text(_failures_to_json(failures), encoding="utf-8")
+        self.failures_file.write_text(failures_to_json(failures), encoding="utf-8")
         logger.info("Wrote %d failure(s) to %s", len(failures), self.failures_file)
 
     def _read_failures_file(self) -> list[UploadFailure]:
@@ -490,7 +490,7 @@ class HealthDataImporter:
                 "not been manually deleted or moved."
             )
         text = self.failures_file.read_text(encoding="utf-8")
-        failures = _failures_from_json(text)
+        failures = failures_from_json(text)
         logger.info("Read %d failure(s) from %s", len(failures), self.failures_file)
         return failures
 

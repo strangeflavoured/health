@@ -6,7 +6,7 @@ This module defines:
 * :class:`RowFailure` — a failed upload for a single DataFrame row.
 * :class:`BatchFailure` — a failed upload for an entire data-type batch.
 * :data:`UploadFailure` — union alias consumed by the pipeline and importer.
-* :func:`_failures_to_json` / :func:`_failures_from_json` — persistence helpers.
+* :func:`failures_to_json` / :func:`failures_from_json` — persistence helpers.
 """
 
 import json
@@ -217,7 +217,7 @@ UploadFailure = RowFailure | BatchFailure
 # ---------------------------------------------------------------------------
 
 
-def _failures_to_json(failures: list[UploadFailure]) -> str:
+def failures_to_json(failures: list[UploadFailure]) -> str:
     """Serialise a list of :class:`UploadFailure` objects to a JSON string.
 
     Args:
@@ -228,18 +228,18 @@ def _failures_to_json(failures: list[UploadFailure]) -> str:
 
     Example::
 
-        text = _failures_to_json([BatchFailure("HR", "timeout")])
+        text = failures_to_json([BatchFailure("HR", "timeout")])
         Path("failures.json").write_text(text)
 
     """
     return json.dumps([f.to_dict() for f in failures], indent=2)
 
 
-def _failures_from_json(text: str) -> list[UploadFailure]:
-    """Deserialise a JSON string produced by :func:`_failures_to_json`.
+def failures_from_json(text: str) -> list[UploadFailure]:
+    """Deserialise a JSON string produced by :func:`failures_to_json`.
 
     Args:
-        text: JSON string as written by :func:`_failures_to_json`.
+        text: JSON string as written by :func:`failures_to_json`.
 
     Returns:
         List of :class:`RowFailure` and/or :class:`BatchFailure` objects.
@@ -249,7 +249,7 @@ def _failures_from_json(text: str) -> list[UploadFailure]:
 
     Example::
 
-        failures = _failures_from_json(Path("failures.json").read_text())
+        failures = failures_from_json(Path("failures.json").read_text())
 
     """
     failures: list[UploadFailure] = []
