@@ -249,6 +249,51 @@ class HealthDataImporter:
         if persist_failures:
             self._update_failures_file()
 
+    def update(
+        self,
+        *,
+        write_feather: bool = False,
+        persist_failures: bool = True,
+    ) -> None:
+        """Re-import the export, **overwriting** existing data points.
+
+        Identical to :meth:`etl` except it uses ``duplicate_policy="LAST"``,
+        which means any timestamp that already exists in Redis is overwritten
+        with the new value rather than kept.
+
+        Args:
+            write_feather: Persist the parsed data as a Feather cache.
+            persist_failures: Persist a file that contains which data could not
+                be uploaded as a JSON file.
+
+        Raises:
+            FileNotFoundError: When neither the Feather cache nor the source
+                ZIP can be found.
+            NotImplementedError: If ``NaN`` values are found in any column other
+                than ``unit``, indicating an unexpected schema change.
+            ValueError: If a row without a unit has a numeric ``value``; only
+                categorical string values are expected in that position.
+
+        Example::
+
+            importer.update()
+
+        """
+        df = self._extract(write_feather=write_feather)
+        transform(df)
+        self.failures = _load(df, self.connect(), duplicate_policy=DuplicatePolicy.LAST)
+
+        if self.failures:
+            logger.warning(
+                "%s.update incomplete: %d of %d datapoints failed to upload.",
+                self.__class__,
+                len(self.failures),
+                len(df),
+            )
+
+        if persist_failures:
+            self._update_failures_file()
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
