@@ -7,8 +7,11 @@ import pandas as pd
 import redis
 from apple_health_exporter import health_xml_to_feather
 from pyarrow import feather
+from redis.commands.timeseries import TimeSeries
 
 from connection import redis_connect
+from models import BatchFailure, DuplicatePolicy, UploadFailure
+from pipeline import upload_batch
 from transform import transform
 
 logger = logging.getLogger(__name__)
@@ -144,3 +147,77 @@ class HealthDataImporter:
     def _transform(df: pd.DataFrame) -> None:
         """Wrapper for :func:`transform.transform`."""  # noqa: D401
         transform(df)
+
+
+def _load(
+    df: pd.DataFrame,
+    r: redis.Redis,
+    duplicate_policy: DuplicatePolicy = DuplicatePolicy.FIRST,
+) -> list[UploadFailure]:
+    """Batch-upload all records to Redis TimeSeries.
+
+    Each unique ``type`` is uploaded in its own pipeline transaction
+    so that a failure in one type does not abort the others. Returns
+    a list of ``UploadFailure`` objects.
+
+    Args:
+        df: Transformed health records.
+        r: Active Redis connection.
+        duplicate_policy: ``"FIRST"`` (default, used by :meth:`etl` and
+            :meth:`retry_failed`) or ``"LAST"`` (used by :meth:`update`).
+
+    Returns:
+        A new list of UploadFailure objects. Empty if all data points
+        were successfully uploaded.
+
+    Example::
+
+        failures = importer._load(df, importer.connect(), DuplicatePolicy.LAST)
+
+    """
+    logger.info(
+        "Loading data to Redis TimeSeries (duplicate_policy=%s)...",
+        duplicate_policy.value,
+    )
+    rts: TimeSeries = r.ts()
+    failures: list[UploadFailure] = []
+
+    for data_type in df["type"].unique():
+        logger.info("Uploading batch for type: %s", data_type)
+        batch_df = df[df["type"] == data_type]
+
+        try:
+            row_failures = upload_batch(
+                rts,
+                batch_df,
+                duplicate_policy=duplicate_policy,
+            )
+
+            if row_failures:
+                logger.warning(
+                    "Type %s batch: %d/%d row(s) failed.",
+                    data_type,
+                    len(row_failures),
+                    len(batch_df),
+                )
+
+                failures.extend(row_failures)
+        except IndexError as exc:
+            batch_failure = BatchFailure(data_type=data_type, error=str(exc))
+            logger.exception(
+                "Could not resolve failures for type '%s': %s",
+                data_type,
+                batch_failure,
+            )
+            failures.append(batch_failure)
+
+        except redis.RedisError as exc:
+            batch_failure = BatchFailure(data_type=data_type, error=str(exc))
+            logger.exception(
+                "Entire batch for type '%s' failed: %s",
+                data_type,
+                batch_failure,
+            )
+            failures.append(batch_failure)
+
+    return failures
