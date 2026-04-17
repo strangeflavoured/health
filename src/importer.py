@@ -1,3 +1,23 @@
+"""Health Data Importer.
+
+Uploads Apple Health ``export.zip`` data to a local Redis TimeSeries database
+via an Extract → Transform → Load (ETL) pipeline.
+
+Typical usage::
+
+    importer = HealthDataImporter()
+    importer.etl(write_feather=True)
+
+    for f in importer.failures:
+        print(f)
+
+    # Retry only the failed data points (can be called in a new session)
+    remaining = importer.retry_failed(df)
+
+    # Overwrite existing data points with the latest values
+    importer.update()
+"""
+
 import logging
 import os
 from io import BytesIO
@@ -25,6 +45,30 @@ logger = logging.getLogger(__name__)
 
 
 class HealthDataImporter:
+    """Import Apple Health export data into Redis TimeSeries.
+
+    After calling :meth:`etl` or :meth:`update`, any upload failures are
+    accessible via :attr:`failures` and persisted to :attr:`failures_file`
+    so that :meth:`retry_failed` can be called in a later Python session.
+
+    Args:
+        working_dir: Root directory; defaults to the current working directory.
+        data_dir: Sub-directory (relative to *working_dir*) that holds data
+            files.
+        in_file: Name of the Apple Health ZIP export inside *data_dir*.
+        out_file: Name of the Feather cache file written to *data_dir*.
+        failures_file: Name of the JSON file that persists upload failures
+            between sessions.
+        connection: An existing :class:`redis.Redis` instance to reuse, or
+            ``None`` to create one lazily via :meth:`connect`.
+
+    Example::
+
+        importer = HealthDataImporter(working_dir="/data/health")
+        importer.etl(write_feather=True)
+
+    """
+
     def __init__(
         self,
         working_dir: Path | str | None = None,
