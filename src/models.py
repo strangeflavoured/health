@@ -79,7 +79,12 @@ class RowFailure:
     end_error: str | None = field(default=None)
 
     def __str__(self) -> str:
-        """Define how RowFailure instance is represented as pretty string."""
+        """Create human-readable string representation of this failure.
+
+        Returns:
+             String in the form RowFailure(data_type=..., row_index=..., errors=[...]).
+
+        """
         errors: list[str] = []
         if self.start_error is not None:
             errors.append(f"start={self.start_error!r}")
@@ -164,7 +169,12 @@ class BatchFailure:
     error: str
 
     def __str__(self) -> str:
-        """Define how BatchFailure instance is represented as pretty string."""
+        """Create human-readable string representation of this failure.
+
+        Returns:
+             String in the form BatchFailure(data_type=..., errors=[...]).
+
+        """
         return f"BatchFailure(data_type={self.data_type!r}, error={self.error!r})"
 
     def to_dict(self) -> dict[str, Any]:
