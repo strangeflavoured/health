@@ -143,9 +143,9 @@ class HealthDataImporter:
             self.connection = redis_connect(
                 url=url,
                 tls=tls,
-                tls_certfile=tls_client_cert,
-                tls_keyfile=tls_client_key,
-                tls_ca_certs=tls_ca_cert,
+                tls_client_cert=tls_client_cert,
+                tls_client_key=tls_client_key,
+                tls_ca_cert=tls_ca_cert,
                 tls_check_hostname=tls_check_hostname,
             )
         return self.connection
