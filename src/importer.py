@@ -6,16 +6,16 @@ via an Extract → Transform → Load (ETL) pipeline.
 Typical usage::
 
     importer = HealthDataImporter()
-    df, failures = importer.etl(write_feather=True)
+    importer.etl(write_feather=True)
 
-    for f in failures:
+    for f in importer.failures:
         print(f)
 
     # Retry only the failed data points (can be called in a new session)
     remaining = importer.retry_failed(df)
 
     # Overwrite existing data points with the latest values
-    df2, failures2 = importer.update()
+    importer.update()
 """
 
 import logging
@@ -65,7 +65,7 @@ class HealthDataImporter:
     Example::
 
         importer = HealthDataImporter(working_dir="/data/health")
-        df, failures = importer.etl(write_feather=True)
+        importer.etl(write_feather=True)
 
     """
 
@@ -178,6 +178,14 @@ class HealthDataImporter:
             persist_failures: Persist a file that contains which data could not
                 be uploaded as a JSON file.
 
+        Raises:
+            FileNotFoundError: When neither the Feather cache nor the source
+                ZIP can be found.
+            NotImplementedError: If ``NaN`` values are found in any column other
+                than ``unit``, indicating an unexpected schema change.
+            ValueError: If a row without a unit has a numeric ``value``; only
+                categorical string values are expected in that position.
+
         Example::
 
             importer.etl(write_feather=True)
@@ -209,7 +217,7 @@ class HealthDataImporter:
             # New session — no need to re-run etl()
             importer = HealthDataImporter()
             df = feather.read_feather("data/export.feather")
-            importer.retry_failed(df)
+            importer.retry_failed()
 
         Retry behaviour:
 
@@ -228,15 +236,16 @@ class HealthDataImporter:
                 be uploaded as a JSON file.
 
         Raises:
-            FileNotFoundError: If the failures file does not exist (i.e.
-                :meth:`etl` or :meth:`update` was never called, or the
-                previous run had no failures and cleaned up the file).
-            ValueError: If the failures file contains an unrecognised ``kind``
-                value.
+            FileNotFoundError: When neither the Feather cache nor the source
+                ZIP can be found, or if :attr:`failures_file` does not exist.
+            NotImplementedError: If ``NaN`` values are found in any column other
+                than ``unit``, indicating an unexpected schema change.
+            ValueError: If a row without a unit has a numeric ``value``; only
+                categorical string values are expected in that position.
 
         Example::
 
-            importer.retry_failed(df)
+            importer.retry_failed()
             if not importer.failures:
                 print("All failures resolved.")
 
@@ -254,6 +263,9 @@ class HealthDataImporter:
             logger.warning("retry_failed: failures file is empty, nothing to retry.")
             return None
 
+        df = self._extract(write_feather=False)
+        transform(df)
+
         type_selectors = []
         row_selectors = []
         for f in self.failures:
@@ -262,8 +274,6 @@ class HealthDataImporter:
             elif isinstance(f, RowFailure):
                 row_selectors.append(f.row_index)
 
-        df = self._extract(write_feather=False)
-        transform(df)
         retry_df = df[df["type"].isin(type_selectors) | df.index.isin(row_selectors)]
 
         r = self.connect()
@@ -297,6 +307,14 @@ class HealthDataImporter:
             write_feather: Persist the parsed data as a Feather cache.
             persist_failures: Persist a file that contains which data could not
                 be uploaded as a JSON file.
+
+        Raises:
+            FileNotFoundError: When neither the Feather cache nor the source
+                ZIP can be found.
+            NotImplementedError: If ``NaN`` values are found in any column other
+                than ``unit``, indicating an unexpected schema change.
+            ValueError: If a row without a unit has a numeric ``value``; only
+                categorical string values are expected in that position.
 
         Example::
 
