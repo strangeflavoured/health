@@ -243,3 +243,35 @@ def failures_to_json(failures: list[UploadFailure]) -> str:
 
     """
     return json.dumps([f.to_dict() for f in failures], indent=2)
+
+
+def failures_from_json(text: str) -> list[UploadFailure]:
+    """Deserialise a JSON string produced by :func:`failures_to_json`.
+
+    Args:
+        text: JSON string as written by :func:`failures_to_json`.
+
+    Returns:
+        List of :class:`RowFailure` and/or :class:`BatchFailure` objects.
+
+    Raises:
+        ValueError: If an entry has an unknown ``kind`` value.
+
+    Example::
+
+        failures = failures_from_json(Path("failures.json").read_text())
+
+    """
+    failures: list[UploadFailure] = []
+    for entry in json.loads(text):
+        kind = entry.get("kind")
+        if kind == "row":
+            failures.append(RowFailure.from_dict(entry))
+        elif kind == "batch":
+            failures.append(BatchFailure.from_dict(entry))
+        else:
+            raise ValueError(
+                f"Unknown failure kind {kind!r} in failures file. "
+                "File may be corrupted."
+            )
+    return failures
