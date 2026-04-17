@@ -49,7 +49,7 @@ class DuplicatePolicy(Enum):
 class RowFailure:
     """Records a failed upload for a single DataFrame row.
 
-    Produced by :func:`~pipeline._upload_batch` when one or both ``TS.ADD``
+    Produced by :func:`~pipeline.upload_batch` when one or both ``TS.ADD``
     commands for a specific row return a
     :class:`~redis.exceptions.ResponseError` inside the pipeline response
     (i.e. the connection itself stayed up, but that individual command failed).
@@ -147,7 +147,7 @@ class RowFailure:
 class BatchFailure:
     """Records a failed upload for an entire data-type batch.
 
-    Produced by :func:`~pipeline._upload_batch` when the pipeline itself
+    Produced by :func:`~pipeline.upload_batch` when the pipeline itself
     raises a :class:`~redis.exceptions.RedisError` (e.g. a connection
     failure, authentication error, or server-side crash).  In this case no
     row-level response is available, so the entire batch is marked failed.

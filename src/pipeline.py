@@ -15,6 +15,8 @@ entries instead of collapsing an entire batch into a single
 A :class:`~models.BatchFailure` is still produced when the pipeline itself
 raises a :class:`~redis.exceptions.RedisError` (connection loss, auth
 failure, etc.) — in that case no per-row response is available.
+
+Provides :func:`upload_batch` for public use.
 """
 
 import logging
@@ -109,14 +111,14 @@ def _resolve_failures(
     row_failures: list[RowFailure] = []
 
     for row in df.itertuples():
-        idx = row["Index"]
+        idx = row.Index
         start_resp = response[idx * 2]
         end_resp = response[idx * 2 + 1]
         start_ok = not isinstance(start_resp, ResponseError)
         end_ok = not isinstance(end_resp, ResponseError)
 
         failure = RowFailure(
-            data_type=row["type"],
+            data_type=row.type,
             row_index=idx,
             start_error=None if start_ok else str(start_resp),
             end_error=None if end_ok else str(end_resp),
@@ -127,7 +129,7 @@ def _resolve_failures(
         logger.info(
             "Row %s (type=%s startDate=%s endDate=%s) failed — %s",
             idx,
-            row["type"],
+            row.Index,
             df.loc[idx, "startDate"],
             df.loc[idx, "endDate"],
             failure,
@@ -136,7 +138,7 @@ def _resolve_failures(
     return row_failures
 
 
-def _upload_batch(
+def upload_batch(
     rts: TimeSeries,
     df: pd.DataFrame,
     duplicate_policy: DuplicatePolicy = DuplicatePolicy.FIRST,
@@ -181,7 +183,7 @@ def _upload_batch(
 
         r = redis_connect()
         rts = r.ts()
-        row_failures = _upload_batch(rts, df, "HKQuantityTypeIdentifierHeartRate")
+        row_failures = upload_batch(rts, df)
 
     """
     pipe: Pipeline = rts.pipeline()

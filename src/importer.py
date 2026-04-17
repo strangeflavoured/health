@@ -38,7 +38,7 @@ from models import (
     failures_from_json,
     failures_to_json,
 )
-from pipeline import _upload_batch
+from pipeline import upload_batch
 from transform import transform
 
 logger = logging.getLogger(__name__)
@@ -410,7 +410,7 @@ class HealthDataImporter:
             batch_df = df[df["type"] == data_type]
 
             try:
-                row_failures = _upload_batch(
+                row_failures = upload_batch(
                     rts,
                     batch_df,
                     duplicate_policy=duplicate_policy,
