@@ -7,6 +7,8 @@ import pandas as pd
 from apple_health_exporter import health_xml_to_feather
 from pyarrow import feather
 
+from transform import transform
+
 logger = logging.getLogger(__name__)
 
 
@@ -76,3 +78,8 @@ class HealthDataImporter:
             self.output_file.write_bytes(buffer.getbuffer())
 
         return feather.read_feather(buffer)
+
+    @staticmethod
+    def _transform(df: pd.DataFrame) -> None:
+        """Wrapper for :func:`transform.transform`."""  # noqa: D401
+        transform(df)
