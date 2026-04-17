@@ -14,7 +14,7 @@ services:
         --port 0
         --tls-cert-file /certs/${REDIS_SERVER_CERT}
         --tls-key-file /certs/${REDIS_SERVER_KEY}
-        --tls-ca-cert-file /certs/${REDIS_TLS_CA_CERT}
+        --tls-ca-cert-file /certs/${REDIS_CA_CERT}
         --tls-auth-clients yes
         --appendonly yes
         --maxmemory 900mb
@@ -36,7 +36,7 @@ services:
           redis-cli
           -p 6380
           --tls
-          --cacert /certs/${REDIS_TLS_CA_CERT}
+          --cacert /certs/${REDIS_CA_CERT}
           --cert /certs/${REDIS_CLIENT_CERT}
           --key /certs/${REDIS_CLIENT_KEY}
           -a "$REDIS_PASSWORD"
@@ -47,6 +47,21 @@ services:
       retries: 5
       start_period: 10s
 
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: health-redisinsight
+    ports:
+      - "${REDIS_HOST}:${REDIS_INSIGHT_PORT}:5540"
+    volumes:
+      - redisinsight-data:/data
+      - ${REDIS_CERTS_DIR}:/certs:ro
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   redis-data:
+    driver: local
+  redisinsight-data:
     driver: local

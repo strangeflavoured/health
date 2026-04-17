@@ -46,12 +46,13 @@ deactivate
 First [install docker compose](https://docs.docker.com/compose/install).
 Pull the latest redis-stack-server:
 ```bash
-docker pull redis/redis-stack-server:latest
+docker pull redis/redis-stack-server:latest && docker pull redis/redisinsight:latest
 ```
 Then add a `.env` file to the root directory which contains the following variables:
 ```dotenv
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6380
+REDIS_INSIGHT_PORT=5540
 REDIS_DB=0
 ```
 Generate a safe password and add it to `.env`
@@ -68,11 +69,13 @@ Generate [TLS certificates](docs/REDIS_TLS.md) and add the directory and file na
 REDIS_CERTS_DIR=~/.redis-certs
 REDIS_SERVER_CERT=redis.pem
 REDIS_SERVER_KEY=redis.key
-REDIS_TLS_CA_CERT=rootCA.pem
+REDIS_CA_CERT=rootCA.pem
 REDIS_CLIENT_CERT=client-cert.pem
 REDIS_CLIENT_KEY=client.key
 ```
 Finally start up [docker container](docs/CHEATSHEET.md).
+Set up RedisInsight by accessing `http://<REDIS_HOST>:<REDIS_INSIGHT_PORT>` in your browser:
+Set up TLS and create a new client certificate for `RedisInsightUI`.
 
 ## Import
 
