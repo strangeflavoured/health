@@ -140,3 +140,82 @@ class RowFailure:
             start_error=d.get("start_error"),
             end_error=d.get("end_error"),
         )
+
+
+@dataclass
+class BatchFailure:
+    """Records a failed upload for an entire data-type batch.
+
+    Produced by :func:`~pipeline.upload_batch` when the pipeline itself
+    raises a :class:`~redis.exceptions.RedisError` (e.g. a connection
+    failure, authentication error, or server-side crash).  In this case no
+    row-level response is available, so the entire batch is marked failed.
+
+    Attributes:
+        data_type: The ``data_type`` column value for this batch, e.g.
+            ``"HKQuantityTypeIdentifierHeartRate"``.
+        error: Human-readable message from the
+            :class:`~redis.exceptions.RedisError` that was raised.
+
+    Example::
+
+        f = BatchFailure(data_type="HKQuantityTypeIdentifierHeartRate",
+                         error="Connection reset by peer")
+
+    """
+
+    data_type: str
+    error: str
+
+    def __str__(self) -> str:
+        """Create human-readable string representation of this failure.
+
+        Returns:
+             String in the form BatchFailure(data_type=..., errors=[...]).
+
+        """
+        return f"BatchFailure(data_type={self.data_type!r}, error={self.error!r})"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise to a JSON-compatible dictionary.
+
+        Returns:
+            A plain ``dict`` with keys ``kind``, ``data_type``, and ``error``.
+
+        Example::
+
+            BatchFailure("HR", "timeout").to_dict()
+            # → {"kind": "batch", "data_type": "HR", "error": "timeout"}
+
+        """
+        return {
+            "kind": "batch",
+            "data_type": self.data_type,
+            "error": self.error,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "BatchFailure":
+        """Deserialise from a dictionary produced by :meth:`to_dict`.
+
+        Args:
+            d: Dictionary with ``data_type`` and ``error`` keys.
+
+        Returns:
+            A :class:`BatchFailure` instance.
+
+        Example::
+
+            BatchFailure.from_dict({"data_type": "HR", "error": "timeout"})
+
+        """
+        return cls(
+            data_type=d["data_type"],
+            error=d["error"],
+        )
+
+
+#: Union type for a single upload failure — either a row-level or batch-level
+#: failure.  Used as the element type of the failures list returned by
+#: :meth:`~HealthDataImporter._load` and stored on the importer instance.
+UploadFailure = RowFailure | BatchFailure
