@@ -97,7 +97,7 @@ source .venv3.12/bin/activate
 pip install --require-hashes -r requirements-dev.txt
 ```
 
-Before a commit, run the following tools and fix issues:
+Before a commit, run pre-commit and fix issues:
 ```bash
-ruff check && pre-commit run && vulture
+pre-commit run
 ```
