@@ -99,6 +99,62 @@ class HealthDataImporter:
             )
         return self.connection
 
+    def etl(
+        self,
+        *,
+        write_feather: bool = False,
+        persist_failures: bool = True,
+    ) -> None:
+        """Run the full Extract → Transform → Load pipeline.
+
+        Uses ``duplicate_policy="FIRST"`` so that re-running the same export
+        never overwrites existing data points.  To overwrite, use
+        :meth:`update` instead.
+
+        When setting `persist_failures=True` any upload failures **overwrite**
+        :attr:`failures_file` so that :meth:`retry_failed` can be called in
+        another Python session::
+
+            importer.etl(persist_failures=True)
+            # failures are persisted at data/upload_failures.json and as
+            # instance attribute
+            if importer.failures:
+                importer.retry_failed(df)
+
+        Args:
+            write_feather: Persist the parsed data as a Feather cache so that
+                subsequent runs skip the slow XML extraction step.
+            persist_failures: Persist a file that contains which data could not
+                be uploaded as a JSON file.
+
+        Raises:
+            FileNotFoundError: When neither the Feather cache nor the source
+                ZIP can be found.
+            NotImplementedError: If ``NaN`` values are found in any column other
+                than ``unit``, indicating an unexpected schema change.
+            ValueError: If a row without a unit has a numeric ``value``; only
+                categorical string values are expected in that position.
+
+        Example::
+
+            importer.etl(write_feather=True)
+
+        """
+        df = self._extract(write_feather=write_feather)
+        self._transform(df)
+        self.failures = self._load(df, self.connect())
+
+        if self.failures:
+            logger.warning(
+                "%s.etl incomplete: %d of %d datapoints failed to upload.",
+                self.__class__,
+                len(self.failures),
+                len(df),
+            )
+
+        if persist_failures:
+            self._update_failures_file()
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
