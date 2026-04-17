@@ -4,16 +4,11 @@ Each :class:`~enum.Enum` subclass corresponds to one
 ``HKCategoryTypeIdentifier`` and maps its string values to signed integers
 suitable for storage in Redis TimeSeries.
 
-The module-level :data:`categorical_identifiers` registry maps each
-identifier string to its :class:`~enum.Enum` class and is the sole entry
-point used by the transform layer.
+The module-level :data:`categorical_identifier_maps` registry maps each
+identifier string to its :class:`HKCategoryTypeIdentifier` member to  value map
 """
 
 from enum import Enum
-
-import numpy as np
-
-_NA_VALUE = -9999
 
 # ---------------------------------------------------------------------------
 # Sentinel
@@ -36,79 +31,93 @@ class MissingUnit(Enum):
 # ---------------------------------------------------------------------------
 
 
-class HKCategoryTypeIdentifierAppleStandHour(Enum):
+class HKCategoryTypeIdentifier(Enum):
+    """Sentinel categorical identifier values."""
+
+    @classmethod
+    def items(cls) -> dict[str, int]:
+        """Return a dictionary of categorical identifier names and int values."""
+        return {i.name: i.value for i in cls}
+
+
+class HKCategoryTypeIdentifierAppleStandHour(HKCategoryTypeIdentifier):
     """Stand-hour category: whether the user stood during a given hour."""
 
     HKCategoryValueAppleStandHourIdle = 0
     HKCategoryValueAppleStandHourStood = 1
 
 
-class HKCategoryTypeIdentifierAudioExposureEvent(Enum):
+class HKCategoryTypeIdentifierAudioExposureEvent(HKCategoryTypeIdentifier):
     """Environmental audio exposure events."""
 
     HKCategoryValueEnvironmentalAudioExposureEventMomentaryLimit = 1
 
 
-class HKCategoryTypeIdentifierHeadphoneAudioExposureEvent(Enum):
+class HKCategoryTypeIdentifierHeadphoneAudioExposureEvent(HKCategoryTypeIdentifier):
     """Headphone audio exposure events."""
 
     HKCategoryValueHeadphoneAudioExposureEventSevenDayLimit = 1
 
 
-class HKCategoryTypeIdentifierHighHeartRateEvent(Enum):
-    """High heart rate event — only legal value is *not applicable*."""
+class HKCategoryTypeIdentifierHighHeartRateEvent(HKCategoryTypeIdentifier):
+    """High heart rate events."""
 
-    HKCategoryValueNotApplicable = _NA_VALUE
-
-
-class HKCategoryTypeIdentifierLowHeartRateEvent(Enum):
-    """Low heart rate event — only legal value is *not applicable*."""
-
-    HKCategoryValueNotApplicable = _NA_VALUE
+    HKCategoryValueNotApplicable = 1
 
 
-class HKCategoryTypeIdentifierMindfulSession(Enum):
-    """Mindful session — only legal value is *not applicable*."""
+class HKCategoryTypeIdentifierLowHeartRateEvent(HKCategoryTypeIdentifier):
+    """Low heart rate events."""
 
-    HKCategoryValueNotApplicable = _NA_VALUE
+    HKCategoryValueNotApplicable = 1
 
 
-class HKCategoryTypeIdentifierSleepAnalysis(Enum):
+class HKCategoryTypeIdentifierMindfulSession(HKCategoryTypeIdentifier):
+    """Mindful sessions."""
+
+    HKCategoryValueNotApplicable = 1
+
+
+class HKCategoryTypeIdentifierSleepAnalysis(HKCategoryTypeIdentifier):
     """Sleep stage classifications.
 
-    A negative value indicates wakefulness, NaN indicates an unclassified state, so that
-    all sleep stages can be distinguished in time-series plots.
+    A negative value indicates wakefulness, and increasing values indicate
+    deeper sleep.
     """
 
-    HKCategoryValueSleepAnalysisInBed = 0
-    HKCategoryValueSleepAnalysisAsleepUnspecified = np.nan
-    HKCategoryValueSleepAnalysisAsleepCore = 2
     HKCategoryValueSleepAnalysisAwake = -1
-    HKCategoryValueSleepAnalysisAsleepDeep = 3
-    HKCategoryValueSleepAnalysisAsleepREM = 1
+    HKCategoryValueSleepAnalysisInBed = 0
+    HKCategoryValueSleepAnalysisAsleepUnspecified = 1
+    HKCategoryValueSleepAnalysisAsleepREM = 2
+    HKCategoryValueSleepAnalysisAsleepCore = 3
+    HKCategoryValueSleepAnalysisAsleepDeep = 4
 
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
-#: Maps each ``HKCategoryTypeIdentifier`` string to its :class:`~enum.Enum`
-#: class.  Used by the transform layer to resolve categorical string values
-#: to signed integers before writing to Redis TimeSeries.
-categorical_identifiers: dict[str, type[Enum]] = {
-    "HKCategoryTypeIdentifierAppleStandHour": HKCategoryTypeIdentifierAppleStandHour,
+#: Maps each ``HKCategoryTypeIdentifier`` string to a map of its
+# :class:`HKCategoryTypeIdentifier` members to their int values.
+categorical_identifier_maps: dict[str, dict[str, int]] = {
+    "HKCategoryTypeIdentifierAppleStandHour": (
+        HKCategoryTypeIdentifierAppleStandHour.items()
+    ),
     "HKCategoryTypeIdentifierAudioExposureEvent": (
-        HKCategoryTypeIdentifierAudioExposureEvent
+        HKCategoryTypeIdentifierAudioExposureEvent.items()
     ),
     "HKCategoryTypeIdentifierHeadphoneAudioExposureEvent": (
-        HKCategoryTypeIdentifierHeadphoneAudioExposureEvent
+        HKCategoryTypeIdentifierHeadphoneAudioExposureEvent.items()
     ),
     "HKCategoryTypeIdentifierHighHeartRateEvent": (
-        HKCategoryTypeIdentifierHighHeartRateEvent
+        HKCategoryTypeIdentifierHighHeartRateEvent.items()
     ),
     "HKCategoryTypeIdentifierLowHeartRateEvent": (
-        HKCategoryTypeIdentifierLowHeartRateEvent
+        HKCategoryTypeIdentifierLowHeartRateEvent.items()
     ),
-    "HKCategoryTypeIdentifierMindfulSession": HKCategoryTypeIdentifierMindfulSession,
-    "HKCategoryTypeIdentifierSleepAnalysis": HKCategoryTypeIdentifierSleepAnalysis,
+    "HKCategoryTypeIdentifierMindfulSession": (
+        HKCategoryTypeIdentifierMindfulSession.items()
+    ),
+    "HKCategoryTypeIdentifierSleepAnalysis": (
+        HKCategoryTypeIdentifierSleepAnalysis.items()
+    ),
 }
