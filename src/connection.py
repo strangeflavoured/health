@@ -101,7 +101,7 @@ class TLSConfigError(EnvironmentError):
     Example::
 
         raise TLSConfigError(
-            missing_kwargs=["tls_certfile"],
+            missing_kwargs=["tls_client_cert"],
             missing_env_vars=["REDIS_CLIENT_CERT"],
         )
 
@@ -175,7 +175,7 @@ class _TlsEnv:
     Example::
 
         tls_env = _load_tls_env()
-        print(tls_env.tls_certfile)
+        print(tls_env.tls_client_cert)
 
     """
 
@@ -235,7 +235,7 @@ def _load_tls_env() -> _TlsEnv:
     Example::
 
         tls_env = _load_tls_env()
-        print(tls_env.tls_certfile)
+        print(tls_env.tls_client_cert)
 
     """
     return _TlsEnv(
@@ -374,7 +374,8 @@ def _build_tls_context(
     Example::
 
         tls_env = _load_tls_env()
-        kwargs = _build_tls_context(None, None, None, True, tls_env)
+        kwargs = _build_tls_context(tls_client_cert=None, tls_client_key=None,
+            tls_ca_cert=None, tls_env=tls_env,tls_check_hostname=True)
         client = redis.from_url(url, **kwargs)
 
     """
