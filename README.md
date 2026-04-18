@@ -1,22 +1,9 @@
 # Getting started
-The data import of this project relies on [apple_health_exporter](https://github.com/mganjoo/apple-health-exporter)
-which requires Python 3.11. For the analysis infrastructure I will be using Python 3.12, which requires a separation
-of requirements and environments for this project.
-
 ## Prerequisites
-
-Make sure you have Python 3.11  and 3.12 installed:
-```bash
-sudo apt install python3.11 & sudo apt install python 3.12
-```
-
-Make sure you have pip installed:
-```bash
-sudo apt install pip
-```
+### Importer
+Requires [Python3.11](https://www.python.org/downloads/release/python-31115/) (including `venv` and `pip`).
 
 ## Set up virtual environments
-
 Clone repository and cd into it:
 ```bash
 git clone git@github.com:strangeflavoured/health.git && cd "$(basename "$_" .git)"
@@ -77,22 +64,14 @@ Finally start up [docker container](docs/CHEATSHEET.md).
 Set up RedisInsight by accessing `http://<REDIS_HOST>:<REDIS_INSIGHT_PORT>` in your browser:
 Set up TLS and create a new client certificate for `RedisInsightUI`.
 
-## Import
-
-Enter the import environment:
+## Importer
+Enter the importer environment:
 ```bash
 source .venv3.11/bin/activate
 ```
 
-## Analysis
-
-```bash
-source .venv3.12/bin/activate
-```
-
 ## Development
 ### Install dev requirements
-
 ```bash
 pip install --require-hashes -r requirements-dev.txt
 ```
