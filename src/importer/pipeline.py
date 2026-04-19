@@ -88,7 +88,7 @@ def _resolve_failures(
     Args:
         response: Flat list returned by ``pipe.execute(raise_on_error=False)``.
             Length must equal ``2 * len(indices)``.
-        df: Health records DataFrame of batch belonging to input :arg:`response`.
+        df: Health records DataFrame of batch belonging to input `response`.
 
     Returns:
         List of :class:`~models.RowFailure` objects.  Empty on full

@@ -36,7 +36,8 @@ def transform(df: pd.DataFrame) -> None:
         df: The raw health records DataFrame as produced by the extract step;
             mutated in-place.
 
-    Caveat:
+    Note::
+
         Not thread-safe — all mutations are applied directly to the shared
         DataFrame without locking.
 
@@ -66,7 +67,8 @@ def _drop_null_values(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Truncated or original DataFrame.
 
-    Caveat:
+    Note::
+
         If *all* rows have a ``NaN`` ``value``, *df* will be empty after
         this call.  Subsequent steps handle an empty DataFrame gracefully.
 
@@ -101,10 +103,12 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
     Raises:
         NotImplementedError: If ``NaN`` values are found in any column other
             than ``unit``, indicating an unexpected schema change.
+
         ValueError: If a row without a unit has a numeric ``value``; only
             categorical string values are expected in that position.
 
-    Caveat:
+    Note::
+
         A warning is logged (and the row left unmodified) if a ``type`` or
         ``value`` string is absent from the categorical registry.
 
@@ -179,7 +183,8 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
             string is not a valid member name of the corresponding
             :class:`~categorical.HKCategoryTypeIdentifier`.
 
-    Caveat:
+    Note::
+
         The ``groupby`` call creates a temporary copy of the categorical
         slice; the slice size is expected to be small relative to the full
         DataFrame.

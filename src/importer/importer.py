@@ -61,8 +61,12 @@ class HealthDataImporter:
 
 
     Example::
-        importer = HealthDataImporter(data_dir="data", in_file="export.zip",
-                connection=redis_connect())
+
+        importer = HealthDataImporter(
+            data_dir="data",
+            in_file="export.zip",
+            connection=redis_connect()
+        )
         importer.etl(write_feather=True)
 
     """
@@ -175,11 +179,11 @@ class HealthDataImporter:
         * If **some** failures remain, the file is **overwritten** with only
           the still-failing entries.
 
-        Args:
+        Args::
             persist_failures: Persist a file that contains which data could not
                 be uploaded as a JSON file.
 
-        Raises:
+        Raises::
             FileNotFoundError: When neither the Feather cache nor the source
                 ZIP can be found, or if :attr:`failures_file` does not exist.
             NotImplementedError: If ``NaN`` values are found in any column other

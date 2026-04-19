@@ -28,7 +28,7 @@ Pull the latest redis-stack-server:
 docker pull redis/redis-stack-server:latest && docker pull redis/redisinsight:latest
 ```
 Then add a `.env` file to the root directory which contains the following variables:
-```dotenv
+```ini
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6380
 REDIS_INSIGHT_PORT=5540
@@ -44,7 +44,7 @@ echo "REDIS_PASSWORD=$(openssl rand -base64 32)" >> .env
 chmod 600 .env
 ```
 Generate [TLS certificates](docs/REDIS_TLS.md) and add the directory and file names to `.env`, similar to this:
-```dotenv
+```ini
 REDIS_CERTS_DIR=~/.redis-certs
 REDIS_SERVER_CERT=redis.pem
 REDIS_SERVER_KEY=redis.key
