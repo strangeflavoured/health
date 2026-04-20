@@ -147,6 +147,7 @@ class HealthDataImporter:
                 tls_ca_cert=tls_ca_cert,
                 tls_check_hostname=tls_check_hostname,
             )
+
         return self.connection
 
     def etl(
