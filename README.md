@@ -3,7 +3,7 @@
 ### Importer
 Requires [Python3.12](https://www.python.org/downloads/release/python-31213/) (including `venv` and `pip`).
 
-## Set up virtual environments
+## Download Repository and create environment
 Clone repository and cd into it:
 ```bash
 git clone git@github.com:strangeflavoured/health.git && cd "$(basename "$_" .git)"
@@ -13,13 +13,19 @@ Create virtual environment:
 ```bash
 python3.12 -m venv .venv --prompt health
 ```
-
+## Build documentation
 Activate the environment, update pip and install requirements:
 ```bash
 source .venv/bin/activate
 pip install --upgrade pip
-pip install --require-hashes -r src/importer/requirements.txt
+pip install --require-hashes -r docs/requirements.txt
 ```
+Compile Documentation (html and Latex):
+```bash
+make -C docs html
+make -C docs latexpdf
+```
+The documentation can then be found in `docs/build/html/index.html` and `docs/build/latex/healthanalyser.pdf`
 
 ## Set up Redis Stack
 First [install docker compose](https://docs.docker.com/compose/install).
@@ -57,11 +63,14 @@ Set up RedisInsight by accessing `http://<REDIS_HOST>:<REDIS_INSIGHT_PORT>` in y
 Set up TLS and create a new client certificate for `RedisInsightUI`.
 
 ## Importer
-Enter the importer environment:
+Activate the environment, update pip and install requirements:
 ```bash
 source .venv/bin/activate
+pip install --upgrade pip
+pip install --require-hashes -r src/importer/requirements.txt
 ```
-
+[Export Apple Health data](https://support.apple.com/guide/iphone/share-your-health-data-iph5ede58c3d/ios)
+and save the `export.zip` you obtain in `data` directory. Run `import_to_redis.py` to upload the data to Redis.
 ## Development
 ### Install dev requirements
 ```bash
