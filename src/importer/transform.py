@@ -17,6 +17,9 @@ from importer.categorical import MissingUnit, categorical_identifier_maps
 
 logger = logging.getLogger(__name__)
 
+# these columns are expected to contain entries without value
+COLUMNS_WITHOUT_VALUE = ["unit", "device"]
+
 
 def transform(df: pd.DataFrame) -> None:
     """Clean and reshape *df* in-place for upload to Redis TimeSeries.
@@ -46,6 +49,7 @@ def transform(df: pd.DataFrame) -> None:
     logger.info("Transforming export data...")
     df = _drop_null_values(df)
     _handle_categorical_units(df)
+    df["value"] = df["value"].astype("float64")
     df["startDate"] = _timestamps_to_unix(df["startDate"])
     df["endDate"] = _timestamps_to_unix(df["endDate"])
 
@@ -111,8 +115,8 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
 
     """
     null_columns: pd.Index = df.columns[df.isna().any()]
-    if not null_columns.isin(["unit"]).all():
-        unexpected = null_columns.difference(["unit"]).tolist()
+    if not null_columns.isin(COLUMNS_WITHOUT_VALUE).all():
+        unexpected = null_columns.difference(COLUMNS_WITHOUT_VALUE).tolist()
         raise NotImplementedError(
             f"Unexpected columns NaN (schema may have changed): {unexpected}"
         )
@@ -189,7 +193,7 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
     categorical_slice = df.loc[no_unit, ["type", "value"]]
 
     result = [
-        categorical_identifier_maps[a][b]
+        str(categorical_identifier_maps[a][b])
         for a, b in zip(
             categorical_slice["type"], categorical_slice["value"], strict=True
         )
