@@ -7,6 +7,12 @@ HealthAnalyser Documentation
 ============================
 
 .. toctree::
+   :maxdepth: 2
+   :hidden:
+
+   Notes <notes>
+
+.. toctree::
    :hidden:
    :maxdepth: 2
    :caption: API References:
