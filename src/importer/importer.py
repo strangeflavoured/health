@@ -20,12 +20,10 @@ Typical usage::
 
 import logging
 import os
-from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
 import redis
-from apple_health_exporter import health_xml_to_feather
 from pyarrow import feather
 from redis.commands.timeseries import TimeSeries
 
@@ -38,6 +36,7 @@ from importer.models import (
     failures_from_json,
     failures_to_json,
 )
+from importer.parser import parse_apple_health
 from importer.pipeline import upload_batch
 from importer.transform import transform
 
@@ -378,14 +377,13 @@ class HealthDataImporter:
             )
 
         logger.info("Converting ZIP export to Feather format...")
-        buffer = BytesIO()
-        health_xml_to_feather(zip_file=self.zip_file, output_file=buffer)
+        df = parse_apple_health(zip_path=self.zip_file)
 
         if write_feather:
             logger.info("Writing Feather cache to %s", self.output_file)
-            self.output_file.write_bytes(buffer.getbuffer())
+            df.to_feather(self.output_file)
 
-        return feather.read_feather(buffer)
+        return df
 
     @staticmethod
     def _transform(df: pd.DataFrame) -> None:
