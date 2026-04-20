@@ -23,6 +23,7 @@ import logging
 import os
 import ssl as ssl_module
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -42,6 +43,7 @@ _ENV_PASSWORD = "REDIS_PASSWORD"  # noqa: S105
 _ENV_CLIENT_CERT = "REDIS_CLIENT_CERT"
 _ENV_CLIENT_KEY = "REDIS_CLIENT_KEY"
 _ENV_CA_CERT = "REDIS_CA_CERT"
+_ENV_CERTS_DIR = "REDIS_CERTS_DIR"
 
 _REQUIRED_CONN_VARS: tuple[str, ...] = (
     _ENV_HOST,
@@ -179,9 +181,9 @@ class _TlsEnv:
 
     """
 
-    tls_client_cert: str | None
-    tls_client_key: str | None
-    tls_ca_cert: str | None
+    tls_client_cert: Path | None
+    tls_client_key: Path | None
+    tls_ca_cert: Path | None
 
 
 # ---------------------------------------------------------------------------
@@ -238,11 +240,24 @@ def _load_tls_env() -> _TlsEnv:
         print(tls_env.tls_client_cert)
 
     """
+    certs_path = os.getenv(_ENV_CERTS_DIR)
+    tls_client_cert = os.getenv(_ENV_CLIENT_CERT)
+    tls_client_key = os.getenv(_ENV_CLIENT_KEY)
+    tls_ca_cert = os.getenv(_ENV_CA_CERT)
+
+    path = Path(certs_path).expanduser() if certs_path else Path()
+
     return _TlsEnv(
-        tls_client_cert=os.getenv(_ENV_CLIENT_CERT) or None,
-        tls_client_key=os.getenv(_ENV_CLIENT_KEY) or None,
-        tls_ca_cert=os.getenv(_ENV_CA_CERT) or None,
+        tls_client_cert=__resolve(path, tls_client_cert),
+        tls_client_key=__resolve(path, tls_client_key),
+        tls_ca_cert=__resolve(path, tls_ca_cert),
     )
+
+
+def __resolve(path: Path, filename: str | None) -> Path | None:
+    if filename is None:
+        return None
+    return (path / filename).expanduser()
 
 
 def _redact_url(url: str) -> str:
@@ -382,11 +397,22 @@ def _build_tls_context(
     certfile, keyfile, ca_cert = _resolve_tls_paths(
         tls_client_cert, tls_client_key, tls_ca_cert, tls_env
     )
-    context = ssl_module.create_default_context(cafile=ca_cert)
-    if certfile and keyfile:
-        context.load_cert_chain(certfile=certfile, keyfile=keyfile)
-    context.check_hostname = tls_check_hostname
-    return {"tls": True, "tls_context": context}
+
+    kwargs: dict[str, Any] = {"ssl": True}
+
+    if certfile:
+        kwargs["ssl_certfile"] = str(certfile)
+    if keyfile:
+        kwargs["ssl_keyfile"] = str(keyfile)
+    if ca_cert:
+        kwargs["ssl_ca_certs"] = str(ca_cert)
+
+    kwargs["ssl_check_hostname"] = tls_check_hostname
+    kwargs["ssl_cert_reqs"] = (
+        ssl_module.CERT_REQUIRED if tls_check_hostname else ssl_module.CERT_NONE
+    )
+
+    return kwargs
 
 
 def _connect_from_url(url: str, tls_kwargs: dict[str, Any]) -> redis.Redis:
