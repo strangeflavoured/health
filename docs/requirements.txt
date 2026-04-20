@@ -1,12 +1,12 @@
 -r ../src/importer/requirements.txt
 -r requirements-indirect.txt
 
-Sphinx==9.0.4 \
-    --hash=sha256:594ef59d042972abbc581d8baa577404abe4e6c3b04ef61bd7fc2acbd51f3fa3 \
-    --hash=sha256:5bebc595a5e943ea248b99c13814c1c5e10b3ece718976824ffa7959ff95fffb
-sphinx-autodoc-typehints==3.6.1 \
-    --hash=sha256:dd818ba31d4c97f219a8c0fcacef280424f84a3589cedcb73003ad99c7da41ca \
-    --hash=sha256:fa0b686ae1b85965116c88260e5e4b82faec3687c2e94d6a10f9b36c3743e2fe
+Sphinx==9.1.0 \
+    --hash=sha256:7741722357dd75f8190766926071fed3bdc211c74dd2d7d4df5404da95930ddb \
+    --hash=sha256:c84fdd4e782504495fe4f2c0b3413d6c2bf388589bb352d439b2a3bb99991978
+sphinx-autodoc-typehints==3.10.2 \
+    --hash=sha256:2d1bcac8f62b8d0d210f6ca44b8e016e314d07cc8c30d0512cf6986a0b042b26 \
+    --hash=sha256:34db651eb14343ba16bd9c03e0f5093971f9bbd3cc6b0a1470adecd578940b9c
 sphinx_mdinclude==0.6.2 \
     --hash=sha256:447462e82cb8be61404a2204227f920769eb923d2f57608e3325f3bb88286b4c \
     --hash=sha256:648e78edb067c0e4bffc22943278d49d54a0714494743592032fa3ad82a86984
