@@ -27,7 +27,6 @@ import redis
 from pyarrow import feather
 from redis.commands.timeseries import TimeSeries
 
-from importer.connection import redis_connect
 from importer.models import (
     BatchFailure,
     DuplicatePolicy,
@@ -95,61 +94,6 @@ class HealthDataImporter:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-
-    def connect(
-        self,
-        url: str | None = None,
-        *,
-        tls: bool = False,
-        tls_client_cert: str | None = None,
-        tls_client_key: str | None = None,
-        tls_ca_cert: str | None = None,
-        tls_check_hostname: bool = True,
-        force: bool = False,
-    ) -> redis.Redis:
-        """Return the cached Redis connection, creating one if necessary.
-
-        All ``tls_*`` and ``url`` arguments are forwarded directly to
-        :func:`~connection.redis_connect`; see that function for full
-        documentation on connection modes and TLS path resolution.
-
-        Args:
-            url: Full Redis connection URL.  ``None`` uses env-var mode.
-            tls: Wrap the connection in TLS.
-            tls_client_cert: Path to PEM client certificate (mTLS only).
-            tls_client_key: Path to PEM client private key (mTLS only).
-            tls_ca_cert: Path to CA bundle; ``None`` uses the system store.
-            tls_check_hostname: Enforce SNI hostname verification.
-                **Do not set to** ``False`` **in production.**
-            force: When ``True``, always create a fresh connection even if
-                one is already cached in :attr:`connection`.
-
-        Returns:
-            A connected :class:`redis.Redis` instance.
-
-        Raises:
-            ~connection.RedisEnvError: If env-var mode is used and a required
-                variable is missing.
-            ~connection.TLSConfigError: If TLS is active and TLS paths cannot
-                be resolved.
-
-        Example::
-
-            r = importer.connect(tls=True)
-
-        """
-        if self.connection is None or force:
-            self.connection = redis_connect(
-                url=url,
-                tls=tls,
-                tls_client_cert=tls_client_cert,
-                tls_client_key=tls_client_key,
-                tls_ca_cert=tls_ca_cert,
-                tls_check_hostname=tls_check_hostname,
-            )
-
-        return self.connection
-
     def etl(
         self,
         *,
@@ -193,7 +137,7 @@ class HealthDataImporter:
         """
         df = self._extract(write_feather=write_feather)
         self._transform(df)
-        self.failures = self._load(df, self.connect())
+        self.failures = self._load(df, self.connection)
 
         if self.failures:
             logger.warning(
@@ -276,7 +220,7 @@ class HealthDataImporter:
 
         retry_df = df[df["type"].isin(type_selectors) | df.index.isin(row_selectors)]
 
-        r = self.connect()
+        r = self.connection
         n_before = len(self.failures)
         self.failures = self._load(
             df=retry_df, r=r, duplicate_policy=DuplicatePolicy.FIRST
@@ -325,7 +269,9 @@ class HealthDataImporter:
         """
         df = self._extract(write_feather=write_feather)
         transform(df)
-        self.failures = _load(df, self.connect(), duplicate_policy=DuplicatePolicy.LAST)
+        self.failures = _load(
+            df, self.connection, duplicate_policy=DuplicatePolicy.LAST
+        )
 
         if self.failures:
             logger.warning(
@@ -487,7 +433,7 @@ def _load(
 
     Example::
 
-        failures = importer._load(df, importer.connect(), DuplicatePolicy.LAST)
+        failures = importer._load(df, importer.connection, DuplicatePolicy.LAST)
 
     """
     logger.info(
