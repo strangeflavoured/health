@@ -51,31 +51,31 @@ class HealthDataImporter:
     so that :meth:`retry_failed` can be called in a later Python session.
 
     Args:
-        working_dir: Root directory; defaults to the current working directory.
         data_dir: Sub-directory (relative to *working_dir*) that holds data
             files.
         in_file: Name of the Apple Health ZIP export inside *data_dir*.
+        connection: :class:`redis.Redis` to connect to.
+        working_dir: Root directory; defaults to the current working directory.
         out_file: Name of the Feather cache file written to *data_dir*.
         failures_file: Name of the JSON file that persists upload failures
             between sessions.
-        connection: An existing :class:`redis.Redis` instance to reuse, or
-            ``None`` to create one lazily via :meth:`connect`.
+
 
     Example::
-
-        importer = HealthDataImporter(working_dir="/data/health")
+        importer = HealthDataImporter(data_dir="data", in_file="export.zip",
+                connection=redis_connect())
         importer.etl(write_feather=True)
 
     """
 
     def __init__(
         self,
+        data_dir: str,
+        in_file: str,
+        connection: redis.Redis,
         working_dir: Path | str | None = None,
-        data_dir: str = "data",
-        in_file: str = "export.zip",
         out_file: str = "export.feather",
         failures_file: str = "upload_failures.json",
-        connection: redis.Redis | None = None,
     ) -> None:
 
         base = Path.cwd() if working_dir is None else Path(working_dir)
@@ -87,7 +87,7 @@ class HealthDataImporter:
         self.zip_file: Path = self.data_dir / in_file
         self.output_file: Path = self.data_dir / out_file
         self.failures_file: Path = self.data_dir / failures_file
-        self.connection: redis.Redis | None = connection
+        self.connection: redis.Redis = connection
 
         # In-memory mirror of the failures file.
         self.failures: list[UploadFailure] = []
