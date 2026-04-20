@@ -13,7 +13,7 @@ import logging
 
 import pandas as pd
 
-from importer.categorical import MissingUnit, categorical_identifier_maps
+from .categorical import MissingUnit, categorical_identifier_maps
 
 logger = logging.getLogger(__name__)
 
