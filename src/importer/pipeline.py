@@ -110,12 +110,15 @@ def _resolve_failures(
 
     row_failures: list[RowFailure] = []
 
-    for row in df.itertuples():
+    for pos, row in enumerate(df.itertuples()):
         idx = row.Index
-        start_resp = response[idx * 2]
-        end_resp = response[idx * 2 + 1]
+        start_resp = response[pos * 2]
+        end_resp = response[pos * 2 + 1]
         start_ok = not isinstance(start_resp, ResponseError)
         end_ok = not isinstance(end_resp, ResponseError)
+
+        if start_ok and end_ok:
+            continue
 
         failure = RowFailure(
             data_type=row.type,
