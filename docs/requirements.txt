@@ -1,0 +1,24 @@
+-r ../src/importer/requirements.txt
+-r requirements-indirect.txt
+
+Sphinx==9.0.4 \
+    --hash=sha256:594ef59d042972abbc581d8baa577404abe4e6c3b04ef61bd7fc2acbd51f3fa3 \
+    --hash=sha256:5bebc595a5e943ea248b99c13814c1c5e10b3ece718976824ffa7959ff95fffb
+sphinx-autodoc-typehints==3.6.1 \
+    --hash=sha256:dd818ba31d4c97f219a8c0fcacef280424f84a3589cedcb73003ad99c7da41ca \
+    --hash=sha256:fa0b686ae1b85965116c88260e5e4b82faec3687c2e94d6a10f9b36c3743e2fe
+sphinx_mdinclude==0.6.2 \
+    --hash=sha256:447462e82cb8be61404a2204227f920769eb923d2f57608e3325f3bb88286b4c \
+    --hash=sha256:648e78edb067c0e4bffc22943278d49d54a0714494743592032fa3ad82a86984
+sphinx_design==0.7.0 \
+    --hash=sha256:d2a3f5b19c24b916adb52f97c5f00efab4009ca337812001109084a740ec9b7a \
+    --hash=sha256:f82bf179951d58f55dca78ab3706aeafa496b741a91b1911d371441127d64282
+sphinx_tippy==0.4.3 \
+    --hash=sha256:255abee0aed8085fdb9ab0cc595cd7a45748ae7f4662156e500a17a3f73ad63d \
+    --hash=sha256:572b0e001baec9b03e2b19ec4e9760ca1a853f4c3226b5cea251f477b2c2b096
+sphinx-rtd-theme==3.1.0 \
+    --hash=sha256:1785824ae8e6632060490f67cf3a72d404a85d2d9fc26bce3619944de5682b89 \
+    --hash=sha256:b44276f2c276e909239a4f6c955aa667aaafeb78597923b1c60babc76db78e4c
+furo==2025.12.19 \
+    --hash=sha256:188d1f942037d8b37cd3985b955839fea62baa1730087dc29d157677c857e2a7 \
+    --hash=sha256:bb0ead5309f9500130665a26bee87693c41ce4dbdff864dbfb6b0dae4673d24f
