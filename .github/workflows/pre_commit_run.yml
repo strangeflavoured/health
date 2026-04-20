@@ -71,6 +71,20 @@ jobs:
       - name: Install pre-commit
         run: pip install pre-commit
 
+      # ── 4b. Create .venv and install dev dependencies ─────────────────────
+      # deptry's pre-commit hook looks for .venv/bin/deptry specifically,
+      # so we must install into a .venv at the repo root rather than the
+      # system Python.
+      - name: Create .venv with dev dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip -q
+          .venv/bin/pip install \
+            -r src/requirements.txt \
+            -r src/importer/requirements.txt \
+            -r requirements-dev.txt \
+            -q
+
       # ── 5a. PR run – changed files only ───────────────────────────────────
       # Uses `--from-ref`/`--to-ref` to scope hooks to the PR diff only.
       # This is significantly cheaper than --all-files on large repos.
