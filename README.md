@@ -1,7 +1,7 @@
 # Getting started
 ## Prerequisites
 ### Importer
-Requires [Python3.11](https://www.python.org/downloads/release/python-31115/) (including `venv` and `pip`).
+Requires [Python3.12](https://www.python.org/downloads/release/python-31213/) (including `venv` and `pip`).
 
 ## Set up virtual environments
 Clone repository and cd into it:
@@ -9,24 +9,16 @@ Clone repository and cd into it:
 git clone git@github.com:strangeflavoured/health.git && cd "$(basename "$_" .git)"
 ```
 
-Create virtual environments for import and analysis:
+Create virtual environment:
 ```bash
-python3.11 -m venv .venv3.11 --prompt health-import
-python3.12 -m venv .venv3.12 --prompt health-analysis
+python3.12 -m venv .venv --prompt health
 ```
 
-Activate each environment, update pip and install requirements:
+Activate the environment, update pip and install requirements:
 ```bash
-source .venv3.11/bin/activate
+source .venv/bin/activate
 pip install --upgrade pip
-pip install --require-hashes -r requirements-import.txt
-deactivate
-```
-```bash
-source .venv3.12/bin/activate
-pip install --upgrade pip
-pip install --require-hashes -r requirements-analysis.txt
-deactivate
+pip install --require-hashes -r src/importer/requirements.txt
 ```
 
 ## Set up Redis Stack
@@ -67,7 +59,7 @@ Set up TLS and create a new client certificate for `RedisInsightUI`.
 ## Importer
 Enter the importer environment:
 ```bash
-source .venv3.11/bin/activate
+source .venv/bin/activate
 ```
 
 ## Development
