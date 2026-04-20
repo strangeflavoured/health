@@ -30,4 +30,5 @@ repos:
     rev: 0.25.1
     hooks:
       - id: deptry
+        language: system
         entry: .venv/bin/deptry .
