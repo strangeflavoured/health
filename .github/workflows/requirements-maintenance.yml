@@ -1,0 +1,471 @@
+name: Requirements Maintenance
+
+on:
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 6 * * 1"   # Every Monday at 06:00 UTC
+  workflow_dispatch:        # Manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+
+  # ────────────────────────────────────────────────────────────────
+  # JOB 1 – Derive compile order from the dependency DAG
+  # ────────────────────────────────────────────────────────────────
+  discover:
+    name: Discover & order requirements
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.12-slim
+
+    outputs:
+      ordered_groups: ${{ steps.dag.outputs.ordered_groups }}
+      all_files: ${{ steps.dag.outputs.all_files }}
+      has_files: ${{ steps.dag.outputs.has_files }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pip install pip-tools -q
+
+      # Reads all .in files, follows -r includes, and builds a topological
+      # sort output: [[group0], [group1], ...] where each group can be compiled
+      # in parallel but must run after the previous group.
+      - name: Build compile DAG
+        id: dag
+        run: |
+          python3 << 'PYEOF'
+          import json, os
+          from pathlib import Path
+
+          def find_in_files():
+              return sorted(Path(".").rglob("requirements*.in"))
+
+          def get_includes(in_file):
+              """Returns the .in files that this .in file depends on."""
+              deps = []
+              try:
+                  for line in in_file.read_text().splitlines():
+                      line = line.strip()
+                      if line.startswith("-r "):
+                          ref = line[3:].strip()
+                          # Resolve reference relative to the .in file
+                          resolved = (in_file.parent / ref).resolve()
+                          # Look for the corresponding .in file
+                          in_equiv = resolved.with_suffix(".in")
+                          if in_equiv.exists():
+                              deps.append(str(in_equiv.relative_to(".")))
+              except Exception:
+                  pass
+              return deps
+
+          in_files = find_in_files()
+          if not in_files:
+              print("No .in files found")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write("has_files=false\n")
+                  f.write("ordered_groups=[]\n")
+                  f.write("all_files=[]\n")
+              exit(0)
+
+          # Build dependency graph
+          all_keys = [str(f.relative_to(".")) for f in in_files]
+          deps_map = {k: get_includes(Path(k)) for k in all_keys}
+
+          # Topological sort (Kahn's algorithm) -> groups for parallel execution
+          in_degree = {k: 0 for k in all_keys}
+          dependents = {k: [] for k in all_keys}
+          for k, deps in deps_map.items():
+              for d in deps:
+                  if d in in_degree:
+                      in_degree[k] += 1
+                      dependents[d].append(k)
+
+          groups = []
+          remaining = set(all_keys)
+          while remaining:
+              # All nodes with no remaining dependencies
+              group = sorted([k for k in remaining if in_degree[k] == 0])
+              if not group:
+                  print(f"ERROR: Circular dependency detected in: {remaining}")
+                  exit(1)
+              groups.append(group)
+              for k in group:
+                  remaining.remove(k)
+                  for dep in dependents[k]:
+                      in_degree[dep] -= 1
+
+          print(f"Compile order ({len(groups)} groups):")
+          for i, g in enumerate(groups):
+              print(f"  Group {i}: {g}")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"ordered_groups={json.dumps(groups)}\n")
+              f.write(f"all_files={json.dumps(all_keys)}\n")
+              f.write("has_files=true\n")
+          PYEOF
+
+  # ────────────────────────────────────────────────────────────────
+  # JOB 2 – Analyse current files (unused, updates, conflicts)
+  # ────────────────────────────────────────────────────────────────
+  analyse:
+    name: Analyse dependencies
+    needs: discover
+    if: needs.discover.outputs.has_files == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.12-slim
+
+    outputs:
+      has_changes: ${{ steps.summary.outputs.has_changes }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis tools
+        run: |
+          pip install --upgrade pip
+          pip install pip-tools deptry packaging
+
+      # ── 2a. Unused dependencies (deptry reads pyproject.toml automatically) ──
+      - name: Detect unused packages
+        run: |
+          mkdir -p /tmp/reports
+          deptry . --json-output /tmp/reports/deptry.json 2>/dev/null || true
+          if [ -f /tmp/reports/deptry.json ]; then
+            echo "deptry output:"
+            cat /tmp/reports/deptry.json
+          fi
+
+      # ── 2b. Check for newer versions (PyPI API, skips yanked releases) ──
+      - name: Check for newer versions
+        run: |
+          python3 << 'PYEOF'
+          import json, urllib.request, os
+          from pathlib import Path
+          from packaging.version import Version, InvalidVersion
+          from packaging.requirements import Requirement
+
+          def get_latest(package):
+              try:
+                  with urllib.request.urlopen(
+                      f"https://pypi.org/pypi/{package}/json", timeout=10
+                  ) as r:
+                      releases = json.loads(r.read()).get("releases", {})
+              except Exception as e:
+                  print(f"  WARN: {package}: {e}")
+                  return None
+              candidates = []
+              for ver_str, files in releases.items():
+                  if files and all(f.get("yanked", False) for f in files):
+                      continue
+                  try:
+                      candidates.append(Version(ver_str))
+                  except InvalidVersion:
+                      pass
+              return max(candidates) if candidates else None
+
+          def parse_compiled_txt(path):
+              """Reads pinned packages from a compiled requirements.txt."""
+              pkgs = {}
+              for line in Path(path).read_text().splitlines():
+                  line = line.strip()
+                  if not line or line.startswith(("#", "-r", "--", " ", "\t")):
+                      continue
+                  base = line.split(" \\")[0].split(" --hash")[0].strip()
+                  try:
+                      req = Requirement(base)
+                      pinned = next(
+                          (s.version for s in req.specifier if s.operator == "=="),
+                          None
+                      )
+                      pkgs[req.name] = pinned
+                  except Exception:
+                      pass
+              return pkgs
+
+          in_files = json.loads(os.environ.get("ALL_FILES", "[]"))
+          all_updates = {}
+
+          for in_file in in_files:
+              txt_file = in_file.replace(".in", ".txt")
+              if not Path(txt_file).exists():
+                  continue
+
+              updates = []
+              for name, pinned in parse_compiled_txt(txt_file).items():
+                  latest = get_latest(name)
+                  if not latest:
+                      continue
+                  try:
+                      current = Version(pinned) if pinned else None
+                  except InvalidVersion:
+                      current = None
+                  if current and latest > current:
+                      updates.append({
+                          "package": name,
+                          "current": str(current),
+                          "latest": str(latest)
+                      })
+                      print(f"  {name}: {current} -> {latest}  [{txt_file}]")
+
+              if updates:
+                  all_updates[txt_file] = updates
+
+          Path("/tmp/reports/updates.json").write_text(json.dumps(all_updates, indent=2))
+          print(f"\nTotal: {sum(len(v) for v in all_updates.values())} updates across "
+                f"{len(all_updates)} files")
+          PYEOF
+        env:
+          ALL_FILES: ${{ needs.discover.outputs.all_files }}
+
+      # ── 2c. Conflict check: install all .txt files together into one venv ──
+      - name: Check cross-module conflicts
+        shell: bash
+        run: |
+          python -m venv /tmp/conflict-check-venv
+          source /tmp/conflict-check-venv/bin/activate
+          pip install --upgrade pip -q
+
+          CONFLICT=0
+          for IN_FILE in $(echo '${{ needs.discover.outputs.all_files }}' | jq -r '.[]'); do
+            TXT_FILE="${IN_FILE%.in}.txt"
+            if [ -f "$TXT_FILE" ]; then
+              echo "Installing $TXT_FILE ..."
+              pip install -r "$TXT_FILE" -q || CONFLICT=1
+            fi
+          done
+
+          pip check > /tmp/reports/conflicts.txt 2>&1 || CONFLICT=1
+          cat /tmp/reports/conflicts.txt
+
+          if [ "$CONFLICT" -eq "1" ]; then
+            echo "CONFLICT_FOUND=true" >> "$GITHUB_ENV"
+          else
+            echo "CONFLICT_FOUND=false" >> "$GITHUB_ENV"
+          fi
+          deactivate
+
+      - name: Fail on conflicts
+        if: env.CONFLICT_FOUND == 'true'
+        run: |
+          echo "::error::Version conflicts found across modules:"
+          cat /tmp/reports/conflicts.txt
+          exit 1
+
+      # ── 2d. Summarise findings ──
+      - name: Summarise findings
+        id: summary
+        run: |
+          python3 << 'PYEOF'
+          import json, os
+          from pathlib import Path
+
+          updates = json.loads(Path("/tmp/reports/updates.json").read_text())
+          has_changes = bool(updates)
+
+          try:
+              deptry = json.loads(Path("/tmp/reports/deptry.json").read_text())
+          except Exception:
+              deptry = []
+
+          summary = {
+              "updates": updates,
+              "unused": deptry,
+              "conflicts": Path("/tmp/reports/conflicts.txt").read_text().strip()
+          }
+          Path("/tmp/reports/summary.json").write_text(json.dumps(summary, indent=2))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"has_changes={'true' if has_changes else 'false'}\n")
+          PYEOF
+
+      - name: Upload analysis reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-analysis
+          path: /tmp/reports/
+          retention-days: 14
+
+  # ────────────────────────────────────────────────────────────────
+  # JOB 3 – Recompile in topological order
+  # ────────────────────────────────────────────────────────────────
+  update:
+    name: Recompile requirements
+    needs: [discover, analyse]
+    if: needs.analyse.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.12-slim
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pip-tools
+        run: pip install --upgrade pip pip-tools
+
+      # Compiles group by group in topological order.
+      # Within a group all .in files are independent of each other
+      # and could run in parallel — sequential is simpler and safe here.
+      - name: Compile all .in files in DAG order
+        run: |
+          python3 << 'PYEOF'
+          import json, subprocess, sys, os
+          from pathlib import Path
+
+          groups = json.loads(os.environ["ORDERED_GROUPS"])
+
+          for group_idx, group in enumerate(groups):
+              print(f"\n{'='*60}")
+              print(f"Group {group_idx}: {group}")
+              print('='*60)
+
+              for in_file in group:
+                  txt_file = in_file.replace(".in", ".txt")
+                  print(f"\n  pip-compile: {in_file} -> {txt_file}")
+
+                  result = subprocess.run([
+                      "pip-compile",
+                      "--upgrade",
+                      "--generate-hashes",
+                      "--strip-extras",
+                      "--output-file", txt_file,
+                      in_file
+                  ], capture_output=True, text=True)
+
+                  if result.returncode != 0:
+                      print(f"  ERROR compiling {in_file}:")
+                      print(result.stderr)
+                      sys.exit(1)
+
+                  print(f"  OK: {txt_file} updated")
+          PYEOF
+        env:
+          ORDERED_GROUPS: ${{ needs.discover.outputs.ordered_groups }}
+
+      # Final conflict check after recompile
+      - name: Verify no conflicts after recompile
+        shell: bash
+        run: |
+          python -m venv /tmp/verify-venv
+          source /tmp/verify-venv/bin/activate
+          pip install --upgrade pip -q
+
+          for IN_FILE in $(echo '${{ needs.discover.outputs.all_files }}' | jq -r '.[]'); do
+            TXT_FILE="${IN_FILE%.in}.txt"
+            if [ -f "$TXT_FILE" ]; then
+              pip install -r "$TXT_FILE" -q
+            fi
+          done
+
+          echo "pip check after recompile:"
+          pip check
+          deactivate
+
+      - name: Upload recompiled files
+        uses: actions/upload-artifact@v4
+        with:
+          name: updated-requirements
+          path: "**/*.txt"
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────
+  # JOB 4 – Create Pull Request (skipped on pull_request trigger)
+  # ────────────────────────────────────────────────────────────────
+  create-pr:
+    name: Create Pull Request
+    needs: [discover, analyse, update]
+    if: needs.analyse.outputs.has_changes == 'true' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download recompiled requirements
+        uses: actions/download-artifact@v4
+        with:
+          name: updated-requirements
+          path: .
+
+      - name: Download analysis reports
+        uses: actions/download-artifact@v4
+        with:
+          name: dependency-analysis
+          path: /tmp/reports/
+
+      - name: Generate PR description
+        run: |
+          python3 << 'PYEOF'
+          import json
+          from pathlib import Path
+
+          try:
+              summary = json.loads(Path("/tmp/reports/summary.json").read_text())
+          except Exception:
+              summary = {"updates": {}, "unused": [], "conflicts": ""}
+
+          lines = [
+              "## Automated Requirements Update",
+              "",
+              "This PR was created automatically by the **Requirements Maintenance** workflow.",
+              "All `.txt` files have been recompiled with `pip-compile --generate-hashes --upgrade`.",
+              "",
+          ]
+
+          if summary.get("updates"):
+              lines += ["### Updated packages", ""]
+              for txt_file, pkgs in summary["updates"].items():
+                  lines.append(f"**`{txt_file}`**")
+                  lines.append("")
+                  lines.append("| Package | Old | New |")
+                  lines.append("|---------|-----|-----|")
+                  for p in pkgs:
+                      lines.append(f"| `{p['package']}` | `{p['current']}` | `{p['latest']}` |")
+                  lines.append("")
+          else:
+              lines += ["### No version updates found", ""]
+
+          if summary.get("unused"):
+              lines += ["### Potentially unused packages (informational only, not removed)", ""]
+              for issue in summary["unused"]:
+                  lines.append(f"- `{issue.get('package', issue)}`")
+              lines.append("")
+
+          conflicts = summary.get("conflicts", "").strip()
+          if conflicts and "No broken" not in conflicts:
+              lines += ["### Remaining conflicts", "", "```", conflicts, "```", ""]
+          else:
+              lines += ["### No version conflicts found", ""]
+
+          lines += [
+              "---",
+              "*Generated by `.github/workflows/requirements-update.yml`*"
+          ]
+
+          Path("/tmp/pr_body.md").write_text("\n".join(lines))
+          print("\n".join(lines))
+          PYEOF
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/update-requirements-${{ github.run_number }}
+          base: main
+          commit-message: "chore(deps): recompile requirements with latest versions and hashes"
+          title: "chore(deps): Requirements Update"
+          body-path: /tmp/pr_body.md
+          labels: |
+            dependencies
+            automated
+          draft: false
+          delete-branch: true
