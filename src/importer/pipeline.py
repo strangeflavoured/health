@@ -27,7 +27,7 @@ import pandas as pd
 from redis import ResponseError
 from redis.commands.timeseries import Pipeline, TimeSeries
 
-from models import DuplicatePolicy, RowFailure
+from importer.models import DuplicatePolicy, RowFailure
 
 logger = logging.getLogger(__name__)
 

@@ -22,7 +22,7 @@ from src.entrypoints import main  # noqa: F401 – called by Docker CMD
 # redis-om accesses model fields via class-level descriptors (__get__/__set__).
 # The fields are never called directly in application code, so Vulture flags
 # them as unused. The `_` assignment is the conventional Vulture suppression.
-from src.models.session import SessionModel
+from importer.models import SessionModel
 from src.worker import run_worker  # noqa: F401 – called by docker-compose command
 
 _ = SessionModel.user_id
@@ -34,7 +34,7 @@ _ = SessionModel.payload
 # Migrator().run() and Migrator.run_migrations() scan for classes decorated
 # with @JsonModel / @HashModel and build the index automatically at startup.
 # These class bodies are never explicitly instantiated in tests or app code.
-from src.models.session import SessionModel as _SessionModel  # noqa: F811
+from importer.models import SessionModel as _SessionModel  # noqa: F811
 
 _SessionModel.__init__
 

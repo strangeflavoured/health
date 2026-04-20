@@ -29,8 +29,8 @@ from apple_health_exporter import health_xml_to_feather
 from pyarrow import feather
 from redis.commands.timeseries import TimeSeries
 
-from connection import redis_connect
-from models import (
+from importer.connection import redis_connect
+from importer.models import (
     BatchFailure,
     DuplicatePolicy,
     RowFailure,
@@ -38,8 +38,8 @@ from models import (
     failures_from_json,
     failures_to_json,
 )
-from pipeline import upload_batch
-from transform import transform
+from importer.pipeline import upload_batch
+from importer.transform import transform
 
 logger = logging.getLogger(__name__)
 
