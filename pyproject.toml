@@ -1,3 +1,7 @@
+[project]
+name = "health-analyser"
+requires-python = ">=3.12"
+
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/rules/
 select = [
@@ -99,3 +103,21 @@ ignore_decorators = [
     "@app.on_event",           # FastAPI lifespan events
     "@pytest.fixture",
 ]
+
+[tool.deptry]
+requirements_files = ["src/requirements.txt", "src/importer/requirements.txt"]
+requirements_files_dev = ["requirements-dev.txt"]
+extend_exclude = ["docs"]
+known_first_party = ["importer"]
+
+[tool.deptry.per_rule_ignores]
+DEP002 = ["furo"]
+DEP003 = [
+    "redis",      # declared in src/requirements.in, inherited via -r
+    "dotenv",     # declared in src/requirements.in, inherited via -r
+    "pandas",     # declared in src/module_a/requirements.in
+    "defusedxml", # declared in src/module_a/requirements.in
+    "pytz",       # declared in src/module_a/requirements.in
+    "pyarrow",    # declared in src/module_a/requirements.in
+]
+DEP004 = ["pytest"]

@@ -25,3 +25,9 @@ repos:
     rev: v2.16
     hooks:
       - id: vulture
+
+  - repo: https://github.com/fpgmaas/deptry
+    rev: 0.25.1
+    hooks:
+      - id: deptry
+        entry: .venv/bin/deptry .
