@@ -20,8 +20,7 @@ Provides :func:`upload_batch` for public use.
 """
 
 import logging
-from collections.abc import Iterable
-from typing import Any
+from typing import Any, Protocol
 
 import pandas as pd
 from redis import ResponseError
@@ -32,9 +31,25 @@ from .models import DuplicatePolicy, RowFailure
 logger = logging.getLogger(__name__)
 
 
+class _HealthRow(Protocol):
+    """Row attributes consumed by :func:`_add_row_to_pipeline`.
+
+    Structural type matching what ``df.itertuples()`` yields for a
+    well-formed health DataFrame. Only the attributes actually read are
+    required; extra attributes on the namedtuple are ignored.
+    """
+
+    type: str
+    sourceName: str  # noqa: N815
+    unit: str
+    value: Any
+    startDate: Any  # noqa: N815
+    endDate: Any  # noqa: N815
+
+
 def _add_row_to_pipeline(
     pipe: Pipeline,
-    row: Iterable[tuple[Any, ...]],
+    row: _HealthRow,
     duplicate_policy: DuplicatePolicy = DuplicatePolicy.FIRST,
 ) -> None:
     """Queue a single health record's start and end ``TS.ADD`` commands on *pipe*.
