@@ -178,7 +178,7 @@ class HealthDataImporter:
         * If **some** failures remain, the file is **overwritten** with only
           the still-failing entries.
 
-        Args::
+        Args:
             persist_failures: Persist a file that contains which data could not
                 be uploaded as a JSON file.
 
