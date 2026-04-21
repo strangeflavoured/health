@@ -8,9 +8,13 @@ on:
     - cron: "0 6 * * 1"   # Every Monday at 06:00 UTC
   workflow_dispatch:        # Manual trigger
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref  }}
+  cancel-in-progress: true
+
+# Default: read-only. The create-pr job overrides this below.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
 
@@ -228,19 +232,21 @@ jobs:
       # ── 2c. Conflict check: install all .txt files together into one venv ──
       - name: Check cross-module conflicts
         shell: bash
+        env:
+          ALL_FILES: ${{ needs.discover.outputs.all_files }}
         run: |
           python -m venv /tmp/conflict-check-venv
           source /tmp/conflict-check-venv/bin/activate
           pip install --upgrade pip -q
 
           CONFLICT=0
-          for IN_FILE in $(echo '${{ needs.discover.outputs.all_files }}' | jq -r '.[]'); do
+          while IFS= read -r IN_FILE; do
             TXT_FILE="${IN_FILE%.in}.txt"
             if [ -f "$TXT_FILE" ]; then
               echo "Installing $TXT_FILE ..."
               pip install -r "$TXT_FILE" -q || CONFLICT=1
             fi
-          done
+          done < <(printf '%s' "$ALL_FILES" | jq -r '.[]')
 
           pip check > /tmp/reports/conflicts.txt 2>&1 || CONFLICT=1
           cat /tmp/reports/conflicts.txt
@@ -352,17 +358,19 @@ jobs:
       # Final conflict check after recompile
       - name: Verify no conflicts after recompile
         shell: bash
+        env:
+          ALL_FILES: ${{ needs.discover.outputs.all_files }}
         run: |
           python -m venv /tmp/verify-venv
           source /tmp/verify-venv/bin/activate
           pip install --upgrade pip -q
 
-          for IN_FILE in $(echo '${{ needs.discover.outputs.all_files }}' | jq -r '.[]'); do
+          while IFS= read -r IN_FILE; do
             TXT_FILE="${IN_FILE%.in}.txt"
             if [ -f "$TXT_FILE" ]; then
               pip install -r "$TXT_FILE" -q
             fi
-          done
+          done < <(printf '%s' "$ALL_FILES" | jq -r '.[]')
 
           echo "pip check after recompile:"
           pip check
@@ -382,6 +390,9 @@ jobs:
     name: Create Pull Request
     needs: [discover, analyse, update]
     if: needs.analyse.outputs.has_changes == 'true' && github.event_name != 'pull_request'
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
 
     steps:
