@@ -49,7 +49,7 @@ jobs:
       # Pinned hash for reproducibility; update with:
       #   pip download vulture && pip hash vulture-*.whl
       - name: Install Vulture
-        run: pip install vulture==2.14
+        run: pip install vulture==2.16
 
       # ── 4. Run Vulture ───────────────────────────────────────────────────────
       # Config is read from pyproject.toml [tool.vulture] automatically.
