@@ -24,8 +24,6 @@ jobs:
   discover:
     name: Discover & order requirements
     runs-on: ubuntu-latest
-    container:
-      image: python:3.12-slim
 
     outputs:
       ordered_groups: ${{ steps.dag.outputs.ordered_groups }}
@@ -34,6 +32,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
 
       - name: Install dependencies
         run: pip install pip-tools -q
@@ -123,14 +127,18 @@ jobs:
     needs: discover
     if: needs.discover.outputs.has_files == 'true'
     runs-on: ubuntu-latest
-    container:
-      image: python:3.12-slim
 
     outputs:
       has_changes: ${{ steps.summary.outputs.has_changes }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
 
       - name: Install analysis tools
         run: |
@@ -307,11 +315,15 @@ jobs:
     needs: [discover, analyse]
     if: needs.analyse.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
-    container:
-      image: python:3.12-slim
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
 
       - name: Install pip-tools
         run: pip install --upgrade pip pip-tools
