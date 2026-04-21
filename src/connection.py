@@ -521,7 +521,7 @@ def redis_connect(
             Falls back to ``REDIS_CLIENT_CERT`` env var.
         tls_client_key: Path to PEM client private key (mTLS only).
             Falls back to ``REDIS_CLIENT_KEY`` env var.
-        tls_ca_cert: Path to CA bundle.  Falls back to ``REDIS_TLS_CA_CERT``
+        tls_ca_cert: Path to CA bundle.  Falls back to ``REDIS_CA_CERT``
             env var; ``None`` uses the system CA store.
         tls_check_hostname: Enforce SNI hostname verification.
             **Do not set to** ``False`` **in production** — disabling this
