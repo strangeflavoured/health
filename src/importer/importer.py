@@ -213,13 +213,14 @@ class HealthDataImporter:
         df = self._extract(write_feather=False)
         self._transform(df)
 
-        type_selectors = []
-        row_selectors = []
+        type_selectors: list[str] = []
+        row_selectors: list = []
         for f in self.failures:
-            if isinstance(f, BatchFailure):
-                type_selectors.append(f.data_type)
-            elif isinstance(f, RowFailure):
-                row_selectors.append(f.row_index)
+            match f:
+                case BatchFailure(data_type=t):
+                    type_selectors.append(t)
+                case RowFailure(row_index=i):
+                    row_selectors.append(i)
 
         retry_df = df[df["type"].isin(type_selectors) | df.index.isin(row_selectors)]
 
