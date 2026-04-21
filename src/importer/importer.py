@@ -90,7 +90,7 @@ class HealthDataImporter:
         self.zip_file: Path = self.data_dir / in_file
         self.output_file: Path = self.data_dir / out_file
         self.failures_file: Path = self.data_dir / failures_file
-        self.connection: redis.Redis = connection
+        self.connection = connection
 
         # In-memory mirror of the failures file.
         self.failures: list[UploadFailure] = []
@@ -272,9 +272,11 @@ class HealthDataImporter:
 
         """
         df = self._extract(write_feather=write_feather)
-        transform(df)
-        self.failures = _load(
-            df, self.connection, duplicate_policy=DuplicatePolicy.LAST
+        self._transform(df)
+        self.failures = self._load(
+            df,
+            self.connection,
+            duplicate_policy=DuplicatePolicy.LAST,
         )
 
         if self.failures:
