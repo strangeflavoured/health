@@ -61,20 +61,21 @@ class HealthDataImporter:
 
     Example::
 
-        importer = HealthDataImporter(
-            data_dir="data",
-            in_file="export.zip",
-            connection=redis_connect()
-        )
+        # Uses the conventional data/export.zip layout
+        importer = HealthDataImporter(connection=redis_connect())
         importer.etl(write_feather=True)
+
+        # Non-standard layout
+        HealthDataImporter(data_dir="exports", in_file="2026-q1.zip",
+                           connection=redis_connect())
 
     """
 
     def __init__(
         self,
-        data_dir: str,
-        in_file: str,
         connection: redis.Redis,
+        data_dir: str = "data",
+        in_file: str = "export.zip",
         working_dir: Path | str | None = None,
         out_file: str = "export.feather",
         failures_file: str = "upload_failures.json",
