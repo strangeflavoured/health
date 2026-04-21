@@ -140,8 +140,8 @@ class HealthDataImporter:
 
         """
         df = self._extract(write_feather=write_feather)
-        self._transform(df)
-        self.failures = self._load(df, self.connection)
+        transform(df)
+        self.failures = _load(df, self.connection)
 
         if self.failures:
             logger.warning(
@@ -212,7 +212,7 @@ class HealthDataImporter:
             return None
 
         df = self._extract(write_feather=False)
-        self._transform(df)
+        transform(df)
 
         type_selectors: list[str] = []
         row_selectors: list = []
@@ -227,9 +227,7 @@ class HealthDataImporter:
 
         r = self.connection
         n_before = len(self.failures)
-        self.failures = self._load(
-            df=retry_df, r=r, duplicate_policy=DuplicatePolicy.FIRST
-        )
+        self.failures = _load(df=retry_df, r=r, duplicate_policy=DuplicatePolicy.FIRST)
 
         n_resolved = n_before - len(self.failures)
         logger.info(
@@ -273,8 +271,8 @@ class HealthDataImporter:
 
         """
         df = self._extract(write_feather=write_feather)
-        self._transform(df)
-        self.failures = self._load(
+        transform(df)
+        self.failures = _load(
             df,
             self.connection,
             duplicate_policy=DuplicatePolicy.LAST,
@@ -338,20 +336,6 @@ class HealthDataImporter:
             df.to_feather(self.output_file)
 
         return df
-
-    @staticmethod
-    def _transform(df: pd.DataFrame) -> None:
-        """Wrapper for :func:`transform.transform`."""  # noqa: D401
-        transform(df)
-
-    @staticmethod
-    def _load(
-        df: pd.DataFrame,
-        r: redis.Redis,
-        duplicate_policy: DuplicatePolicy = DuplicatePolicy.FIRST,
-    ) -> list[UploadFailure]:
-        """Wrapper for :func:`_load`."""  # noqa: D401
-        return _load(df, r, duplicate_policy)
 
     def _update_failures_file(self) -> None:
         if self.failures:
