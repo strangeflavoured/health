@@ -49,10 +49,10 @@ class HealthDataImporter:
     so that :meth:`retry_failed` can be called in a later Python session.
 
     Args:
+        connection: :class:`redis.Redis` to connect to.
         data_dir: Sub-directory (relative to *working_dir*) that holds data
             files.
         in_file: Name of the Apple Health ZIP export inside *data_dir*.
-        connection: :class:`redis.Redis` to connect to.
         working_dir: Root directory; defaults to the current working directory.
         out_file: Name of the Feather cache file written to *data_dir*.
         failures_file: Name of the JSON file that persists upload failures
