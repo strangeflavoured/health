@@ -32,14 +32,13 @@ def transform(df: pd.DataFrame) -> None:
     3. Convert ``startDate`` and ``endDate`` from ``datetime64`` to Unix
        timestamps in whole seconds (:func:`_timestamps_to_unix`).
 
+    Note:
+        Not thread-safe -- all mutations are applied directly to the shared
+        DataFrame without locking.
+
     Args:
         df: The raw health records DataFrame as produced by the extract step;
             mutated in-place.
-
-    Note::
-
-        Not thread-safe — all mutations are applied directly to the shared
-        DataFrame without locking.
 
     Example::
 
@@ -60,14 +59,13 @@ def _drop_null_values(df: pd.DataFrame) -> None:
 
     Mutates *df* in-place.
 
+    Note:
+        If *all* rows have a ``NaN`` ``value``, *df* will be empty after
+        this call.  Subsequent steps handle an empty DataFrame gracefully.
+
     Args:
         df: Health records DataFrame; rows with a ``NaN`` ``value`` are
             removed.
-
-    Note::
-
-        If *all* rows have a ``NaN`` ``value``, *df* will be empty after
-        this call.  Subsequent steps handle an empty DataFrame gracefully.
 
     Example::
 
@@ -93,6 +91,10 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
     :data:`~categorical.categorical_identifiers`, and their ``unit`` is set to
     :attr:`~categorical.MissingUnit.CATEGORICAL`.
 
+    Note:
+        A warning is logged (and the row left unmodified) if a ``type`` or
+        ``value`` string is absent from the categorical registry.
+
     Args:
         df: Health records DataFrame; the ``value`` and ``unit`` columns are
             mutated in-place for categorical rows.
@@ -103,11 +105,6 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
 
         ValueError: If a row without a unit has a numeric ``value``; only
             categorical string values are expected in that position.
-
-    Note::
-
-        A warning is logged (and the row left unmodified) if a ``type`` or
-        ``value`` string is absent from the categorical registry.
 
     Example::
 
@@ -161,6 +158,11 @@ def _timestamps_to_unix(series: pd.Series) -> pd.Series:
 def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
     """Replace categorical string values with signed integer values in-place.
 
+    Note:
+        The ``groupby`` call creates a temporary copy of the categorical
+        slice; the slice size is expected to be small relative to the full
+        DataFrame.
+
     Args:
         df: Health records DataFrame; the ``value`` column is mutated in-place
             for rows selected by *no_unit*.
@@ -172,12 +174,6 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
             :data:`~categorical.categorical_identifier_maps`, or if a ``value``
             string is not a valid member name of the corresponding
             :class:`~categorical.HKCategoryTypeIdentifier`.
-
-    Note::
-
-        The ``groupby`` call creates a temporary copy of the categorical
-        slice; the slice size is expected to be small relative to the full
-        DataFrame.
 
     Example::
 

@@ -43,6 +43,7 @@ source_suffix = {".rst": "restructuredtext", ".md": "restructuredtext"}
 autoclass_content = "class"
 autodoc_default_options = {
     "members": True,
+    "private-members": True,
     "member-order": "bysource",
     "undoc-members": True,
 }
