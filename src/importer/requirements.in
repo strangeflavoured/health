@@ -3,5 +3,4 @@
 #  importer specific deps
 pandas>=3.0.2
 defusedxml>=0.7.1
-pytz>=2026.1
 pyarrow>=23.0.1

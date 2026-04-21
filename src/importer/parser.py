@@ -6,10 +6,10 @@ tidy DataFrame that can be saved to by the caller.
 
 import zipfile
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import defusedxml.ElementTree as ETree
 import pandas as pd
-import pytz
 
 
 def parse_apple_health(zip_path: str | Path) -> pd.DataFrame:
@@ -77,7 +77,7 @@ def parse_apple_health(zip_path: str | Path) -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
 
-    tz = pytz.timezone("Europe/Berlin")
+    tz = ZoneInfo("Europe/Berlin")
     for col in ("startDate", "endDate", "creationDate"):
         df[col] = pd.to_datetime(df[col], utc=True).dt.tz_convert(tz)
 
