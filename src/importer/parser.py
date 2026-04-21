@@ -11,6 +11,19 @@ from zoneinfo import ZoneInfo
 import defusedxml.ElementTree as ETree
 import pandas as pd
 
+# columns of parse_apple_health output df
+_COLUMNS = (
+    "type",
+    "sourceName",
+    "sourceVersion",
+    "device",
+    "unit",
+    "startDate",
+    "endDate",
+    "creationDate",
+    "value",
+)
+
 
 def parse_apple_health(zip_path: str | Path) -> pd.DataFrame:
     """Parse an Apple Health export archive into a DataFrame.
@@ -58,22 +71,10 @@ def parse_apple_health(zip_path: str | Path) -> pd.DataFrame:
 
     root = tree.getroot()
 
-    rows = []
-    for record in root.iter("Record"):
-        a = record.attrib
-        rows.append(
-            {
-                "type": a.get("type"),
-                "sourceName": a.get("sourceName"),
-                "sourceVersion": a.get("sourceVersion"),
-                "device": a.get("device"),
-                "unit": a.get("unit"),
-                "startDate": a.get("startDate"),
-                "endDate": a.get("endDate"),
-                "creationDate": a.get("creationDate"),
-                "value": a.get("value"),
-            }
-        )
+    rows = [
+        {col: record.attrib.get(col) for col in _COLUMNS}
+        for record in root.iter("Record")
+    ]
 
     df = pd.DataFrame(rows)
 
