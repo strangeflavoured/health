@@ -56,6 +56,17 @@ jobs:
           python-version: "3.12"
           cache: "pip"           # caches ~/.cache/pip keyed on requirements files
 
+      # ── 2b. .venv cache — skips dep install entirely on cache hit ─────────
+      - name: Cache .venv
+        id: venv-cache
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('requirements-dev.txt', 'src/requirements.txt', 'src/importer/requirements.txt') }}
+          restore-keys: |
+            venv-${{ runner.os }}-py3.12-
+
+
       # ── 3. pre-commit environment cache ───────────────────────────────────
       # Cache key: OS + Python version + hash of .pre-commit-config.yaml
       # The cache is invalidated automatically when hooks or their revs change.
@@ -76,6 +87,7 @@ jobs:
       # so we must install into a .venv at the repo root rather than the
       # system Python.
       - name: Create .venv with dev dependencies
+        if: steps.venv-cache.outputs.cache-hit != 'true'
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip -q
