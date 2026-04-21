@@ -76,48 +76,25 @@ min_confidence = 80
 # ── Ignored names ─────────────────────────────────────────────────────────────
 # Patterns matched against the symbol name (not path). Use for framework
 # conventions that Vulture cannot trace statically.
-ignore_names = [
-    # FastAPI / Flask route handlers registered via decorators
-    "*_router",
-    # Pydantic / dataclass fields accessed via __fields__ or model_fields
-    "model_*",
-    # Pytest fixtures injected by name
-    "conftest",
-    # Click CLI entry points
-    "cli",
-    # Redis-Stack: OM field descriptors accessed via class, not instance
-    "*Field",
-]
+# Add entries when Vulture flags something that is used dynamically.
+ignore_names = []
 
 # ── Ignored paths ─────────────────────────────────────────────────────────────
 # Glob patterns relative to the project root.
-ignore_decorators = [
-    # Any symbol decorated with these is kept – Vulture won't flag it.
-    "@app.route",
-    "@router.get",
-    "@router.post",
-    "@router.put",
-    "@router.delete",
-    "@router.patch",
-    "@celery.task",
-    "@app.on_event",           # FastAPI lifespan events
-    "@pytest.fixture",
-]
+ignore_decorators = []
 
 [tool.deptry]
-requirements_files = ["src/requirements.txt", "src/importer/requirements.txt"]
+# pep621_dev_dependency_groups would be cleaner once pyproject declares them;
+requirements_files = [
+    "src/requirements.txt",
+    "src/importer/requirements.txt",
+]
 requirements_files_dev = ["requirements-dev.txt"]
 extend_exclude = ["docs"]
 known_first_party = ["importer"]
+# deptry can't handle current requirements structure and would flag deps
+# imported in requirements.txt with "-r some/requirements.txt" as transitive.
+ignore = ["DEP003"]
 
 [tool.deptry.per_rule_ignores]
 DEP002 = ["furo"]
-DEP003 = [
-    "redis",      # declared in src/requirements.in, inherited via -r
-    "dotenv",     # declared in src/requirements.in, inherited via -r
-    "pandas",     # declared in src/module_a/requirements.in
-    "defusedxml", # declared in src/module_a/requirements.in
-    "pytz",       # declared in src/module_a/requirements.in
-    "pyarrow",    # declared in src/module_a/requirements.in
-]
-DEP004 = ["pytest"]
