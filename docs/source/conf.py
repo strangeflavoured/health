@@ -3,11 +3,11 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-import os
+import importlib.util
+import pathlib
 import sys
-import importlib.util, pathlib
 
-sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, str(pathlib.Path(__file__).parents[2]))
 
 spec = importlib.util.spec_from_file_location(
     "_version", pathlib.Path(__file__).parents[2] / "src" / "_version.py"
