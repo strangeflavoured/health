@@ -57,6 +57,7 @@ class HealthDataImporter:
         out_file: Name of the Feather cache file written to *data_dir*.
         failures_file: Name of the JSON file that persists upload failures
             between sessions.
+        timezone: Name of time zone to use, defaults to UTC.
 
 
     Example::
@@ -79,6 +80,7 @@ class HealthDataImporter:
         working_dir: Path | str | None = None,
         out_file: str = "export.feather",
         failures_file: str = "upload_failures.json",
+        timezone: str | None = None,
     ) -> None:
 
         base = Path.cwd() if working_dir is None else Path(working_dir)
@@ -91,6 +93,12 @@ class HealthDataImporter:
         self.output_file: Path = self.data_dir / out_file
         self.failures_file: Path = self.data_dir / failures_file
         self.connection = connection
+
+        if timezone is None:
+            timezone = "UTC"
+            logger.info(f"No timezone provided, using {timezone}.")
+
+        self.timezone = timezone
 
         # In-memory mirror of the failures file.
         self.failures: list[UploadFailure] = []
@@ -329,7 +337,7 @@ class HealthDataImporter:
             )
 
         logger.info("Converting ZIP export to Feather format...")
-        df = parse_apple_health(zip_path=self.zip_file)
+        df = parse_apple_health(zip_path=self.zip_file, timezone=self.timezone)
 
         if write_feather:
             logger.info("Writing Feather cache to %s", self.output_file)
