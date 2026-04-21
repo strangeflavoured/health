@@ -348,14 +348,24 @@ jobs:
                   txt_file = in_file.replace(".in", ".txt")
                   print(f"\n  pip-compile: {in_file} -> {txt_file}")
 
-                  result = subprocess.run([
-                      "pip-compile",
-                      "--upgrade",
-                      "--generate-hashes",
-                      "--strip-extras",
-                      "--output-file", txt_file,
-                      in_file
-                  ], capture_output=True, text=True)
+                  cmd = [
+                    "pip-compile",
+                    "--upgrade",
+                    "--generate-hashes",
+                    "--strip-extras",
+                    "--output-file", txt_file,
+                  ]
+
+                  # --allow-unsafe pins setuptools/pip/wheel explicitly so that
+                  # --require-hashes mode doesn't choke on unlocked build-system deps.
+                  # Only needed for dev requirements where these appear as transitive deps
+                  # of tools like pip-tools itself.
+                  if in_file == "requirements-dev.in":
+                      cmd.append("--allow-unsafe")
+
+                  cmd.append(in_file)
+
+                  result = subprocess.run(cmd, capture_output=True, text=True)
 
                   if result.returncode != 0:
                       print(f"  ERROR compiling {in_file}:")
