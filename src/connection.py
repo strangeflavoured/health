@@ -408,9 +408,7 @@ def _build_tls_context(
         kwargs["ssl_ca_certs"] = str(ca_cert)
 
     kwargs["ssl_check_hostname"] = tls_check_hostname
-    kwargs["ssl_cert_reqs"] = (
-        ssl_module.CERT_REQUIRED if tls_check_hostname else ssl_module.CERT_NONE
-    )
+    kwargs["ssl_cert_reqs"] = ssl_module.CERT_REQUIRED
 
     return kwargs
 
