@@ -48,24 +48,21 @@ def transform(df: pd.DataFrame) -> None:
 
     """
     logger.info("Transforming export data...")
-    df = _drop_null_values(df)
+    _drop_null_values(df)
     _handle_categorical_units(df)
     df["value"] = df["value"].astype("float64")
     df["startDate"] = _timestamps_to_unix(df["startDate"])
     df["endDate"] = _timestamps_to_unix(df["endDate"])
 
 
-def _drop_null_values(df: pd.DataFrame) -> pd.DataFrame:
+def _drop_null_values(df: pd.DataFrame) -> None:
     """Drop rows with a ``NaN`` ``value`` field and log the count.
 
-    Returns the original DataFrame if no rows were dropped.
+    Mutates *df* in-place.
 
     Args:
         df: Health records DataFrame; rows with a ``NaN`` ``value`` are
             removed.
-
-    Returns:
-        Truncated or original DataFrame.
 
     Note::
 
@@ -75,7 +72,7 @@ def _drop_null_values(df: pd.DataFrame) -> pd.DataFrame:
     Example::
 
         before = len(df)
-        df = _drop_null_values(df)
+        _drop_null_values(df)
         print(f"Dropped {before - len(df)} rows")
 
     """
@@ -136,14 +133,7 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
             "expected only categorical strings."
         )
 
-    try:
-        _map_categories(df, no_unit)
-    except KeyError:
-        logger.warning(
-            "Categorical mapping failed: unknown identifier or value.",
-            exc_info=True,
-        )
-
+    _map_categories(df, no_unit)
     df.loc[no_unit, "unit"] = MissingUnit.CATEGORICAL.value
 
 
@@ -197,20 +187,18 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
     """
     categorical_slice = df.loc[no_unit, ["type", "value"]]
 
-    result = [
-        str(categorical_identifier_maps[a][b])
-        for a, b in zip(
-            categorical_slice["type"], categorical_slice["value"], strict=True
-        )
-    ]
+    result: list[str] = []
+    missing: dict[str, set[str]] = {}
+    for type_, value in zip(
+        categorical_slice["type"], categorical_slice["value"], strict=True
+    ):
+        try:
+            result.append(str(categorical_identifier_maps[type_][value]))
+        except KeyError:
+            missing.setdefault(type_, set()).add(value)
+            result.append("")  # placeholder, unused if raising below
 
-    if (missing := pd.isna(result)).any():
-        missing_values = (
-            categorical_slice.loc[missing]
-            .groupby("type")
-            .agg({"value": set})
-            .value.to_dict()
-        )
-        raise KeyError(f"Unknown value(s) for type(s): {missing_values}")
+    if missing:
+        raise KeyError(f"Unknown value(s) for type(s): {missing}")
 
     df.loc[categorical_slice.index, "value"] = result
