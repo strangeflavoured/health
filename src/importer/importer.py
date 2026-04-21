@@ -19,7 +19,6 @@ Typical usage::
 """
 
 import logging
-import os
 from pathlib import Path
 
 import pandas as pd
@@ -84,7 +83,7 @@ class HealthDataImporter:
         base = Path.cwd() if working_dir is None else Path(working_dir)
 
         self.data_dir: Path = base / data_dir
-        if not os.path.exists(self.data_dir):
+        if not self.data_dir.exists():
             raise FileNotFoundError(f"Data directory {self.data_dir} does not exist.")
 
         self.zip_file: Path = self.data_dir / in_file
