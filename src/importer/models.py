@@ -54,8 +54,7 @@ class RowFailure:
     :class:`~redis.exceptions.ResponseError` inside the pipeline response
     (i.e. the connection itself stayed up, but that individual command failed).
 
-    Attributes::
-
+    Attributes:
         data_type: The ``data_type`` column value for this row, e.g.
             ``"HKQuantityTypeIdentifierHeartRate"``.
         row_index: The pandas DataFrame index label of the failed row.
@@ -71,6 +70,7 @@ class RowFailure:
 
         f = RowFailure(data_type="HKQuantityTypeIdentifierHeartRate",
                        row_index=42, start_error="TSDB: Duplicate")
+
     """
 
     data_type: str
