@@ -3,7 +3,7 @@ services:
     image: redis/redis-stack-server:latest
     container_name: health-redis
     ports:
-      - "$REDIS_HOST:$REDIS_PORT:6380"
+      - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:?REDIS_PORT must be set}:6380"
     volumes:
       - redis-data:/data
       - ${REDIS_CERTS_DIR}:/certs:ro  # read-only
@@ -51,7 +51,7 @@ services:
     image: redis/redisinsight:latest
     container_name: health-redisinsight
     ports:
-      - "${REDIS_HOST}:${REDIS_INSIGHT_PORT}:5540"
+      - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:?REDIS_INSIGHT_PORT must be set}:5540"
     volumes:
       - redisinsight-data:/data
       - ${REDIS_CERTS_DIR}:/certs:ro
