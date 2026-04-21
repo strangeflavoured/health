@@ -248,13 +248,14 @@ def _load_tls_env() -> _TlsEnv:
     path = Path(certs_path).expanduser() if certs_path else Path()
 
     return _TlsEnv(
-        tls_client_cert=__resolve(path, tls_client_cert),
-        tls_client_key=__resolve(path, tls_client_key),
-        tls_ca_cert=__resolve(path, tls_ca_cert),
+        tls_client_cert=_resolve(path, tls_client_cert),
+        tls_client_key=_resolve(path, tls_client_key),
+        tls_ca_cert=_resolve(path, tls_ca_cert),
     )
 
 
-def __resolve(path: Path, filename: str | None) -> Path | None:
+def _resolve(path: Path, filename: str | None) -> Path | None:
+    """Join *filename* onto *path* with ``~`` expansion; pass through ``None``."""
     if filename is None:
         return None
     return (path / filename).expanduser()
@@ -278,12 +279,17 @@ def _redact_url(url: str) -> str:
 
     """
     parsed = urlparse(url)
-    if parsed.password:
-        redacted = parsed._replace(
-            netloc=parsed.netloc.replace(f":{parsed.password}@", ":***@")
-        )
-        return redacted.geturl()
-    return url
+    if not parsed.password:
+        return url
+
+    user = parsed.username or ""
+    host = parsed.hostname or ""
+    netloc = f"{user}:**@{host}"
+
+    if parsed.port is not None:
+        netloc = f"{netloc}:{parsed.port}"
+
+    return parsed._replace(netloc=netloc).geturl()
 
 
 def _resolve_tls_paths(
