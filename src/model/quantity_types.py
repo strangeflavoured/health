@@ -1,5 +1,8 @@
 """Quantity Type model classes."""
 
+from types import MappingProxyType
+from typing import Any
+
 from .base import HK_GROUPS, HKQuantityTypeIdentifier
 
 
@@ -713,3 +716,329 @@ class HKQuantityTypeIdentifierTimeInDaylight(
     HKQuantityTypeIdentifier, HK_GROUPS["Mindfulness"]
 ):
     pass
+
+
+# ---------------------------------------------------------------------------
+# Registry
+# ---------------------------------------------------------------------------
+
+HKQuantityTypeIdentifierRegistry: MappingProxyType[str, Any] = MappingProxyType(
+    {
+        "HKQuantityTypeIdentifierActiveEnergyBurned": (
+            HKQuantityTypeIdentifierActiveEnergyBurned
+        ),
+        "HKQuantityTypeIdentifierAppleExerciseTime": (
+            HKQuantityTypeIdentifierAppleExerciseTime
+        ),
+        "HKQuantityTypeIdentifierAppleMoveTime": (
+            HKQuantityTypeIdentifierAppleMoveTime
+        ),
+        "HKQuantityTypeIdentifierAppleSleepingBreathingDisturbances": (
+            HKQuantityTypeIdentifierAppleSleepingBreathingDisturbances
+        ),
+        "HKQuantityTypeIdentifierAppleSleepingWristTemperature": (
+            HKQuantityTypeIdentifierAppleSleepingWristTemperature
+        ),
+        "HKQuantityTypeIdentifierAppleStandTime": (
+            HKQuantityTypeIdentifierAppleStandTime
+        ),
+        "HKQuantityTypeIdentifierAppleWalkingSteadiness": (
+            HKQuantityTypeIdentifierAppleWalkingSteadiness
+        ),
+        "HKQuantityTypeIdentifierAtrialFibrillationBurden": (
+            HKQuantityTypeIdentifierAtrialFibrillationBurden
+        ),
+        "HKQuantityTypeIdentifierBasalBodyTemperature": (
+            HKQuantityTypeIdentifierBasalBodyTemperature
+        ),
+        "HKQuantityTypeIdentifierBasalEnergyBurned": (
+            HKQuantityTypeIdentifierBasalEnergyBurned
+        ),
+        "HKQuantityTypeIdentifierBloodAlcoholContent": (
+            HKQuantityTypeIdentifierBloodAlcoholContent
+        ),
+        "HKQuantityTypeIdentifierBloodGlucose": (HKQuantityTypeIdentifierBloodGlucose),
+        "HKQuantityTypeIdentifierBloodPressureDiastolic": (
+            HKQuantityTypeIdentifierBloodPressureDiastolic
+        ),
+        "HKQuantityTypeIdentifierBloodPressureSystolic": (
+            HKQuantityTypeIdentifierBloodPressureSystolic
+        ),
+        "HKQuantityTypeIdentifierBodyFatPercentage": (
+            HKQuantityTypeIdentifierBodyFatPercentage
+        ),
+        "HKQuantityTypeIdentifierBodyMass": (HKQuantityTypeIdentifierBodyMass),
+        "HKQuantityTypeIdentifierBodyMassIndex": (
+            HKQuantityTypeIdentifierBodyMassIndex
+        ),
+        "HKQuantityTypeIdentifierBodyTemperature": (
+            HKQuantityTypeIdentifierBodyTemperature
+        ),
+        "HKQuantityTypeIdentifierCrossCountrySkiingSpeed": (
+            HKQuantityTypeIdentifierCrossCountrySkiingSpeed
+        ),
+        "HKQuantityTypeIdentifierCyclingCadence": (
+            HKQuantityTypeIdentifierCyclingCadence
+        ),
+        "HKQuantityTypeIdentifierCyclingFunctionalThresholdPower": (
+            HKQuantityTypeIdentifierCyclingFunctionalThresholdPower
+        ),
+        "HKQuantityTypeIdentifierCyclingPower": (HKQuantityTypeIdentifierCyclingPower),
+        "HKQuantityTypeIdentifierCyclingSpeed": (HKQuantityTypeIdentifierCyclingSpeed),
+        "HKQuantityTypeIdentifierDietaryBiotin": (
+            HKQuantityTypeIdentifierDietaryBiotin
+        ),
+        "HKQuantityTypeIdentifierDietaryCaffeine": (
+            HKQuantityTypeIdentifierDietaryCaffeine
+        ),
+        "HKQuantityTypeIdentifierDietaryCalcium": (
+            HKQuantityTypeIdentifierDietaryCalcium
+        ),
+        "HKQuantityTypeIdentifierDietaryCarbohydrates": (
+            HKQuantityTypeIdentifierDietaryCarbohydrates
+        ),
+        "HKQuantityTypeIdentifierDietaryChloride": (
+            HKQuantityTypeIdentifierDietaryChloride
+        ),
+        "HKQuantityTypeIdentifierDietaryCholesterol": (
+            HKQuantityTypeIdentifierDietaryCholesterol
+        ),
+        "HKQuantityTypeIdentifierDietaryChromium": (
+            HKQuantityTypeIdentifierDietaryChromium
+        ),
+        "HKQuantityTypeIdentifierDietaryCopper": (
+            HKQuantityTypeIdentifierDietaryCopper
+        ),
+        "HKQuantityTypeIdentifierDietaryEnergyConsumed": (
+            HKQuantityTypeIdentifierDietaryEnergyConsumed
+        ),
+        "HKQuantityTypeIdentifierDietaryFatMonounsaturated": (
+            HKQuantityTypeIdentifierDietaryFatMonounsaturated
+        ),
+        "HKQuantityTypeIdentifierDietaryFatPolyunsaturated": (
+            HKQuantityTypeIdentifierDietaryFatPolyunsaturated
+        ),
+        "HKQuantityTypeIdentifierDietaryFatSaturated": (
+            HKQuantityTypeIdentifierDietaryFatSaturated
+        ),
+        "HKQuantityTypeIdentifierDietaryFatTotal": (
+            HKQuantityTypeIdentifierDietaryFatTotal
+        ),
+        "HKQuantityTypeIdentifierDietaryFiber": (HKQuantityTypeIdentifierDietaryFiber),
+        "HKQuantityTypeIdentifierDietaryFolate": (
+            HKQuantityTypeIdentifierDietaryFolate
+        ),
+        "HKQuantityTypeIdentifierDietaryIodine": (
+            HKQuantityTypeIdentifierDietaryIodine
+        ),
+        "HKQuantityTypeIdentifierDietaryIron": (HKQuantityTypeIdentifierDietaryIron),
+        "HKQuantityTypeIdentifierDietaryMagnesium": (
+            HKQuantityTypeIdentifierDietaryMagnesium
+        ),
+        "HKQuantityTypeIdentifierDietaryManganese": (
+            HKQuantityTypeIdentifierDietaryManganese
+        ),
+        "HKQuantityTypeIdentifierDietaryMolybdenum": (
+            HKQuantityTypeIdentifierDietaryMolybdenum
+        ),
+        "HKQuantityTypeIdentifierDietaryNiacin": (
+            HKQuantityTypeIdentifierDietaryNiacin
+        ),
+        "HKQuantityTypeIdentifierDietaryPantothenicAcid": (
+            HKQuantityTypeIdentifierDietaryPantothenicAcid
+        ),
+        "HKQuantityTypeIdentifierDietaryPhosphorus": (
+            HKQuantityTypeIdentifierDietaryPhosphorus
+        ),
+        "HKQuantityTypeIdentifierDietaryPotassium": (
+            HKQuantityTypeIdentifierDietaryPotassium
+        ),
+        "HKQuantityTypeIdentifierDietaryProtein": (
+            HKQuantityTypeIdentifierDietaryProtein
+        ),
+        "HKQuantityTypeIdentifierDietaryRiboflavin": (
+            HKQuantityTypeIdentifierDietaryRiboflavin
+        ),
+        "HKQuantityTypeIdentifierDietarySelenium": (
+            HKQuantityTypeIdentifierDietarySelenium
+        ),
+        "HKQuantityTypeIdentifierDietarySodium": (
+            HKQuantityTypeIdentifierDietarySodium
+        ),
+        "HKQuantityTypeIdentifierDietarySugar": (HKQuantityTypeIdentifierDietarySugar),
+        "HKQuantityTypeIdentifierDietaryThiamin": (
+            HKQuantityTypeIdentifierDietaryThiamin
+        ),
+        "HKQuantityTypeIdentifierDietaryVitaminA": (
+            HKQuantityTypeIdentifierDietaryVitaminA
+        ),
+        "HKQuantityTypeIdentifierDietaryVitaminB12": (
+            HKQuantityTypeIdentifierDietaryVitaminB12
+        ),
+        "HKQuantityTypeIdentifierDietaryVitaminB6": (
+            HKQuantityTypeIdentifierDietaryVitaminB6
+        ),
+        "HKQuantityTypeIdentifierDietaryVitaminC": (
+            HKQuantityTypeIdentifierDietaryVitaminC
+        ),
+        "HKQuantityTypeIdentifierDietaryVitaminD": (
+            HKQuantityTypeIdentifierDietaryVitaminD
+        ),
+        "HKQuantityTypeIdentifierDietaryVitaminE": (
+            HKQuantityTypeIdentifierDietaryVitaminE
+        ),
+        "HKQuantityTypeIdentifierDietaryVitaminK": (
+            HKQuantityTypeIdentifierDietaryVitaminK
+        ),
+        "HKQuantityTypeIdentifierDietaryWater": (HKQuantityTypeIdentifierDietaryWater),
+        "HKQuantityTypeIdentifierDietaryZinc": (HKQuantityTypeIdentifierDietaryZinc),
+        "HKQuantityTypeIdentifierDistanceCrossCountrySkiing": (
+            HKQuantityTypeIdentifierDistanceCrossCountrySkiing
+        ),
+        "HKQuantityTypeIdentifierDistanceCycling": (
+            HKQuantityTypeIdentifierDistanceCycling
+        ),
+        "HKQuantityTypeIdentifierDistanceDownhillSnowSports": (
+            HKQuantityTypeIdentifierDistanceDownhillSnowSports
+        ),
+        "HKQuantityTypeIdentifierDistancePaddleSports": (
+            HKQuantityTypeIdentifierDistancePaddleSports
+        ),
+        "HKQuantityTypeIdentifierDistanceRowing": (
+            HKQuantityTypeIdentifierDistanceRowing
+        ),
+        "HKQuantityTypeIdentifierDistanceSkatingSports": (
+            HKQuantityTypeIdentifierDistanceSkatingSports
+        ),
+        "HKQuantityTypeIdentifierDistanceSwimming": (
+            HKQuantityTypeIdentifierDistanceSwimming
+        ),
+        "HKQuantityTypeIdentifierDistanceWalkingRunning": (
+            HKQuantityTypeIdentifierDistanceWalkingRunning
+        ),
+        "HKQuantityTypeIdentifierDistanceWheelchair": (
+            HKQuantityTypeIdentifierDistanceWheelchair
+        ),
+        "HKQuantityTypeIdentifierElectrodermalActivity": (
+            HKQuantityTypeIdentifierElectrodermalActivity
+        ),
+        "HKQuantityTypeIdentifierEnvironmentalAudioExposure": (
+            HKQuantityTypeIdentifierEnvironmentalAudioExposure
+        ),
+        "HKQuantityTypeIdentifierEnvironmentalSoundReduction": (
+            HKQuantityTypeIdentifierEnvironmentalSoundReduction
+        ),
+        "HKQuantityTypeIdentifierEstimatedWorkoutEffortScore": (
+            HKQuantityTypeIdentifierEstimatedWorkoutEffortScore
+        ),
+        "HKQuantityTypeIdentifierFlightsClimbed": (
+            HKQuantityTypeIdentifierFlightsClimbed
+        ),
+        "HKQuantityTypeIdentifierForcedExpiratoryVolume1": (
+            HKQuantityTypeIdentifierForcedExpiratoryVolume1
+        ),
+        "HKQuantityTypeIdentifierForcedVitalCapacity": (
+            HKQuantityTypeIdentifierForcedVitalCapacity
+        ),
+        "HKQuantityTypeIdentifierHeadphoneAudioExposure": (
+            HKQuantityTypeIdentifierHeadphoneAudioExposure
+        ),
+        "HKQuantityTypeIdentifierHeartRate": (HKQuantityTypeIdentifierHeartRate),
+        "HKQuantityTypeIdentifierHeartRateRecoveryOneMinute": (
+            HKQuantityTypeIdentifierHeartRateRecoveryOneMinute
+        ),
+        "HKQuantityTypeIdentifierHeartRateVariabilitySdnn": (
+            HKQuantityTypeIdentifierHeartRateVariabilitySdnn
+        ),
+        "HKQuantityTypeIdentifierHeight": (HKQuantityTypeIdentifierHeight),
+        "HKQuantityTypeIdentifierInhalerUsage": (HKQuantityTypeIdentifierInhalerUsage),
+        "HKQuantityTypeIdentifierInsulinDelivery": (
+            HKQuantityTypeIdentifierInsulinDelivery
+        ),
+        "HKQuantityTypeIdentifierLeanBodyMass": (HKQuantityTypeIdentifierLeanBodyMass),
+        "HKQuantityTypeIdentifierNikeFuel": (HKQuantityTypeIdentifierNikeFuel),
+        "HKQuantityTypeIdentifierNumberOfAlcoholicBeverages": (
+            HKQuantityTypeIdentifierNumberOfAlcoholicBeverages
+        ),
+        "HKQuantityTypeIdentifierNumberOfTimesFallen": (
+            HKQuantityTypeIdentifierNumberOfTimesFallen
+        ),
+        "HKQuantityTypeIdentifierOxygenSaturation": (
+            HKQuantityTypeIdentifierOxygenSaturation
+        ),
+        "HKQuantityTypeIdentifierPaddleSportsSpeed": (
+            HKQuantityTypeIdentifierPaddleSportsSpeed
+        ),
+        "HKQuantityTypeIdentifierPeakExpiratoryFlowRate": (
+            HKQuantityTypeIdentifierPeakExpiratoryFlowRate
+        ),
+        "HKQuantityTypeIdentifierPeripheralPerfusionIndex": (
+            HKQuantityTypeIdentifierPeripheralPerfusionIndex
+        ),
+        "HKQuantityTypeIdentifierPhysicalEffort": (
+            HKQuantityTypeIdentifierPhysicalEffort
+        ),
+        "HKQuantityTypeIdentifierPushCount": (HKQuantityTypeIdentifierPushCount),
+        "HKQuantityTypeIdentifierRespiratoryRate": (
+            HKQuantityTypeIdentifierRespiratoryRate
+        ),
+        "HKQuantityTypeIdentifierRestingHeartRate": (
+            HKQuantityTypeIdentifierRestingHeartRate
+        ),
+        "HKQuantityTypeIdentifierRowingSpeed": (HKQuantityTypeIdentifierRowingSpeed),
+        "HKQuantityTypeIdentifierRunningGroundContactTime": (
+            HKQuantityTypeIdentifierRunningGroundContactTime
+        ),
+        "HKQuantityTypeIdentifierRunningPower": (HKQuantityTypeIdentifierRunningPower),
+        "HKQuantityTypeIdentifierRunningSpeed": (HKQuantityTypeIdentifierRunningSpeed),
+        "HKQuantityTypeIdentifierRunningStrideLength": (
+            HKQuantityTypeIdentifierRunningStrideLength
+        ),
+        "HKQuantityTypeIdentifierRunningVerticalOscillation": (
+            HKQuantityTypeIdentifierRunningVerticalOscillation
+        ),
+        "HKQuantityTypeIdentifierSixMinuteWalkTestDistance": (
+            HKQuantityTypeIdentifierSixMinuteWalkTestDistance
+        ),
+        "HKQuantityTypeIdentifierStairAscentSpeed": (
+            HKQuantityTypeIdentifierStairAscentSpeed
+        ),
+        "HKQuantityTypeIdentifierStairDescentSpeed": (
+            HKQuantityTypeIdentifierStairDescentSpeed
+        ),
+        "HKQuantityTypeIdentifierStepCount": (HKQuantityTypeIdentifierStepCount),
+        "HKQuantityTypeIdentifierSwimmingStrokeCount": (
+            HKQuantityTypeIdentifierSwimmingStrokeCount
+        ),
+        "HKQuantityTypeIdentifierTimeInDaylight": (
+            HKQuantityTypeIdentifierTimeInDaylight
+        ),
+        "HKQuantityTypeIdentifierUVExposure": (HKQuantityTypeIdentifierUVExposure),
+        "HKQuantityTypeIdentifierUnderwaterDepth": (
+            HKQuantityTypeIdentifierUnderwaterDepth
+        ),
+        "HKQuantityTypeIdentifierVO2Max": (HKQuantityTypeIdentifierVO2Max),
+        "HKQuantityTypeIdentifierWaistCircumference": (
+            HKQuantityTypeIdentifierWaistCircumference
+        ),
+        "HKQuantityTypeIdentifierWalkingAsymmetryPercentage": (
+            HKQuantityTypeIdentifierWalkingAsymmetryPercentage
+        ),
+        "HKQuantityTypeIdentifierWalkingDoubleSupportPercentage": (
+            HKQuantityTypeIdentifierWalkingDoubleSupportPercentage
+        ),
+        "HKQuantityTypeIdentifierWalkingHeartRateAverage": (
+            HKQuantityTypeIdentifierWalkingHeartRateAverage
+        ),
+        "HKQuantityTypeIdentifierWalkingSpeed": (HKQuantityTypeIdentifierWalkingSpeed),
+        "HKQuantityTypeIdentifierWalkingStepLength": (
+            HKQuantityTypeIdentifierWalkingStepLength
+        ),
+        "HKQuantityTypeIdentifierWaterTemperature": (
+            HKQuantityTypeIdentifierWaterTemperature
+        ),
+        "HKQuantityTypeIdentifierWorkoutEffortScore": (
+            HKQuantityTypeIdentifierWorkoutEffortScore
+        ),
+    }
+)
