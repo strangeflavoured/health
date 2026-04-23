@@ -22,11 +22,11 @@ from typing import Any
 class DuplicatePolicy(Enum):
     """Redis TimeSeries per-command duplicate-write strategy.
 
-    :attr:`FIRST` is used by :meth:`~HealthDataImporter.etl` for initial
+    :attr:`FIRST` is used by :meth:`~.importer.HealthDataImporter.etl` for initial
     imports so that re-running an export never overwrites existing data points.
-    It is also used by :meth:`~HealthDataImporter.retry_failed`.
+    It is also used by :meth:`~.importer.HealthDataImporter.retry_failed`.
 
-    :attr:`LAST` is used by :meth:`~HealthDataImporter.update` to overwrite
+    :attr:`LAST` is used by :meth:`~.importer.HealthDataImporter.update` to overwrite
     existing data points with new values.
 
     Example::
@@ -49,10 +49,10 @@ class DuplicatePolicy(Enum):
 class RowFailure:
     """Records a failed upload for a single DataFrame row.
 
-    Produced by :func:`~pipeline.upload_batch` when one or both ``TS.ADD``
-    commands for a specific row return a
-    :class:`~redis.exceptions.ResponseError` inside the pipeline response
-    (i.e. the connection itself stayed up, but that individual command failed).
+    Produced by :func:`~.pipeline.upload_batch` when one or both ``TS.ADD``
+    commands for a specific row return a :class:`~redis.exceptions.ResponseError`
+    inside the pipeline response (i.e. the connection itself stayed up, but that
+    individual command failed).
 
     Attributes:
         data_type: The ``data_type`` column value for this row, e.g.
@@ -147,7 +147,7 @@ class RowFailure:
 class BatchFailure:
     """Records a failed upload for an entire data-type batch.
 
-    Produced by :func:`~pipeline.upload_batch` when the pipeline itself
+    Produced by :func:`~.pipeline.upload_batch` when the pipeline itself
     raises a :class:`~redis.exceptions.RedisError` (e.g. a connection
     failure, authentication error, or server-side crash).  In this case no
     row-level response is available, so the entire batch is marked failed.

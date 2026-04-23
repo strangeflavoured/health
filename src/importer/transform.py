@@ -88,8 +88,8 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
 
     Rows without a ``unit`` value are treated as categorical.  Their string ``value``
     is resolved to a signed integer/NaN via
-    :data:`~categorical.categorical_identifiers`, and their ``unit`` is set to
-    :attr:`~categorical.MissingUnit.CATEGORICAL`.
+    :data:`~.categorical.categorical_identifiers`, and their ``unit`` is set to
+    :attr:`~.categorical.MissingUnit.CATEGORICAL`.
 
     Note:
         A warning is logged (and the row left unmodified) if a ``type`` or
@@ -159,9 +159,9 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
     """Replace categorical string values with signed integer values in-place.
 
     Note:
-        The ``groupby`` call creates a temporary copy of the categorical
-        slice; the slice size is expected to be small relative to the full
-        DataFrame.
+        The :meth:`~pd.DataFrame.groupby` call creates a temporary copy of the
+        categorical slice; the slice size is expected to be small relative
+        to the full DataFrame.
 
     Args:
         df: Health records DataFrame; the ``value`` column is mutated in-place
