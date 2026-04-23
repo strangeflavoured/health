@@ -57,6 +57,7 @@ exclude = [
 "tests/*" = ["ANN", "D", "N802", "S101"]
 "docs/*" = ["D100"]
 "src/model/base.py" = ["D106"]
+"src/model/category_types.py" = ["D101", "D106"]
 
 [tool.vulture]
 # ── Scan targets ──────────────────────────────────────────────────────────────
