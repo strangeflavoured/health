@@ -6,3 +6,4 @@ Modules
 
    Connection <connection>
    Importer <importer>
+   Models <models>
