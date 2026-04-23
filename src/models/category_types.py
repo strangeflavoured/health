@@ -4,7 +4,7 @@ from enum import Enum
 from types import MappingProxyType
 from typing import Any
 
-from .models import HK_GROUPS, HKCategoryTypeIdentifier
+from .base import HK_GROUPS, HKCategoryTypeIdentifier
 
 
 class HKCategoryTypeIdentifierSleepAnalysis(

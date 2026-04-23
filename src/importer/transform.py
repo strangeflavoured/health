@@ -14,7 +14,7 @@ import logging
 import pandas as pd
 
 from ..models import CATEGORICAL_IDENTIFIER_MAPS
-from ..models.models import MissingUnit
+from ..models.base import MissingUnit
 
 logger = logging.getLogger(__name__)
 

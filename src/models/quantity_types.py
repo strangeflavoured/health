@@ -3,7 +3,7 @@
 from types import MappingProxyType
 from typing import Any
 
-from .models import HK_GROUPS, HKQuantityTypeIdentifier
+from .base import HK_GROUPS, HKQuantityTypeIdentifier
 
 
 class HKQuantityTypeIdentifierBodyMassIndex(
