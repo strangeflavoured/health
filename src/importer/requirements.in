@@ -1,6 +1,4 @@
--r ../requirements.txt
-
-#  importer specific deps
 pandas>=3.0.2
 defusedxml>=0.7.1
 pyarrow>=23.0.1
+redis>=7.4.0
