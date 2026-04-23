@@ -49,12 +49,12 @@ def parse_apple_health(zip_path: str | Path, timezone: str) -> pd.DataFrame:
         - sourceVersion (str): Version string of the recording source app.
         - device (str): Full device identifier string as reported by HealthKit.
         - unit (str): Unit of measurement, e.g. ``"count/min"`` or ``"kg"``.
-        - startDate (datetime64[ns, Europe/Berlin]): Start of the recorded
-          interval, converted to Europe/Berlin time.
-        - endDate (datetime64[ns, Europe/Berlin]): End of the recorded interval,
-          converted to Europe/Berlin time.
-        - creationDate (datetime64[ns, Europe/Berlin]): When the record was
-          created, converted to Europe/Berlin time.
+        - startDate (datetime64[ns, `timezone`]): Start of the recorded
+          interval, converted to `timezone` time.
+        - endDate (datetime64[ns, `timezone`]): End of the recorded interval,
+          converted to `timezone` time.
+        - creationDate (datetime64[ns, `timezone`]): When the record was
+          created, converted to `timezone` time.
         - value (str): The recorded value as a string, e.g. ``"72"`` or
           ``"5.6"``. Cast to a numeric type by the caller if needed.
 
