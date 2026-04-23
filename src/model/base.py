@@ -28,17 +28,37 @@ class MissingUnit(Enum):
 
 
 # ---------------------------------------------------------------------------
-# Category type enums
+# Base model classes
 # ---------------------------------------------------------------------------
 
 
-class HKCategoryTypeIdentifier(Enum):
+class HKIdentifier:
+    """Sentinel identifier base class."""
+
+    group: str
+    identifier_type: str
+
+
+class HKQuantityTypeIdentifier(HKIdentifier):
+    """Sentinel quantity identifier values."""
+
+    identifier_type = "quantity"
+
+
+class HKCategoryTypeIdentifier(HKIdentifier, Enum):
     """Sentinel categorical identifier values."""
+
+    identifier_type = "category"
 
     @classmethod
     def items(cls) -> dict[str, int]:
         """Return a dictionary of categorical identifier names and int values."""
         return {i.name: i.value for i in cls}
+
+
+# ---------------------------------------------------------------------------
+# Category type enums
+# ---------------------------------------------------------------------------
 
 
 class HKCategoryTypeIdentifierAppleStandHour(HKCategoryTypeIdentifier):
