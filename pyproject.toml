@@ -56,6 +56,7 @@ exclude = [
 # Ignore annotations rules and lowercase function names in test directory
 "tests/*" = ["ANN", "D", "N802", "S101"]
 "docs/*" = ["D100"]
+"src/models/categorical_types.py" = ["D101", "D106"]
 
 [tool.vulture]
 # ── Scan targets ──────────────────────────────────────────────────────────────

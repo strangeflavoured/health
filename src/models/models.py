@@ -34,6 +34,19 @@ class HKCategoryTypeIdentifier(HKIdentifier):
 
     identifier_type = "category"
 
+    class Values:
+        """HK category identifier values :class:`Enum` template.
+
+        Subclasses overwrite this class as Enum with their associated values.
+        """
+
+        pass
+
+    @classmethod
+    def category_values(cls) -> dict[str, int]:
+        """Return name: value dict of `HKCategoryTypeIdentifier` values."""
+        return {i.name: i.value for i in cls.Values}
+
 
 # ---------------------------------------------------------------------------
 # Groups
