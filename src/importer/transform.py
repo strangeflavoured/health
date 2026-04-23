@@ -13,7 +13,8 @@ import logging
 
 import pandas as pd
 
-from ..models import MissingUnit, categorical_identifier_maps
+from ..models import CATEGORICAL_IDENTIFIER_MAPS
+from ..models.models import MissingUnit
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +190,7 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
         categorical_slice["type"], categorical_slice["value"], strict=True
     ):
         try:
-            result.append(str(categorical_identifier_maps[type_][value]))
+            result.append(str(CATEGORICAL_IDENTIFIER_MAPS[type_][value]))
         except KeyError:
             missing.setdefault(type_, set()).add(value)
             result.append("")  # placeholder, unused if raising below
