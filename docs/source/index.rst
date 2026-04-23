@@ -20,7 +20,9 @@ HealthAnalyser Documentation
    :maxdepth: 2
    :caption: API References:
 
-   src
+   Connection <connection>
+   Importer <importer>
+   Models <models>
 
 .. mdinclude:: ../../README.md
 
