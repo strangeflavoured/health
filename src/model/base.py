@@ -9,6 +9,7 @@ identifier string to its :class:`HKCategoryTypeIdentifier` member to  value map
 """
 
 from enum import Enum
+from types import MappingProxyType
 
 # ---------------------------------------------------------------------------
 # Sentinel
@@ -121,3 +122,82 @@ categorical_identifier_maps: dict[str, dict[str, int]] = {
         HKCategoryTypeIdentifierSleepAnalysis.items()
     ),
 }
+
+# ---------------------------------------------------------------------------
+# Groups
+# ---------------------------------------------------------------------------
+
+
+class BodyMeasurements:  # noqa: D101
+    group = "body_measurements"
+
+
+class Fitness:  # noqa: D101
+    group = "body_measurements"
+
+
+class ReproductiveHealth:  # noqa: D101
+    group = "reproductive_health"
+
+
+class Hearing:  # noqa: D101
+    group = "hearing"
+
+
+class VitalSigns:  # noqa: D101
+    group = "vital_signs"
+
+
+class LabTestResults:  # noqa: D101
+    group = "lab_test_results"
+
+
+class Mobility:  # noqa: D101
+    group = "mobility"
+
+
+class Nutrition:  # noqa: D101
+    group = "nutrition"
+
+
+class UVExposure:  # noqa: D101
+    group = "uv_exposure"
+
+
+class Diving:  # noqa: D101
+    group = "diving"
+
+
+class Mindfulness:  # noqa: D101
+    group = "mindfulness"
+
+
+class Symptoms:  # noqa: D101
+    group = "symptoms"
+
+
+class Other:  # noqa: D101
+    group = "other"
+
+
+# ---------------------------------------------------------------------------
+# Registry
+# ---------------------------------------------------------------------------
+
+HK_GROUPS = MappingProxyType(
+    {
+        "BodyMeasurements": BodyMeasurements,
+        "Fitness": Fitness,
+        "ReproductiveHealth": ReproductiveHealth,
+        "Hearing": Hearing,
+        "VitalSigns": VitalSigns,
+        "LabTestResults": LabTestResults,
+        "Mobility": Mobility,
+        "Nutrition": Nutrition,
+        "UVExposure": UVExposure,
+        "Diving": Diving,
+        "Mindfulness": Mindfulness,
+        "Symptoms": Symptoms,
+        "Other": Other,
+    }
+)
