@@ -45,15 +45,23 @@ class HKQuantityTypeIdentifier(HKIdentifier):
     identifier_type = "quantity"
 
 
-class HKCategoryTypeIdentifier(HKIdentifier, Enum):
-    """Sentinel categorical identifier values."""
+class HKCategoryTypeIdentifier(HKIdentifier):
+    """Sentinel category identifier values."""
 
     identifier_type = "category"
 
+    class Values:
+        """HK category identifier values :class:`Enum` template.
+
+        Subclasses overwrite this class as Enum with their associated values.
+        """
+
+        pass
+
     @classmethod
-    def items(cls) -> dict[str, int]:
-        """Return a dictionary of categorical identifier names and int values."""
-        return {i.name: i.value for i in cls}
+    def category_values(cls) -> dict[str, int]:
+        """Return name: value dict of `HKCategoryTypeIdentifier` values."""
+        return {i.name: i.value for i in cls.Values}
 
 
 # ---------------------------------------------------------------------------
@@ -64,38 +72,44 @@ class HKCategoryTypeIdentifier(HKIdentifier, Enum):
 class HKCategoryTypeIdentifierAppleStandHour(HKCategoryTypeIdentifier):
     """Stand-hour category: whether the user stood during a given hour."""
 
-    HKCategoryValueAppleStandHourIdle = 0
-    HKCategoryValueAppleStandHourStood = 1
+    class Values(Enum):
+        HKCategoryValueAppleStandHourIdle = 0
+        HKCategoryValueAppleStandHourStood = 1
 
 
 class HKCategoryTypeIdentifierAudioExposureEvent(HKCategoryTypeIdentifier):
     """Environmental audio exposure events."""
 
-    HKCategoryValueEnvironmentalAudioExposureEventMomentaryLimit = 1
+    class Values(Enum):
+        HKCategoryValueEnvironmentalAudioExposureEventMomentaryLimit = 1
 
 
 class HKCategoryTypeIdentifierHeadphoneAudioExposureEvent(HKCategoryTypeIdentifier):
     """Headphone audio exposure events."""
 
-    HKCategoryValueHeadphoneAudioExposureEventSevenDayLimit = 1
+    class Values(Enum):
+        HKCategoryValueHeadphoneAudioExposureEventSevenDayLimit = 1
 
 
 class HKCategoryTypeIdentifierHighHeartRateEvent(HKCategoryTypeIdentifier):
     """High heart rate events."""
 
-    HKCategoryValueNotApplicable = 1
+    class Values(Enum):
+        HKCategoryValueNotApplicable = 1
 
 
 class HKCategoryTypeIdentifierLowHeartRateEvent(HKCategoryTypeIdentifier):
     """Low heart rate events."""
 
-    HKCategoryValueNotApplicable = 1
+    class Values(Enum):
+        HKCategoryValueNotApplicable = 1
 
 
 class HKCategoryTypeIdentifierMindfulSession(HKCategoryTypeIdentifier):
     """Mindful sessions."""
 
-    HKCategoryValueNotApplicable = 1
+    class Values(Enum):
+        HKCategoryValueNotApplicable = 1
 
 
 class HKCategoryTypeIdentifierSleepAnalysis(HKCategoryTypeIdentifier):
@@ -105,12 +119,13 @@ class HKCategoryTypeIdentifierSleepAnalysis(HKCategoryTypeIdentifier):
     deeper sleep.
     """
 
-    HKCategoryValueSleepAnalysisAwake = -1
-    HKCategoryValueSleepAnalysisInBed = 0
-    HKCategoryValueSleepAnalysisAsleepUnspecified = 1
-    HKCategoryValueSleepAnalysisAsleepREM = 2
-    HKCategoryValueSleepAnalysisAsleepCore = 3
-    HKCategoryValueSleepAnalysisAsleepDeep = 4
+    class Values(Enum):
+        HKCategoryValueSleepAnalysisAwake = -1
+        HKCategoryValueSleepAnalysisInBed = 0
+        HKCategoryValueSleepAnalysisAsleepUnspecified = 1
+        HKCategoryValueSleepAnalysisAsleepREM = 2
+        HKCategoryValueSleepAnalysisAsleepCore = 3
+        HKCategoryValueSleepAnalysisAsleepDeep = 4
 
 
 # ---------------------------------------------------------------------------
