@@ -88,9 +88,8 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
     """Assign integer values and a sentinel unit to categorical records.
 
     Rows without a ``unit`` value are treated as categorical.  Their string ``value``
-    is resolved to a signed integer/NaN via
-    :data:`~.categorical.categorical_identifiers`, and their ``unit`` is set to
-    :attr:`~.categorical.MissingUnit.CATEGORICAL`.
+    is resolved to a signed integer/NaN via :func:`_map_categories`, and their ``unit``
+    is set to :attr:`~model.base.MissingUnit.CATEGORICAL`.
 
     Note:
         A warning is logged (and the row left unmodified) if a ``type`` or
@@ -172,9 +171,9 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
 
     Raises:
         KeyError: If a ``type`` string is absent from
-            :data:`~categorical.categorical_identifier_maps`, or if a ``value``
+            :data:`~model.CATEGORICAL_IDENTIFIER_MAPS`, or if a ``value``
             string is not a valid member name of the corresponding
-            :class:`~categorical.HKCategoryTypeIdentifier`.
+            :class:`~model.base.HKCategoryTypeIdentifier`.
 
     Example::
 
