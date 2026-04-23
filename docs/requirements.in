@@ -1,5 +1,5 @@
--r ../src/requirements.txt
--r ../src/importer/requirements.txt
+# src requirements
+-r ../src/requirements.in
 
 # docs-specific
 pyopenssl>=26.0.0
