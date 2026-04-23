@@ -65,6 +65,8 @@ napoleon_attr_annotations = False
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
+    "redis": ("https://redis.readthedocs.io/en/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
 }
 
 templates_path = ["_templates"]

@@ -114,7 +114,7 @@ class HealthDataImporter:
     ) -> None:
         """Run the full Extract → Transform → Load pipeline.
 
-        Uses ``duplicate_policy="FIRST"`` so that re-running the same export
+        Uses :class:`DuplicatePolicy.First` so that re-running the same export
         never overwrites existing data points.  To overwrite, use
         :meth:`update` instead.
 
@@ -256,7 +256,7 @@ class HealthDataImporter:
     ) -> None:
         """Re-import the export, **overwriting** existing data points.
 
-        Identical to :meth:`etl` except it uses ``duplicate_policy="LAST"``,
+        Identical to :meth:`etl` except it uses ``DuplicatePolicy.LAST``,
         which means any timestamp that already exists in Redis is overwritten
         with the new value rather than kept.
 
@@ -423,8 +423,11 @@ def _load(
     Args:
         df: Transformed health records.
         r: Active Redis connection.
-        duplicate_policy: ``"FIRST"`` (default, used by :meth:`etl` and
-            :meth:`retry_failed`) or ``"LAST"`` (used by :meth:`update`).
+        duplicate_policy: :class:`~DuplicatePolicy.FIRST` (default, used by
+            :meth:`~HealthDataImporter.etl` and
+            :meth:`~HealthDataImporter.retry_failed`)
+            or :class:`~DuplicatePolicy.LAST` (used by
+            :meth:`~HealthDataImporter.update`).
 
     Returns:
         A new list of UploadFailure objects. Empty if all data points

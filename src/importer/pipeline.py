@@ -4,15 +4,15 @@ All writes to Redis TimeSeries are batched through a single
 :class:`~redis.commands.timeseries.Pipeline` per data-type call, reducing
 round-trips to one network exchange per type regardless of row count.
 
-Importantly :meth:`Pipeline.execute` is called with ``raise_on_error=False``.
-This means individual ``TS.ADD`` command failures are surfaced as
-:class:`~redis.exceptions.ResponseError` *objects* inside the response list
-rather than raised as exceptions, allowing the response-inspection loop in
-:func:`_resolve_failures` to produce granular :class:`~models.RowFailure`
+Importantly :meth:`~redis.commands.timeseries.Pipeline.execute` is called with
+``raise_on_error=False``. This means individual ``TS.ADD`` command failures
+are surfaced as :class:`~redis.exceptions.ResponseError` *objects* inside the
+response list rather than raised as exceptions, allowing the response-inspection
+loop in :func:`_resolve_failures` to produce granular :class:`~.models.RowFailure`
 entries instead of collapsing an entire batch into a single
 :class:`~models.BatchFailure` for even a single failure.
 
-A :class:`~models.BatchFailure` is still produced when the pipeline itself
+A :class:`~.models.BatchFailure` is still produced when the pipeline itself
 raises a :class:`~redis.exceptions.RedisError` (connection loss, auth
 failure, etc.) — in that case no per-row response is available.
 
@@ -59,8 +59,10 @@ def _add_row_to_pipeline(
     * ``<type>:start`` — timestamped at ``startDate``
     * ``<type>:end``   — timestamped at ``endDate``
 
-    The commands are not executed until :meth:`Pipeline.execute` is called by
-    the caller, so this function is always O(1) and performs no network I/O.
+    The commands are not executed until
+    :meth:`~redis.commands.timeseries.Pipeline.execute`
+    is called by the caller, so this function is always O(1) and performs no
+    network I/O.
 
     Args:
         pipe: An open Redis TimeSeries pipeline.
@@ -106,7 +108,7 @@ def _resolve_failures(
         df: Health records DataFrame of batch belonging to input `response`.
 
     Returns:
-        List of :class:`~models.RowFailure` objects.  Empty on full
+        List of :class:`~.models.RowFailure` objects.  Empty on full
         success.
 
     Raises:
@@ -194,7 +196,7 @@ def upload_batch(
             every ``pipe.add()`` call.
 
     Returns:
-        List of :class:`~models.RowFailure` objects.  Empty on full
+        List of :class:`~.models.RowFailure` objects.  Empty on full
         success.
 
     Example::
