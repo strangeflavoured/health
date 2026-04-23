@@ -11,12 +11,27 @@ identifier string to its :class:`HKCategoryTypeIdentifier` member to  value map
 from enum import Enum
 
 # ---------------------------------------------------------------------------
-# Category type enums
+# Base model classes
 # ---------------------------------------------------------------------------
 
 
-class HKCategoryTypeIdentifier(Enum):
-    """Sentinel categorical identifier values."""
+class HKIdentifier:
+    """Sentinel identifier base class."""
+
+    group: str
+    identifier_type: str
+
+
+class HKQuantityTypeIdentifier(HKIdentifier):
+    """Sentinel quantity identifier values."""
+
+    identifier_type = "quantity"
+
+
+class HKCategoryTypeIdentifier(HKIdentifier, Enum):
+    """Sentinel category identifier values."""
+
+    identifier = "category"
 
     @classmethod
     def items(cls) -> dict[str, int]:
