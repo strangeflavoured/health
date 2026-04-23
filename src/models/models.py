@@ -9,6 +9,7 @@ identifier string to its :class:`HKCategoryTypeIdentifier` member to  value map
 """
 
 from enum import Enum
+from types import MappingProxyType
 
 # ---------------------------------------------------------------------------
 # Base model classes
@@ -89,6 +90,29 @@ class Symptoms:  # noqa: D101
 
 class Other:  # noqa: D101
     group = "other"
+
+
+# ---------------------------------------------------------------------------
+# Registry
+# ---------------------------------------------------------------------------
+
+HK_GROUPS = MappingProxyType(
+    {
+        "BodyMeasurements": BodyMeasurements,
+        "Fitness": Fitness,
+        "ReproductiveHealth": ReproductiveHealth,
+        "Hearing": Hearing,
+        "VitalSigns": VitalSigns,
+        "LabTestResults": LabTestResults,
+        "Mobility": Mobility,
+        "Nutrition": Nutrition,
+        "UVExposure": UVExposure,
+        "Diving": Diving,
+        "Mindfulness": Mindfulness,
+        "Symptoms": Symptoms,
+        "Other": Other,
+    }
+)
 
 
 # ---------------------------------------------------------------------------
