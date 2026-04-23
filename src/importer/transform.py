@@ -13,7 +13,7 @@ import logging
 
 import pandas as pd
 
-from .categorical import MissingUnit, categorical_identifier_maps
+from ..models import MissingUnit, categorical_identifier_maps
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +88,8 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
 
     Rows without a ``unit`` value are treated as categorical.  Their string ``value``
     is resolved to a signed integer/NaN via
-    :data:`~.categorical.categorical_identifiers`, and their ``unit`` is set to
-    :attr:`~.categorical.MissingUnit.CATEGORICAL`.
+    :data:`~..models.categorical_identifiers`, and their ``unit`` is set to
+    :attr:`~..models.MissingUnit.CATEGORICAL`.
 
     Note:
         A warning is logged (and the row left unmodified) if a ``type`` or
@@ -171,9 +171,9 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
 
     Raises:
         KeyError: If a ``type`` string is absent from
-            :data:`~categorical.categorical_identifier_maps`, or if a ``value``
+            :data:`~..models.categorical_identifier_maps`, or if a ``value``
             string is not a valid member name of the corresponding
-            :class:`~categorical.HKCategoryTypeIdentifier`.
+            :class:`~..models.HKCategoryTypeIdentifier`.
 
     Example::
 
