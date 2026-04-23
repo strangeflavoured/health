@@ -67,7 +67,7 @@ Activate the environment, update pip and install requirements:
 ```bash
 source .venv/bin/activate
 pip install --upgrade pip
-pip install --require-hashes -r src/importer/requirements.txt
+pip install --require-hashes -r src/requirements.txt
 ```
 [Export Apple Health data](https://support.apple.com/guide/iphone/share-your-health-data-iph5ede58c3d/ios)
 and save the `export.zip` you obtain in `data` directory. Run `import_to_redis.py` to upload the data to Redis.
