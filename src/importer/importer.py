@@ -26,7 +26,9 @@ import redis
 from pyarrow import feather
 from redis.commands.timeseries import TimeSeries
 
-from .models import (
+from .parser import parse_apple_health
+from .pipeline import upload_batch
+from .response import (
     BatchFailure,
     DuplicatePolicy,
     RowFailure,
@@ -34,8 +36,6 @@ from .models import (
     failures_from_json,
     failures_to_json,
 )
-from .parser import parse_apple_health
-from .pipeline import upload_batch
 from .transform import transform
 
 logger = logging.getLogger(__name__)
