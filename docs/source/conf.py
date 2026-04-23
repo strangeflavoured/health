@@ -44,7 +44,6 @@ autoclass_content = "class"
 autodoc_default_options = {
     "members": True,
     "private-members": True,
-    "member-order": "bysource",
     "undoc-members": True,
 }
 
