@@ -9,8 +9,11 @@ HealthAnalyser Documentation
 .. toctree::
    :maxdepth: 2
    :hidden:
+   :caption: Notes:
 
-   Notes <notes>
+   Setting up TLS <setup-tls>
+   Using Redis & Docker <docker-redis>
+   Dev tools <dev-tools>
 
 .. toctree::
    :hidden:
