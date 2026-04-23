@@ -92,8 +92,8 @@ jobs:
           python -m venv .venv
           .venv/bin/pip install --upgrade pip -q
           .venv/bin/pip install \
+            --require-hashes \
             -r src/requirements.txt \
-            -r src/importer/requirements.txt \
             -r requirements-dev.txt \
             -q
 
