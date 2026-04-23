@@ -1,9 +1,9 @@
 Models
 =======
 
-Models
+Base
 ----------
-.. automodule:: src.models.models
+.. automodule:: src.models.base
 
 Models
 ----------
