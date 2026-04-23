@@ -11,22 +11,6 @@ identifier string to its :class:`HKCategoryTypeIdentifier` member to  value map
 from enum import Enum
 
 # ---------------------------------------------------------------------------
-# Sentinel
-# ---------------------------------------------------------------------------
-
-
-class MissingUnit(Enum):
-    """Sentinel unit value assigned to categorical (non-numeric) records.
-
-    Example::
-
-        df.loc[mask, "unit"] = MissingUnit.CATEGORICAL.value  # → "Categorical"
-    """
-
-    CATEGORICAL = "Categorical"
-
-
-# ---------------------------------------------------------------------------
 # Category type enums
 # ---------------------------------------------------------------------------
 
@@ -121,3 +105,18 @@ categorical_identifier_maps: dict[str, dict[str, int]] = {
         HKCategoryTypeIdentifierSleepAnalysis.items()
     ),
 }
+
+# ---------------------------------------------------------------------------
+# Sentinel
+# ---------------------------------------------------------------------------
+
+
+class MissingUnit(Enum):
+    """Sentinel unit value assigned to categorical (non-numeric) records.
+
+    Example::
+
+        df.loc[mask, "unit"] = MissingUnit.CATEGORICAL.value  # → "Categorical"
+    """
+
+    CATEGORICAL = "Categorical"
