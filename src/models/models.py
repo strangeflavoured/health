@@ -28,98 +28,68 @@ class HKQuantityTypeIdentifier(HKIdentifier):
     identifier_type = "quantity"
 
 
-class HKCategoryTypeIdentifier(HKIdentifier, Enum):
+class HKCategoryTypeIdentifier(HKIdentifier):
     """Sentinel category identifier values."""
 
-    identifier = "category"
-
-    @classmethod
-    def items(cls) -> dict[str, int]:
-        """Return a dictionary of categorical identifier names and int values."""
-        return {i.name: i.value for i in cls}
-
-
-class HKCategoryTypeIdentifierAppleStandHour(HKCategoryTypeIdentifier):
-    """Stand-hour category: whether the user stood during a given hour."""
-
-    HKCategoryValueAppleStandHourIdle = 0
-    HKCategoryValueAppleStandHourStood = 1
-
-
-class HKCategoryTypeIdentifierAudioExposureEvent(HKCategoryTypeIdentifier):
-    """Environmental audio exposure events."""
-
-    HKCategoryValueEnvironmentalAudioExposureEventMomentaryLimit = 1
-
-
-class HKCategoryTypeIdentifierHeadphoneAudioExposureEvent(HKCategoryTypeIdentifier):
-    """Headphone audio exposure events."""
-
-    HKCategoryValueHeadphoneAudioExposureEventSevenDayLimit = 1
-
-
-class HKCategoryTypeIdentifierHighHeartRateEvent(HKCategoryTypeIdentifier):
-    """High heart rate events."""
-
-    HKCategoryValueNotApplicable = 1
-
-
-class HKCategoryTypeIdentifierLowHeartRateEvent(HKCategoryTypeIdentifier):
-    """Low heart rate events."""
-
-    HKCategoryValueNotApplicable = 1
-
-
-class HKCategoryTypeIdentifierMindfulSession(HKCategoryTypeIdentifier):
-    """Mindful sessions."""
-
-    HKCategoryValueNotApplicable = 1
-
-
-class HKCategoryTypeIdentifierSleepAnalysis(HKCategoryTypeIdentifier):
-    """Sleep stage classifications.
-
-    A negative value indicates wakefulness, and increasing values indicate
-    deeper sleep.
-    """
-
-    HKCategoryValueSleepAnalysisAwake = -1
-    HKCategoryValueSleepAnalysisInBed = 0
-    HKCategoryValueSleepAnalysisAsleepUnspecified = 1
-    HKCategoryValueSleepAnalysisAsleepREM = 2
-    HKCategoryValueSleepAnalysisAsleepCore = 3
-    HKCategoryValueSleepAnalysisAsleepDeep = 4
+    identifier_type = "category"
 
 
 # ---------------------------------------------------------------------------
-# Registry
+# Groups
 # ---------------------------------------------------------------------------
 
-#: Maps each ``HKCategoryTypeIdentifier`` string to a map of its
-# :class:`HKCategoryTypeIdentifier` members to their int values.
-categorical_identifier_maps: dict[str, dict[str, int]] = {
-    "HKCategoryTypeIdentifierAppleStandHour": (
-        HKCategoryTypeIdentifierAppleStandHour.items()
-    ),
-    "HKCategoryTypeIdentifierAudioExposureEvent": (
-        HKCategoryTypeIdentifierAudioExposureEvent.items()
-    ),
-    "HKCategoryTypeIdentifierHeadphoneAudioExposureEvent": (
-        HKCategoryTypeIdentifierHeadphoneAudioExposureEvent.items()
-    ),
-    "HKCategoryTypeIdentifierHighHeartRateEvent": (
-        HKCategoryTypeIdentifierHighHeartRateEvent.items()
-    ),
-    "HKCategoryTypeIdentifierLowHeartRateEvent": (
-        HKCategoryTypeIdentifierLowHeartRateEvent.items()
-    ),
-    "HKCategoryTypeIdentifierMindfulSession": (
-        HKCategoryTypeIdentifierMindfulSession.items()
-    ),
-    "HKCategoryTypeIdentifierSleepAnalysis": (
-        HKCategoryTypeIdentifierSleepAnalysis.items()
-    ),
-}
+
+class BodyMeasurements:  # noqa: D101
+    group = "body_measurements"
+
+
+class Fitness:  # noqa: D101
+    group = "body_measurements"
+
+
+class ReproductiveHealth:  # noqa: D101
+    group = "reproductive_health"
+
+
+class Hearing:  # noqa: D101
+    group = "hearing"
+
+
+class VitalSigns:  # noqa: D101
+    group = "vital_signs"
+
+
+class LabTestResults:  # noqa: D101
+    group = "lab_test_results"
+
+
+class Mobility:  # noqa: D101
+    group = "mobility"
+
+
+class Nutrition:  # noqa: D101
+    group = "nutrition"
+
+
+class UVExposure:  # noqa: D101
+    group = "uv_exposure"
+
+
+class Diving:  # noqa: D101
+    group = "diving"
+
+
+class Mindfulness:  # noqa: D101
+    group = "mindfulness"
+
+
+class Symptoms:  # noqa: D101
+    group = "symptoms"
+
+
+class Other:  # noqa: D101
+    group = "other"
+
 
 # ---------------------------------------------------------------------------
 # Sentinel
