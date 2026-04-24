@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import io
+import xml
 import zipfile
 from pathlib import Path
 
+import defusedxml
 import pandas as pd
 import pytest
 
-from src.importer.parser import parse_apple_health, NoHealthDataError
-
+from src.importer.parser import NoHealthDataError, parse_apple_health
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -127,7 +128,7 @@ class TestParseAppleHealth:
 
 class TestXXESecurity:
     def test_xxe_entity_expansion_blocked(self, tmp_path):
-        """defusedxml must block DOCTYPE/ENTITY XXE attacks."""
+        """Defusedxml must block DOCTYPE/ENTITY XXE attacks."""
         xxe_xml = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE foo [
   <!ENTITY xxe SYSTEM "file:///etc/passwd">
@@ -142,11 +143,11 @@ class TestXXESecurity:
 """
         zip_path = tmp_path / "export.zip"
         zip_path.write_bytes(_make_zip(xxe_xml))
-        with pytest.raises(Exception):
+        with pytest.raises(defusedxml.common.EntitiesForbidden):
             parse_apple_health(zip_path)
 
     def test_billion_laughs_blocked(self, tmp_path):
-        """defusedxml must block entity expansion DoS attacks."""
+        """Defusedxml must block entity expansion DoS attacks."""
         bl_xml = """<?xml version="1.0"?>
 <!DOCTYPE lolz [
   <!ENTITY lol "lol">
@@ -157,13 +158,13 @@ class TestXXESecurity:
 """
         zip_path = tmp_path / "export.zip"
         zip_path.write_bytes(_make_zip(bl_xml))
-        with pytest.raises(Exception):
+        with pytest.raises(defusedxml.common.EntitiesForbidden):
             parse_apple_health(zip_path)
 
     def test_malformed_xml_raises(self, tmp_path):
         zip_path = tmp_path / "export.zip"
         zip_path.write_bytes(_make_zip("<HealthData><Unclosed>"))
-        with pytest.raises(Exception):
+        with pytest.raises(xml.etree.ElementTree.ParseError):
             parse_apple_health(zip_path)
 
 
@@ -181,8 +182,10 @@ class TestParserPerformance:
             f'<Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Watch" '
             f'sourceVersion="1" device="d" unit="count/min" '
             f'creationDate="2024-01-01 00:00:00 +0000" '
-            f'startDate="2024-01-{1 + ((n // 60) // 60) // 24:02d} {((i // 60) // 60) % 24:02d}:{(i // 60) % 60:02d}:{i % 60:02d} +0000" '
-            f'endDate="2024-01-{1 + ((n // 60) // 60) // 24:02d} {((i // 60) // 60) % 24:02d}:{(i // 60) % 60:02d}:{i % 60:02d} +0000" '
+            f'startDate="2024-01-{1 + ((n // 60) // 60) // 24:02d} '
+            f'{((i // 60) // 60) % 24:02d}:{(i // 60) % 60:02d}:{i % 60:02d} +0000" '
+            f'endDate="2024-01-{1 + ((n // 60) // 60) // 24:02d} '
+            f'{((i // 60) // 60) % 24:02d}:{(i // 60) % 60:02d}:{i % 60:02d} +0000" '
             f'value="{60 + i % 40}"/>'
             for i in range(n)
         )

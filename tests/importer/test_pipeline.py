@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -15,7 +15,6 @@ from src.importer.pipeline import (
     upload_batch,
 )
 from src.importer.response import DuplicatePolicy, RowFailure
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -45,7 +44,7 @@ def _make_row(
     start: int = 1_700_000_000,
     end: int = 1_700_000_060,
 ):
-    Row = type(
+    row = type(
         "Row",
         (),
         {
@@ -57,7 +56,7 @@ def _make_row(
             "endDate": end,
         },
     )
-    return Row()
+    return row()
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +75,7 @@ class TestAddRowToPipeline:
         pipe = MagicMock()
         row = _make_row(type_val="HKQuantityTypeIdentifierStepCount")
         _add_row_to_pipeline(pipe, row)
-        calls = [
+        calls = [  # noqa: F841
             c[1]["key"] if "key" in c[1] else c[0][0] for c in pipe.add.call_args_list
         ]
         keys = [

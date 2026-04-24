@@ -54,7 +54,7 @@ exclude = [
 
 [tool.ruff.lint.per-file-ignores]
 # Ignore annotations rules and lowercase function names in test directory
-"tests/*" = ["ANN", "D", "N802", "S101"]
+"tests/*" = ["ANN", "D", "S101"]
 "docs/*" = ["D100"]
 "src/model/category_types.py" = ["D101", "D106"]
 "src/model/quantity_types.py" = ["D101"]

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import time
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -16,7 +15,6 @@ from src.importer.transform import (
     transform,
 )
 from src.model.base import MissingUnit
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -274,7 +272,7 @@ class TestTransform:
 
     def test_null_value_rows_dropped(self):
         df = self._make_full_df()
-        df.at[0, "value"] = None
+        df.loc[0, "value"] = None
         transform(df)
         assert len(df) == 2
 
