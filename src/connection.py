@@ -284,7 +284,7 @@ def _redact_url(url: str) -> str:
 
     user = parsed.username or ""
     host = parsed.hostname or ""
-    netloc = f"{user}:**@{host}"
+    netloc = f"{user}:***@{host}"
 
     if parsed.port is not None:
         netloc = f"{netloc}:{parsed.port}"
