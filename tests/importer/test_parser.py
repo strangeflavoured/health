@@ -87,13 +87,6 @@ class TestParseAppleHealth:
         ):
             assert col in df.columns
 
-    def test_datetime_columns_are_tz_aware(self, tmp_path):
-        zip_path = tmp_path / "export.zip"
-        zip_path.write_bytes(_make_zip(_VALID_XML))
-        df = parse_apple_health(zip_path)
-        for col in ("startDate", "endDate", "creationDate"):
-            assert df[col].dt.tz is not None
-
     def test_accepts_path_object(self, tmp_path):
         zip_path = tmp_path / "export.zip"
         zip_path.write_bytes(_make_zip(_VALID_XML))

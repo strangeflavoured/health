@@ -90,7 +90,4 @@ def parse_apple_health(zip_path: str | Path) -> pd.DataFrame:
         logger.error(f"No records found in zip file {zip_path}.")
         raise NoHealthDataError
 
-    for col in ("startDate", "endDate", "creationDate"):
-        df[col] = pd.to_datetime(df[col], unit="ns", utc=True)
-
     return df

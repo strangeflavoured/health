@@ -30,7 +30,7 @@ def transform(df: pd.DataFrame) -> None:
     1. Drop rows whose ``value`` field is ``NaN`` (:func:`_drop_null_values`).
     2. Resolve categorical string values to signed integers or NaN and assign the
        ``"Categorical"`` sentinel unit (:func:`_handle_categorical_units`).
-    3. Convert ``startDate`` and ``endDate`` from ``datetime64`` to Unix
+    3. Convert ``startDate`` and ``endDate`` from ``str`` to Unix
        timestamps in whole seconds (:func:`_timestamps_to_unix`).
 
     Note:
