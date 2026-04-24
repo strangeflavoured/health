@@ -4,12 +4,15 @@ Reads the export.zip produced by the Apple Health app and returns a single
 tidy DataFrame that can be saved to by the caller.
 """
 
+import logging
 import zipfile
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import defusedxml.ElementTree as ETree
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 # columns of parse_apple_health output df
 _COLUMNS = (
@@ -23,6 +26,12 @@ _COLUMNS = (
     "creationDate",
     "value",
 )
+
+
+class NoHealthDataError(ValueError):
+    """Raised when trying to parse a zip file without usable data."""
+
+    pass
 
 
 def parse_apple_health(zip_path: str | Path, timezone: str) -> pd.DataFrame:
@@ -58,6 +67,9 @@ def parse_apple_health(zip_path: str | Path, timezone: str) -> pd.DataFrame:
         - value (str): The recorded value as a string, e.g. ``"72"`` or
           ``"5.6"``. Cast to a numeric type by the caller if needed.
 
+    Raises:
+        NoHealthDataError: If the zip_path file contains none of the ``_COLUMNS`` data.
+
     Example:
         >>> df = parse_apple_health("export.zip")
         >>> df.to_feather("data.feather")
@@ -79,6 +91,10 @@ def parse_apple_health(zip_path: str | Path, timezone: str) -> pd.DataFrame:
     ]
 
     df = pd.DataFrame(rows)
+
+    if df.empty:
+        logger.error(f"No records found in zip file {zip_path}.")
+        raise NoHealthDataError
 
     tz = ZoneInfo(timezone)
     for col in ("startDate", "endDate", "creationDate"):
