@@ -399,3 +399,204 @@ class TestRedisEnvError:
     def test_empty_list_does_not_crash(self):
         err = RedisEnvError([])
         assert len(str(err)) > 0
+
+    def test_return_type_is_str(self):
+        assert isinstance(_redact_url("redis://localhost:6379/0"), str)
+
+    def test_username_without_password_unchanged(self):
+        url = "redis://user@localhost:6379/0"
+        assert _redact_url(url) == url
+
+    def test_empty_string_does_not_crash(self):
+        assert isinstance(_redact_url(""), str)
+
+    def test_joins_path_returns_path_object(self):
+        result = _resolve(Path("/certs"), "client.crt")
+        assert isinstance(result, Path)
+        assert result == Path("/certs/client.crt")
+
+    def test_tilde_in_base_expanded(self):
+        result = _resolve(Path("~/certs"), "client.crt")
+        assert "~" not in str(result)
+
+    def test_return_type_is_conn_env(self):
+        from src.connection import _ConnEnv
+
+        env = {
+            "REDIS_HOST": "h",
+            "REDIS_PORT": "6379",
+            "REDIS_DB": "0",
+            "REDIS_PASSWORD": "p",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            assert isinstance(_load_conn_env(), _ConnEnv)
+
+    def test_non_integer_port_raises_value_error(self):
+        env = {
+            "REDIS_HOST": "h",
+            "REDIS_PORT": "not_a_number",
+            "REDIS_DB": "0",
+            "REDIS_PASSWORD": "p",
+        }
+        with patch.dict(os.environ, env, clear=True), pytest.raises(ValueError):
+            _load_conn_env()
+
+    def test_non_integer_db_raises_value_error(self):
+        env = {
+            "REDIS_HOST": "h",
+            "REDIS_PORT": "6379",
+            "REDIS_DB": "abc",
+            "REDIS_PASSWORD": "p",
+        }
+        with patch.dict(os.environ, env, clear=True), pytest.raises(ValueError):
+            _load_conn_env()
+
+    def test_conn_env_is_frozen(self):
+        env = {
+            "REDIS_HOST": "h",
+            "REDIS_PORT": "6379",
+            "REDIS_DB": "0",
+            "REDIS_PASSWORD": "p",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            conn = _load_conn_env()
+        with pytest.raises((AttributeError, TypeError)):
+            conn.host = "mutated"  # type: ignore[misc]
+
+    def test_return_type_is_tls_env(self):
+        with patch.dict(os.environ, {}, clear=True):
+            assert isinstance(_load_tls_env(), _TlsEnv)
+
+    def test_resolves_paths_as_path_objects(self):
+        env = {
+            "REDIS_CLIENT_CERT": "c.crt",
+            "REDIS_CLIENT_KEY": "c.key",
+            "REDIS_CA_CERT": "ca.crt",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            tls_env = _load_tls_env()
+        assert isinstance(tls_env.tls_client_cert, Path)
+
+    def test_tls_env_is_frozen(self):
+        with patch.dict(os.environ, {}, clear=True):
+            tls_env = _load_tls_env()
+        with pytest.raises((AttributeError, TypeError)):
+            tls_env.tls_ca_cert = Path("/mutated")  # type: ignore[misc]
+
+    def test_only_ca_cert_is_valid_server_auth(self):
+        cert, key, ca = _resolve_tls_paths(
+            None, None, "/ca.pem", _TlsEnv(None, None, None)
+        )
+        assert cert is None and key is None and ca == "/ca.pem"
+
+    def test_ca_only_from_env_is_valid(self):
+        tls_env = _TlsEnv(None, None, Path("/env/ca.crt"))
+        cert, key, ca = _resolve_tls_paths(None, None, None, tls_env)
+        assert cert is None and key is None and ca == Path("/env/ca.crt")
+
+    def test_return_type_is_dict(self):
+        assert isinstance(
+            _build_tls_context(
+                tls_client_cert=None,
+                tls_client_key=None,
+                tls_ca_cert=None,
+                tls_env=self._empty_env(),
+                tls_check_hostname=True,
+            ),
+            dict,
+        )
+
+    def test_ca_cert_key_present_when_provided(self, tmp_path):
+        ca = tmp_path / "ca.crt"
+        ca.touch()
+        kwargs = _build_tls_context(
+            tls_client_cert=None,
+            tls_client_key=None,
+            tls_ca_cert=str(ca),
+            tls_env=self._empty_env(),
+            tls_check_hostname=True,
+        )
+        assert "ssl_ca_certs" in kwargs and kwargs["ssl_ca_certs"] == str(ca)
+
+    def test_no_mtls_means_no_certfile_or_keyfile_keys(self):
+        kwargs = _build_tls_context(
+            tls_client_cert=None,
+            tls_client_key=None,
+            tls_ca_cert=None,
+            tls_env=self._empty_env(),
+            tls_check_hostname=True,
+        )
+        assert "ssl_certfile" not in kwargs and "ssl_keyfile" not in kwargs
+
+    @patch("src.connection.load_dotenv")
+    @patch("src.connection.redis.Redis")
+    def test_explicit_tls_true_env_mode_activates_tls(self, mock_cls, _):  # noqa: ARG002
+        with (
+            patch.dict(os.environ, self._full_env(), clear=True),
+            patch("src.connection._build_tls_context") as mock_tls,
+        ):
+            mock_tls.return_value = {
+                "ssl": True,
+                "ssl_check_hostname": True,
+                "ssl_cert_reqs": ssl.CERT_REQUIRED,
+            }
+            redis_connect(tls=True)
+        mock_tls.assert_called_once()
+
+    @patch("src.connection.load_dotenv")
+    def test_partial_mtls_via_kwargs_raises_tls_config_error(self, _):  # noqa: ARG002
+        with patch.dict(os.environ, {}, clear=True), pytest.raises(TLSConfigError):
+            redis_connect(url="rediss://:pw@host:6380/0", tls_client_cert="/cert.pem")
+
+
+# ---------------------------------------------------------------------------
+# _connect_from_url / _connect_from_env (direct unit tests)
+# ---------------------------------------------------------------------------
+
+
+class TestConnectFromUrl:
+    @patch("src.connection.redis.from_url")
+    def test_calls_from_url_with_decode_responses(self, mock_fu):
+        from src.connection import _connect_from_url
+
+        _connect_from_url("redis://:pw@localhost:6379/0", {})
+        assert mock_fu.call_args[1].get("decode_responses") is True
+
+    @patch("src.connection.redis.from_url")
+    def test_tls_kwargs_forwarded(self, mock_fu):
+        from src.connection import _connect_from_url
+
+        _connect_from_url("redis://localhost:6379/0", {"ssl": True})
+        assert mock_fu.call_args[1].get("ssl") is True
+
+
+class TestConnectFromEnv:
+    @patch("src.connection.redis.Redis")
+    def test_calls_redis_with_decode_responses(self, mock_cls):
+        from src.connection import _connect_from_env, _ConnEnv
+
+        _connect_from_env(
+            _ConnEnv(host="127.0.0.1", port=6379, db=0, password="pw"),  # noqa: S106
+            {},
+        )
+        assert mock_cls.call_args[1].get("decode_responses") is True
+
+    @patch("src.connection.redis.Redis")
+    def test_host_port_db_password_forwarded(self, mock_cls):
+        from src.connection import _connect_from_env, _ConnEnv
+
+        _connect_from_env(
+            _ConnEnv(host="myhost", port=1234, db=3, password="secret"),  # noqa: S106
+            {},
+        )
+        kw = mock_cls.call_args[1]
+        assert kw["host"] == "myhost" and kw["port"] == 1234
+        assert kw["db"] == 3 and kw["password"] == "secret"  # noqa: S105
+
+
+class TestErrorSubclasses:
+    def test_redis_env_error_is_environment_error(self):
+        assert issubclass(RedisEnvError, EnvironmentError)
+
+    def test_tls_config_error_is_environment_error(self):
+        assert issubclass(TLSConfigError, EnvironmentError)
