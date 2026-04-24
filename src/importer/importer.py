@@ -103,6 +103,7 @@ class HealthDataImporter:
         *,
         write_feather: bool = False,
         persist_failures: bool = True,
+        no_cache: bool = False,
     ) -> None:
         """Run the full Extract → Transform → Load pipeline.
 
@@ -125,6 +126,7 @@ class HealthDataImporter:
                 subsequent runs skip the slow XML extraction step.
             persist_failures: Persist a file that contains which data could not
                 be uploaded as a JSON file.
+            no_cache: If True, ignores pre-existing cache file and reads ZIP input.
 
         Raises:
             FileNotFoundError: When neither the Feather cache nor the source
@@ -139,7 +141,7 @@ class HealthDataImporter:
             importer.etl(write_feather=True)
 
         """
-        df = self._extract(write_feather=write_feather)
+        df = self._extract(write_feather=write_feather, no_cache=no_cache)
         transform(df)
         self.failures = _load(df, self.connection)
 
@@ -211,7 +213,7 @@ class HealthDataImporter:
             logger.warning("retry_failed: failures file is empty, nothing to retry.")
             return None
 
-        df = self._extract(write_feather=False)
+        df = self._extract(write_feather=False, no_cache=False)
         transform(df)
 
         type_selectors: list[str] = []
@@ -245,6 +247,7 @@ class HealthDataImporter:
         *,
         write_feather: bool = False,
         persist_failures: bool = True,
+        no_cache: bool = False,
     ) -> None:
         """Re-import the export, **overwriting** existing data points.
 
@@ -256,6 +259,7 @@ class HealthDataImporter:
             write_feather: Persist the parsed data as a Feather cache.
             persist_failures: Persist a file that contains which data could not
                 be uploaded as a JSON file.
+            no_cache: If True, ignores pre-existing cache file and reads ZIP input.
 
         Raises:
             FileNotFoundError: When neither the Feather cache nor the source
@@ -270,7 +274,7 @@ class HealthDataImporter:
             importer.update()
 
         """
-        df = self._extract(write_feather=write_feather)
+        df = self._extract(write_feather=write_feather, no_cache=no_cache)
         transform(df)
         self.failures = _load(
             df,
@@ -293,7 +297,7 @@ class HealthDataImporter:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _extract(self, *, write_feather: bool) -> pd.DataFrame:
+    def _extract(self, *, write_feather: bool, no_cache: bool) -> pd.DataFrame:
         """Parse the Apple Health export and return a raw DataFrame.
 
         Prefers the Feather cache at :attr:`output_file` to avoid re-running
@@ -303,6 +307,7 @@ class HealthDataImporter:
         Args:
             write_feather: Write a Feather cache file after parsing the ZIP
                 export.
+            no_cache: If True, ignores pre-existing cache file and reads ZIP input.
 
         Returns:
             Raw health records as a :class:`~pandas.DataFrame`.
@@ -313,11 +318,11 @@ class HealthDataImporter:
 
         Example::
 
-            df = importer._extract(write_feather=True)
+            df = importer._extract(write_feather=True, no_cache=False)
 
         """
         logger.info("Extracting export data...")
-        if self.output_file.exists():
+        if self.output_file.exists() and not no_cache:
             logger.info("Feather cache found; skipping XML conversion.")
             return feather.read_feather(self.output_file)
 
