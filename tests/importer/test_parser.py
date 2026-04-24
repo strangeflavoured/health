@@ -197,3 +197,60 @@ class TestParserPerformance:
         elapsed = time.perf_counter() - start
         assert len(df) == n
         assert elapsed < 30.0
+
+    def test_all_nine_columns_present(self, tmp_path):
+        """Parser must return exactly the nine columns declared in _COLUMNS."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_make_zip(_VALID_XML))
+        df = parse_apple_health(zip_path)
+        expected = {
+            "type",
+            "sourceName",
+            "sourceVersion",
+            "device",
+            "unit",
+            "startDate",
+            "endDate",
+            "creationDate",
+            "value",
+        }
+        assert set(df.columns) == expected
+
+    def test_datetime_columns_are_object_strings(self, tmp_path):
+        """Parser returns raw string columns — no datetime conversion happens here."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_make_zip(_VALID_XML))
+        df = parse_apple_health(zip_path)
+        for col in ("startDate", "endDate", "creationDate"):
+            assert pd.api.types.is_string_dtype(df[col]), (
+                f"{col} should be raw string dtype"
+            )
+
+    def test_value_column_is_string(self, tmp_path):
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_make_zip(_VALID_XML))
+        df = parse_apple_health(zip_path)
+        assert pd.api.types.is_string_dtype(df["value"])
+        assert df["value"].iloc[0] == "72"
+
+    def test_no_health_data_error_is_value_error_subclass(self):
+        assert issubclass(NoHealthDataError, ValueError)
+
+    def test_corrupt_zip_raises(self, tmp_path):
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(b"this is not a zip file at all")
+        with pytest.raises(zipfile.BadZipFile):
+            parse_apple_health(zip_path)
+
+    def test_record_with_missing_attributes_produces_none_fields(self, tmp_path):
+        """attrib.get() returns None for absent attributes — should not crash."""
+        xml_content = """<?xml version="1.0"?>
+<HealthData locale="en_US">
+  <Record type="HKQuantityTypeIdentifierHeartRate" value="72"/>
+</HealthData>"""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_make_zip(xml_content))
+        df = parse_apple_health(zip_path)
+        assert len(df) == 1
+        assert df["sourceName"].iloc[0] is None
+        assert df["unit"].iloc[0] is None
