@@ -252,3 +252,45 @@ class TestUploadBatch:
         rts = self._mock_rts([])
         result = upload_batch(rts, df)
         assert result == []
+
+    def test_timestamp_start_is_forwarded(self):
+        pipe = MagicMock()
+        _add_row_to_pipeline(pipe, _make_row(start=1_234_567_890, end=1_234_567_950))
+        assert pipe.add.call_args_list[0][1]["timestamp"] == 1_234_567_890
+
+    def test_timestamp_end_is_forwarded(self):
+        pipe = MagicMock()
+        _add_row_to_pipeline(pipe, _make_row(start=1_234_567_890, end=1_234_567_950))
+        assert pipe.add.call_args_list[1][1]["timestamp"] == 1_234_567_950
+
+    def test_returns_none(self):
+        pipe = MagicMock()
+        assert _add_row_to_pipeline(pipe, _make_row()) is None
+
+    def test_resolve_failures_return_type_is_list(self):
+        assert isinstance(_resolve_failures([1, 2], _make_df(1)), list)
+
+    def test_start_error_string_matches_response_error_message(self):
+        err = ResponseError("TSDB: Duplicate sample")
+        failures = _resolve_failures([err, 101], _make_df(1))
+        assert "TSDB: Duplicate sample" in failures[0].start_error
+
+    def test_end_error_string_matches_response_error_message(self):
+        err = ResponseError("TSDB: Duplicate sample")
+        failures = _resolve_failures([100, err], _make_df(1))
+        assert "TSDB: Duplicate sample" in failures[0].end_error
+
+    def test_odd_length_response_raises_index_error(self):
+        with pytest.raises(IndexError):
+            _resolve_failures([1, 2, 3, 4, 5], _make_df(2))
+
+    def test_non_response_error_value_treated_as_success(self):
+        assert _resolve_failures([12345, 67890], _make_df(1)) == []
+
+    def test_upload_batch_return_type_is_list(self):
+        assert isinstance(upload_batch(self._mock_rts([1, 2]), _make_df(1)), list)
+
+    def test_empty_df_pipe_add_never_called(self):
+        rts = self._mock_rts([])
+        upload_batch(rts, _make_df(0))
+        rts.pipeline.return_value.add.assert_not_called()
