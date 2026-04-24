@@ -303,3 +303,128 @@ class TestTransform:
         transform(df)
         elapsed = time.perf_counter() - start
         assert elapsed < 10.0
+
+    def test_drop_null_values_returns_none(self):
+        """_drop_null_values mutates in-place and returns None."""
+        df = _make_df(value=[None])
+        result = _drop_null_values(df)
+        assert result is None
+
+    def test_nat_in_value_treated_as_null(self):
+        """pd.NaT is NaN-like; rows with NaT value should be dropped."""
+        df = _make_df(value=[pd.NaT])
+        _drop_null_values(df)
+        assert len(df) == 0
+
+    def test_original_df_identity_is_mutated(self):
+        """Verify we are mutating the object passed in, not a copy."""
+        df = _make_df(value=["72"])
+        original_id = id(df)
+        _drop_null_values(df)
+        assert id(df) == original_id
+        assert len(df) == 1
+
+    def test_pre_epoch_is_negative(self):
+        """Dates before 1970-01-01 should produce a negative Unix timestamp."""
+        result = _timestamps_to_unix(pd.to_datetime(["1969-12-31T23:59:59+00:00"]))
+        assert result[0] == -1
+
+    def test_tz_naive_series_coerces_to_utc(self):
+        """The implementation casts to datetime64[ns, UTC];
+        tz-naive input must not crash."""
+        series = pd.Series(pd.to_datetime(["2024-01-01T00:00:00"], utc=True))
+        result = _timestamps_to_unix(series)
+        assert result.iloc[0] == 1_704_067_200
+
+    def test_return_type_is_series(self):
+        df = pd.DataFrame({"date": pd.to_datetime(["2024-01-01T00:00:00+00:00"])})
+        result = _timestamps_to_unix(df["date"])
+        assert isinstance(result, pd.Series)
+
+    def test_handle_categorical_units_returns_none(self):
+        df = _make_df()
+        assert _handle_categorical_units(df) is None
+
+    def test_both_unit_and_device_null_is_allowed(self):
+        """unit and device are both in COLUMNS_WITHOUT_VALUE
+        — both null should not raise."""
+        df = _make_categorical_df(
+            "HKCategoryTypeIdentifierAppleStandHour",
+            "HKCategoryValueAppleStandHourStood",
+        )
+        df["device"] = None
+        _handle_categorical_units(df)  # must not raise NotImplementedError
+
+    def test_only_categorical_rows_have_unit_changed(self):
+        """Quantity rows with a unit must be untouched when mixed
+        with categorical rows."""
+        df = pd.DataFrame(
+            {
+                "type": [
+                    "HKQuantityTypeIdentifierHeartRate",
+                    "HKCategoryTypeIdentifierAppleStandHour",
+                ],
+                "sourceName": ["Watch", "Watch"],
+                "sourceVersion": ["1", "1"],
+                "device": ["d", "d"],
+                "unit": ["count/min", None],
+                "startDate": pd.to_datetime(["2024-01-01"] * 2),
+                "endDate": pd.to_datetime(["2024-01-01"] * 2),
+                "creationDate": pd.to_datetime(["2024-01-01"] * 2),
+                "value": ["72", "HKCategoryValueAppleStandHourStood"],
+            }
+        )
+        _handle_categorical_units(df)
+        assert df.loc[0, "unit"] == "count/min"
+        assert df.loc[1, "unit"] == MissingUnit.CATEGORICAL.value
+
+    def test_multiple_unknown_types_all_reported(self):
+        """The missing dict accumulates all bad (type, value) pairs before raising."""
+        df = pd.DataFrame(
+            {
+                "type": [
+                    "HKCategoryTypeIdentifierBAD1",
+                    "HKCategoryTypeIdentifierBAD2",
+                ],
+                "value": ["v1", "v2"],
+                "unit": [None, None],
+            }
+        )
+        with pytest.raises(KeyError) as exc_info:
+            _map_categories(df, df["unit"].isna())
+        msg = str(exc_info.value)
+        assert "BAD1" in msg and "BAD2" in msg
+
+    def test_result_values_are_strings(self):
+        """The mapped integers are stored as str, not int."""
+        df = pd.DataFrame(
+            {
+                "type": ["HKCategoryTypeIdentifierSleepAnalysis"],
+                "value": ["HKCategoryValueSleepAnalysisInBed"],
+                "unit": [None],
+            }
+        )
+        _map_categories(df, df["unit"].isna())
+        assert isinstance(df["value"].iloc[0], str)
+        assert df["value"].iloc[0] == "0"
+
+    def test_transform_returns_none(self):
+        assert transform(self._make_full_df()) is None
+
+    def test_start_date_value_is_plausible_unix(self):
+        df = self._make_full_df()
+        transform(df)
+        assert df["startDate"].iloc[0] == 1_704_067_200
+
+    def test_no_nan_in_value_after_transform(self):
+        df = self._make_full_df()
+        transform(df)
+        assert not df["value"].isna().any()
+
+    def test_creation_date_untouched(self):
+        """creationDate is not converted by transform — it must survive unchanged."""
+        df = self._make_full_df()
+        original_creationDate = df["creationDate"].copy()  # noqa: N806
+        transform(df)
+        assert "creationDate" in df.columns
+        pd.testing.assert_series_equal(df["creationDate"], original_creationDate)
