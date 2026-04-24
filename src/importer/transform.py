@@ -150,7 +150,9 @@ def _timestamps_to_unix(series: pd.Series) -> pd.Series:
         # unix_ts.dtype == int64
 
     """
-    return (series.astype("int64") // 1_000_000_000).astype("int64")
+    return (
+        series.astype("datetime64[ns, UTC]").astype("int64") // 1_000_000_000
+    ).astype("int64")
 
 
 def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
