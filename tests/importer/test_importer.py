@@ -95,13 +95,13 @@ class TestExtract:
             "src.importer.importer.feather.read_feather", return_value=expected_df
         ) as mock_read:
             importer.output_file.touch()
-            df = importer._extract(write_feather=False)
+            df = importer._extract(write_feather=False, no_cache=False)
         mock_read.assert_called_once()
         assert len(df) == 1
 
     def test_raises_when_no_zip_and_no_feather(self, importer):
         with pytest.raises(FileNotFoundError):
-            importer._extract(write_feather=False)
+            importer._extract(write_feather=False, no_cache=False)
 
     def test_parses_zip_when_no_feather(self, importer, data_dir):
         fake_df = pd.DataFrame({"type": ["HR"]})
@@ -109,14 +109,14 @@ class TestExtract:
             "src.importer.importer.parse_apple_health", return_value=fake_df
         ) as mock_parse:
             importer.zip_file.touch()
-            df = importer._extract(write_feather=False)
+            df = importer._extract(write_feather=False, no_cache=False)
         mock_parse.assert_called_once()
 
     def test_write_feather_calls_to_feather(self, importer, data_dir):
         fake_df = MagicMock(spec=pd.DataFrame)
         with patch("src.importer.importer.parse_apple_health", return_value=fake_df):
             importer.zip_file.touch()
-            importer._extract(write_feather=True)
+            importer._extract(write_feather=True, no_cache=False)
         fake_df.to_feather.assert_called_once()
 
 
