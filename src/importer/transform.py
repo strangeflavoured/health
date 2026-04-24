@@ -78,10 +78,8 @@ def _drop_null_values(df: pd.DataFrame) -> None:
     null_mask = pd.isna(df["value"])
     n_dropped = int(null_mask.sum())
     if n_dropped:
-        df = df.drop(index=df.index[null_mask])
+        df.drop(index=df.index[null_mask], inplace=True)  # noqa: PD002
         logger.warning("Dropped %d rows with missing 'value'.", n_dropped)
-
-    return df
 
 
 def _handle_categorical_units(df: pd.DataFrame) -> None:
