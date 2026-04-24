@@ -66,3 +66,161 @@ class TestRegistryLookup:
         for name, cls in HKCategoryTypeIdentifierRegistry.items():
             vals = list(cls.category_values().values())
             assert min(vals) == 0, f"{name} min value is not 0"
+
+    def test_registry_is_immutable(self):
+        with pytest.raises(TypeError):
+            HKCategoryTypeIdentifierRegistry["NewKey"] = None  # type: ignore[index]
+
+    def test_audio_exposure_event_in_registry(self):
+        assert (
+            "HKCategoryTypeIdentifierAudioExposureEvent"
+            in HKCategoryTypeIdentifierRegistry
+        )
+
+
+class TestAudioExposureEventValues:
+    """AudioExposureEvent has TWO members — not one as previously assumed."""
+
+    def test_loud_environment_is_zero(self):
+        from src.model.category_types import HKCategoryTypeIdentifierAudioExposureEvent
+
+        assert (
+            HKCategoryTypeIdentifierAudioExposureEvent.Values.HKCategoryValueAudioExposureEventLoudEnvironment.value
+            == 0
+        )
+
+    def test_momentary_limit_is_one(self):
+        from src.model.category_types import HKCategoryTypeIdentifierAudioExposureEvent
+
+        assert (
+            HKCategoryTypeIdentifierAudioExposureEvent.Values.HKCategoryValueEnvironmentalAudioExposureEventMomentaryLimit.value
+            == 1
+        )
+
+    def test_two_members(self):
+        from src.model.category_types import HKCategoryTypeIdentifierAudioExposureEvent
+
+        assert len(list(HKCategoryTypeIdentifierAudioExposureEvent.Values)) == 2
+
+
+class TestSleepChangesValues:
+    def test_presence_present_is_zero(self):
+        from src.model.category_types import HKCategoryTypeIdentifierSleepChanges
+
+        assert (
+            HKCategoryTypeIdentifierSleepChanges.Values.HKCategoryValuePresencePresent.value
+            == 0
+        )
+
+    def test_two_members(self):
+        from src.model.category_types import HKCategoryTypeIdentifierSleepChanges
+
+        assert len(list(HKCategoryTypeIdentifierSleepChanges.Values)) == 2
+
+
+class TestAppetiteChangesValues:
+    def test_unspecified_is_zero(self):
+        from src.model.category_types import HKCategoryTypeIdentifierAppetiteChanges
+
+        assert (
+            HKCategoryTypeIdentifierAppetiteChanges.Values.HKCategoryValueAppetiteChangesUnspecified.value
+            == 0
+        )
+
+    def test_four_members(self):
+        from src.model.category_types import HKCategoryTypeIdentifierAppetiteChanges
+
+        assert len(list(HKCategoryTypeIdentifierAppetiteChanges.Values)) == 4
+
+
+class TestContraceptiveValues:
+    def test_unspecified_is_zero(self):
+        from src.model.category_types import HKCategoryTypeIdentifierContraceptive
+
+        assert (
+            HKCategoryTypeIdentifierContraceptive.Values.HKCategoryValueContraceptiveUnspecified.value
+            == 0
+        )
+
+    def test_patch_is_six(self):
+        from src.model.category_types import HKCategoryTypeIdentifierContraceptive
+
+        assert (
+            HKCategoryTypeIdentifierContraceptive.Values.HKCategoryValueContraceptivePatch.value
+            == 6
+        )
+
+    def test_seven_members(self):
+        from src.model.category_types import HKCategoryTypeIdentifierContraceptive
+
+        assert len(list(HKCategoryTypeIdentifierContraceptive.Values)) == 7
+
+
+class TestOvulationTestResultValues:
+    def test_negative_is_zero(self):
+        from src.model.category_types import HKCategoryTypeIdentifierOvulationTestResult
+
+        assert (
+            HKCategoryTypeIdentifierOvulationTestResult.Values.HKCategoryValueOvulationTestResultNegative.value
+            == 0
+        )
+
+    def test_four_members(self):
+        from src.model.category_types import HKCategoryTypeIdentifierOvulationTestResult
+
+        assert len(list(HKCategoryTypeIdentifierOvulationTestResult.Values)) == 4
+
+
+class TestCervicalMucusQualityValues:
+    def test_dry_is_zero(self):
+        from src.model.category_types import (
+            HKCategoryTypeIdentifierCervicalMucusQuality,
+        )
+
+        assert (
+            HKCategoryTypeIdentifierCervicalMucusQuality.Values.HKCategoryValueCervicalMucusQualityDry.value
+            == 0
+        )
+
+    def test_five_members(self):
+        from src.model.category_types import (
+            HKCategoryTypeIdentifierCervicalMucusQuality,
+        )
+
+        assert len(list(HKCategoryTypeIdentifierCervicalMucusQuality.Values)) == 5
+
+
+class TestPregnancyTestResultValues:
+    def test_negative_is_zero(self):
+        from src.model.category_types import HKCategoryTypeIdentifierPregnancyTestResult
+
+        assert (
+            HKCategoryTypeIdentifierPregnancyTestResult.Values.HKCategoryValuePregnancyTestResultNegative.value
+            == 0
+        )
+
+    def test_three_members(self):
+        from src.model.category_types import HKCategoryTypeIdentifierPregnancyTestResult
+
+        assert len(list(HKCategoryTypeIdentifierPregnancyTestResult.Values)) == 3
+
+
+class TestAppleWalkingSteadinessEventValues:
+    def test_initial_low_is_zero(self):
+        from src.model.category_types import (
+            HKCategoryTypeIdentifierAppleWalkingSteadinessEvent,
+        )
+
+        assert (
+            HKCategoryTypeIdentifierAppleWalkingSteadinessEvent.Values.HKCategoryValueAppleWalkingSteadinessEventInitialLow.value
+            == 0
+        )
+
+    def test_four_members(self):
+        from src.model.category_types import (
+            HKCategoryTypeIdentifierAppleWalkingSteadinessEvent,
+        )
+
+        assert (
+            len(list(HKCategoryTypeIdentifierAppleWalkingSteadinessEvent.Values)) == 4
+        )
