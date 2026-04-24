@@ -199,3 +199,47 @@ class TestFailuresJson:
     def test_null_json_input_raises(self):
         with pytest.raises(TypeError):
             failures_from_json("null")
+
+    def test_row_failure_to_dict_return_type(self):
+        assert isinstance(RowFailure("HR", 0).to_dict(), dict)
+
+    def test_from_dict_missing_data_type_raises(self):
+        with pytest.raises(KeyError):
+            RowFailure.from_dict({"row_index": 0})
+
+    def test_row_index_int_survives_json_roundtrip_as_int(self):
+        """JSON round-trip must not silently coerce int row_index to float."""
+        original = RowFailure(data_type="HR", row_index=42)
+        restored = RowFailure.from_dict(json.loads(json.dumps(original.to_dict())))
+        assert restored.row_index == 42
+        assert isinstance(restored.row_index, int)
+
+    def test_non_serialisable_row_index_raises(self):
+        import pandas as pd
+
+        f = RowFailure(data_type="HR", row_index=pd.Timestamp("2024-01-01"))
+        with pytest.raises(TypeError):
+            failures_to_json([f])
+
+    def test_batch_failure_to_dict_return_type(self):
+        assert isinstance(BatchFailure("HR", "e").to_dict(), dict)
+
+    def test_from_dict_missing_error_raises(self):
+        with pytest.raises(KeyError):
+            BatchFailure.from_dict({"data_type": "HR"})
+
+    def test_output_is_str(self):
+        assert isinstance(failures_to_json(self._sample_failures()), str)
+
+    def test_return_type_is_list(self):
+        assert isinstance(
+            failures_from_json(failures_to_json(self._sample_failures())), list
+        )
+
+    def test_pretty_printed_output_uses_indent_2(self):
+        text = failures_to_json([BatchFailure("HR", "err")])
+        assert "  " in text
+
+    def test_non_dict_entry_raises(self):
+        with pytest.raises((AttributeError, TypeError, ValueError)):
+            failures_from_json(json.dumps([1, "string"]))
