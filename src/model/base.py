@@ -1,11 +1,6 @@
-"""Numerical mappings for Apple Health categorical data types.
+"""Base classes for health data models.
 
-Each :class:`~enum.Enum` subclass corresponds to one
-`HKCategoryTypeIdentifier <https://developer.apple.com/documentation/healthkit/hkcategorytypeidentifier>`_
-and maps its string values to signed integers suitable for storage in Redis TimeSeries.
-
-The module-level :data:`categorical_identifier_maps` registry maps each
-identifier string to its :class:`HKCategoryTypeIdentifier` member to  value map
+Provides HK_GROUPS registry to public API .
 """
 
 from enum import Enum

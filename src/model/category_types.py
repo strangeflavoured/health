@@ -1,4 +1,7 @@
-"""Category Type model classes."""
+"""Category Type model classes.
+
+Provides HKCategoryTypeIdentifierRegistry to public API.
+"""
 
 from enum import Enum
 from types import MappingProxyType
