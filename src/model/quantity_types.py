@@ -1,4 +1,7 @@
-"""Quantity Type model classes."""
+"""Quantity Type model classes.
+
+Provides HKQuantityTypeIdentifierRegistry to public API.
+"""
 
 from types import MappingProxyType
 from typing import Any
