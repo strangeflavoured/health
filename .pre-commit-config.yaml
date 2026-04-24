@@ -18,7 +18,7 @@ repos:
           - --exit-non-zero-on-fix
           - --fix
           - --show-fixes
-        exclude: "tests/|docs/"
+        exclude: "docs/"
       - id: ruff-format
 
   - repo: https://github.com/jendrikseipp/vulture
