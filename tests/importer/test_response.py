@@ -15,7 +15,6 @@ from src.importer.response import (
     failures_to_json,
 )
 
-
 # ---------------------------------------------------------------------------
 # DuplicatePolicy
 # ---------------------------------------------------------------------------
@@ -198,5 +197,5 @@ class TestFailuresJson:
             failures_from_json("not json at all {{{")
 
     def test_null_json_input_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(TypeError):
             failures_from_json("null")

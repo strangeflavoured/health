@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -14,9 +13,7 @@ from src.importer.response import (
     BatchFailure,
     DuplicatePolicy,
     RowFailure,
-    failures_to_json,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -89,7 +86,7 @@ class TestHealthDataImporterInit:
 
 
 class TestExtract:
-    def test_reads_feather_cache_when_available(self, importer, data_dir):
+    def test_reads_feather_cache_when_available(self, importer, data_dir):  # noqa: ARG002
         expected_df = pd.DataFrame({"type": ["HR"], "value": ["72"]})
         with patch(
             "src.importer.importer.feather.read_feather", return_value=expected_df
@@ -103,16 +100,16 @@ class TestExtract:
         with pytest.raises(FileNotFoundError):
             importer._extract(write_feather=False, no_cache=False)
 
-    def test_parses_zip_when_no_feather(self, importer, data_dir):
+    def test_parses_zip_when_no_feather(self, importer, data_dir):  # noqa: ARG002
         fake_df = pd.DataFrame({"type": ["HR"]})
         with patch(
             "src.importer.importer.parse_apple_health", return_value=fake_df
         ) as mock_parse:
             importer.zip_file.touch()
-            df = importer._extract(write_feather=False, no_cache=False)
+            df = importer._extract(write_feather=False, no_cache=False)  # noqa: F841
         mock_parse.assert_called_once()
 
-    def test_write_feather_calls_to_feather(self, importer, data_dir):
+    def test_write_feather_calls_to_feather(self, importer, data_dir):  # noqa: ARG002
         fake_df = MagicMock(spec=pd.DataFrame)
         with patch("src.importer.importer.parse_apple_health", return_value=fake_df):
             importer.zip_file.touch()
@@ -221,7 +218,7 @@ class TestLoad:
             3,
             4,
         ]
-        result = _load(df, mock_redis)
+        result = _load(df, mock_redis)  # noqa: F841
         assert mock_redis.ts.return_value.pipeline.call_count == 2
 
     def test_duplicate_policy_last_forwarded(self, mock_redis):

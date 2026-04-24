@@ -5,26 +5,22 @@ from __future__ import annotations
 import os
 import ssl
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from src.connection import (
     RedisEnvError,
     TLSConfigError,
-    _ConnEnv,
-    _TlsEnv,
     _build_tls_context,
-    _connect_from_env,
-    _connect_from_url,
     _load_conn_env,
     _load_tls_env,
     _redact_url,
     _resolve,
     _resolve_tls_paths,
+    _TlsEnv,
     redis_connect,
 )
-
 
 # ---------------------------------------------------------------------------
 # _redact_url
@@ -92,9 +88,11 @@ class TestResolve:
 
 class TestLoadConnEnv:
     def test_raises_redis_env_error_when_all_missing(self):
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(RedisEnvError) as exc_info:
-                _load_conn_env()
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            pytest.raises(RedisEnvError) as exc_info,
+        ):
+            _load_conn_env()
         msg = str(exc_info.value)
         assert "REDIS_HOST" in msg
         assert "REDIS_PORT" in msg
@@ -103,9 +101,11 @@ class TestLoadConnEnv:
 
     def test_raises_with_partial_vars(self):
         env = {"REDIS_HOST": "localhost", "REDIS_PORT": "6379"}
-        with patch.dict(os.environ, env, clear=True):
-            with pytest.raises(RedisEnvError) as exc_info:
-                _load_conn_env()
+        with (
+            patch.dict(os.environ, env, clear=True),
+            pytest.raises(RedisEnvError) as exc_info,
+        ):
+            _load_conn_env()
         assert "REDIS_DB" in str(exc_info.value)
         assert "REDIS_PASSWORD" in str(exc_info.value)
 
@@ -121,7 +121,7 @@ class TestLoadConnEnv:
         assert conn.host == "127.0.0.1"
         assert conn.port == 6380
         assert conn.db == 2
-        assert conn.password == "secret"
+        assert conn.password == "secret"  # noqa: S105
 
     def test_port_and_db_are_integers(self):
         env = {
@@ -136,9 +136,11 @@ class TestLoadConnEnv:
         assert isinstance(conn.db, int)
 
     def test_error_lists_all_missing_not_just_one(self):
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(RedisEnvError) as exc_info:
-                _load_conn_env()
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            pytest.raises(RedisEnvError) as exc_info,
+        ):
+            _load_conn_env()
         error_vars = ["REDIS_HOST", "REDIS_PORT", "REDIS_DB", "REDIS_PASSWORD"]
         for var in error_vars:
             assert var in str(exc_info.value)
@@ -323,40 +325,44 @@ class TestRedisConnect:
 
     @patch("src.connection.load_dotenv")
     @patch("src.connection.redis.Redis")
-    def test_env_mode_creates_connection(self, mock_redis_cls, mock_dotenv):
+    def test_env_mode_creates_connection(self, mock_redis_cls, mock_dotenv):  # noqa: ARG002
         with patch.dict(os.environ, self._full_env(), clear=True):
             redis_connect()
         mock_redis_cls.assert_called_once()
 
     @patch("src.connection.load_dotenv")
     @patch("src.connection.redis.from_url")
-    def test_url_mode_calls_from_url(self, mock_from_url, mock_dotenv):
+    def test_url_mode_calls_from_url(self, mock_from_url, mock_dotenv):  # noqa: ARG002
         with patch.dict(os.environ, {}, clear=True):
             redis_connect(url="redis://:pw@localhost:6379/0")
         mock_from_url.assert_called_once()
 
     @patch("src.connection.load_dotenv")
-    def test_missing_env_raises_redis_env_error(self, mock_dotenv):
-        with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(RedisEnvError):
-                redis_connect()
+    def test_missing_env_raises_redis_env_error(self, mock_dotenv):  # noqa: ARG002
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            pytest.raises(RedisEnvError),
+        ):
+            redis_connect()
 
     @patch("src.connection.load_dotenv")
     @patch("src.connection.redis.from_url")
-    def test_rediss_url_activates_tls(self, mock_from_url, mock_dotenv):
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("src.connection._build_tls_context") as mock_tls:
-                mock_tls.return_value = {
-                    "ssl": True,
-                    "ssl_check_hostname": True,
-                    "ssl_cert_reqs": ssl.CERT_REQUIRED,
-                }
-                redis_connect(url="rediss://:pw@host:6380/0")
+    def test_rediss_url_activates_tls(self, mock_from_url, mock_dotenv):  # noqa: ARG002
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch("src.connection._build_tls_context") as mock_tls,
+        ):
+            mock_tls.return_value = {
+                "ssl": True,
+                "ssl_check_hostname": True,
+                "ssl_cert_reqs": ssl.CERT_REQUIRED,
+            }
+            redis_connect(url="rediss://:pw@host:6380/0")
         mock_tls.assert_called_once()
 
     @patch("src.connection.load_dotenv")
     @patch("src.connection.redis.Redis")
-    def test_decode_responses_true(self, mock_redis_cls, mock_dotenv):
+    def test_decode_responses_true(self, mock_redis_cls, mock_dotenv):  # noqa: ARG002
         with patch.dict(os.environ, self._full_env(), clear=True):
             redis_connect()
         _, kwargs = mock_redis_cls.call_args

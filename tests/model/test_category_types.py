@@ -5,13 +5,10 @@ from __future__ import annotations
 import pytest
 
 from src.model.category_types import (
-    HKCategoryTypeIdentifierRegistry,
-    HKCategoryTypeIdentifierSleepAnalysis,
     HKCategoryTypeIdentifierMenstrualFlow,
     HKCategoryTypeIdentifierMoodChanges,
-    HKCategoryTypeIdentifierAppleStandHour,
-    HKCategoryTypeIdentifierContraceptive,
-    HKCategoryTypeIdentifierPregnancyTestResult,
+    HKCategoryTypeIdentifierRegistry,
+    HKCategoryTypeIdentifierSleepAnalysis,
 )
 
 

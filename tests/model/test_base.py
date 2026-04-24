@@ -7,7 +7,6 @@ import pytest
 from src.model.base import (
     HK_GROUPS,
     HKCategoryTypeIdentifier,
-    HKIdentifier,
     HKQuantityTypeIdentifier,
     MissingUnit,
 )
@@ -95,14 +94,14 @@ class TestRegistryCompleteness:
     def test_quantity_registry_keys_match_class_names(self):
         from src.model.quantity_types import HKQuantityTypeIdentifierRegistry
 
-        for k, v in HKQuantityTypeIdentifierRegistry.items():
+        for k, _v in HKQuantityTypeIdentifierRegistry.items():
             assert k.startswith("HKQuantityTypeIdentifier")
 
     def test_categorical_identifier_maps_built_correctly(self):
         from src.model import CATEGORICAL_IDENTIFIER_MAPS
 
         assert len(CATEGORICAL_IDENTIFIER_MAPS) > 0
-        for k, v in CATEGORICAL_IDENTIFIER_MAPS.items():
+        for _k, v in CATEGORICAL_IDENTIFIER_MAPS.items():
             assert isinstance(v, dict)
             assert all(isinstance(i, int) for i in v.values())
 
