@@ -23,6 +23,24 @@ from src.connection import (
 )
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _empty_tls_env() -> _TlsEnv:
+    return _TlsEnv(None, None, None)
+
+
+def _full_env() -> dict[str, str]:
+    return {
+        "REDIS_HOST": "127.0.0.1",
+        "REDIS_PORT": "6379",
+        "REDIS_DB": "0",
+        "REDIS_PASSWORD": "pw",
+    }
+
+
+# ---------------------------------------------------------------------------
 # _redact_url
 # ---------------------------------------------------------------------------
 
@@ -188,28 +206,25 @@ class TestLoadTlsEnv:
 
 
 class TestResolveTlsPaths:
-    def _empty_env(self) -> _TlsEnv:
-        return _TlsEnv(None, None, None)
-
     def test_all_none_returns_none_triple(self):
-        cert, key, ca = _resolve_tls_paths(None, None, None, self._empty_env())
+        cert, key, ca = _resolve_tls_paths(None, None, None, _empty_tls_env())
         assert cert is None
         assert key is None
         assert ca is None
 
     def test_cert_without_key_raises(self):
         with pytest.raises(TLSConfigError) as exc_info:
-            _resolve_tls_paths("/cert.pem", None, None, self._empty_env())
+            _resolve_tls_paths("/cert.pem", None, None, _empty_tls_env())
         assert "tls_client_key" in str(exc_info.value)
 
     def test_key_without_cert_raises(self):
         with pytest.raises(TLSConfigError) as exc_info:
-            _resolve_tls_paths(None, "/key.pem", None, self._empty_env())
+            _resolve_tls_paths(None, "/key.pem", None, _empty_tls_env())
         assert "tls_client_cert" in str(exc_info.value)
 
     def test_both_cert_and_key_succeeds(self):
         cert, key, ca = _resolve_tls_paths(
-            "/cert.pem", "/key.pem", "/ca.pem", self._empty_env()
+            "/cert.pem", "/key.pem", "/ca.pem", _empty_tls_env()
         )
         assert cert == "/cert.pem"
         assert key == "/key.pem"
@@ -239,15 +254,12 @@ class TestResolveTlsPaths:
 
 
 class TestBuildTlsContext:
-    def _empty_env(self) -> _TlsEnv:
-        return _TlsEnv(None, None, None)
-
     def test_returns_ssl_true(self):
         kwargs = _build_tls_context(
             tls_client_cert=None,
             tls_client_key=None,
             tls_ca_cert=None,
-            tls_env=self._empty_env(),
+            tls_env=_empty_tls_env(),
             tls_check_hostname=True,
         )
         assert kwargs["ssl"] is True
@@ -257,7 +269,7 @@ class TestBuildTlsContext:
             tls_client_cert=None,
             tls_client_key=None,
             tls_ca_cert=None,
-            tls_env=self._empty_env(),
+            tls_env=_empty_tls_env(),
             tls_check_hostname=True,
         )
         assert kwargs["ssl_check_hostname"] is True
@@ -267,7 +279,7 @@ class TestBuildTlsContext:
             tls_client_cert=None,
             tls_client_key=None,
             tls_ca_cert=None,
-            tls_env=self._empty_env(),
+            tls_env=_empty_tls_env(),
             tls_check_hostname=True,
         )
         assert kwargs["ssl_cert_reqs"] == ssl.CERT_REQUIRED
@@ -278,7 +290,7 @@ class TestBuildTlsContext:
             tls_client_cert=None,
             tls_client_key=None,
             tls_ca_cert=None,
-            tls_env=self._empty_env(),
+            tls_env=_empty_tls_env(),
             tls_check_hostname=False,
         )
         assert kwargs["ssl_check_hostname"] is False
@@ -292,7 +304,7 @@ class TestBuildTlsContext:
             tls_client_cert=str(cert),
             tls_client_key=str(key),
             tls_ca_cert=None,
-            tls_env=self._empty_env(),
+            tls_env=_empty_tls_env(),
             tls_check_hostname=True,
         )
         assert "ssl_certfile" in kwargs
@@ -304,7 +316,7 @@ class TestBuildTlsContext:
                 tls_client_cert="/only_cert.crt",
                 tls_client_key=None,
                 tls_ca_cert=None,
-                tls_env=self._empty_env(),
+                tls_env=_empty_tls_env(),
                 tls_check_hostname=True,
             )
 
@@ -315,18 +327,10 @@ class TestBuildTlsContext:
 
 
 class TestRedisConnect:
-    def _full_env(self) -> dict[str, str]:
-        return {
-            "REDIS_HOST": "127.0.0.1",
-            "REDIS_PORT": "6379",
-            "REDIS_DB": "0",
-            "REDIS_PASSWORD": "pw",
-        }
-
     @patch("src.connection.load_dotenv")
     @patch("src.connection.redis.Redis")
     def test_env_mode_creates_connection(self, mock_redis_cls, mock_dotenv):  # noqa: ARG002
-        with patch.dict(os.environ, self._full_env(), clear=True):
+        with patch.dict(os.environ, _full_env(), clear=True):
             redis_connect()
         mock_redis_cls.assert_called_once()
 
@@ -363,7 +367,7 @@ class TestRedisConnect:
     @patch("src.connection.load_dotenv")
     @patch("src.connection.redis.Redis")
     def test_decode_responses_true(self, mock_redis_cls, mock_dotenv):  # noqa: ARG002
-        with patch.dict(os.environ, self._full_env(), clear=True):
+        with patch.dict(os.environ, _full_env(), clear=True):
             redis_connect()
         _, kwargs = mock_redis_cls.call_args
         assert kwargs.get("decode_responses") is True
@@ -500,7 +504,7 @@ class TestRedisEnvError:
                 tls_client_cert=None,
                 tls_client_key=None,
                 tls_ca_cert=None,
-                tls_env=self._empty_env(),
+                tls_env=_empty_tls_env(),
                 tls_check_hostname=True,
             ),
             dict,
@@ -513,7 +517,7 @@ class TestRedisEnvError:
             tls_client_cert=None,
             tls_client_key=None,
             tls_ca_cert=str(ca),
-            tls_env=self._empty_env(),
+            tls_env=_empty_tls_env(),
             tls_check_hostname=True,
         )
         assert "ssl_ca_certs" in kwargs and kwargs["ssl_ca_certs"] == str(ca)
@@ -523,7 +527,7 @@ class TestRedisEnvError:
             tls_client_cert=None,
             tls_client_key=None,
             tls_ca_cert=None,
-            tls_env=self._empty_env(),
+            tls_env=_empty_tls_env(),
             tls_check_hostname=True,
         )
         assert "ssl_certfile" not in kwargs and "ssl_keyfile" not in kwargs
@@ -532,7 +536,7 @@ class TestRedisEnvError:
     @patch("src.connection.redis.Redis")
     def test_explicit_tls_true_env_mode_activates_tls(self, mock_cls, _):  # noqa: ARG002
         with (
-            patch.dict(os.environ, self._full_env(), clear=True),
+            patch.dict(os.environ, _full_env(), clear=True),
             patch("src.connection._build_tls_context") as mock_tls,
         ):
             mock_tls.return_value = {
