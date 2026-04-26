@@ -5,6 +5,7 @@
 !requirements*.txt
 !src/
 !scripts/
+!tests/
 
 # Then ignore whole classes of files again
 *.pyc

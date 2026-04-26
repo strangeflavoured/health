@@ -75,6 +75,13 @@ services:
       - ${REDIS_CERTS_DIR}:/certs:ro
     restart: no
 
+  test-runner:
+    container_name: health-test-suite
+    build:
+      context: .
+      dockerfile: tests/Dockerfile
+    restart: no
+
 volumes:
   redis-data:
     driver: local
