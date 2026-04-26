@@ -17,7 +17,7 @@ a different machine, replace `127.0.0.1` and `localhost` accordingly, and adapt 
 Convert key with `openssl` because Redis can't handle `PKCS#8` keys.
 ```bash
 mkdir -p ~/.redis-certs && cd ~/.redis-certs
-mkcert --key-file redis-key.pem --cert-file redis.pem 127.0.0.1 localhost
+mkcert --key-file redis-key.pem --cert-file redis.pem 127.0.0.1 localhost redis
 openssl pkcs8 -in  redis-key.pem -out redis.key -nocrypt
 # Output:
 #   redis.pem        ← server certificate

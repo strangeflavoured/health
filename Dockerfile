@@ -1,3 +1,23 @@
-# Placeholder — keeps Dependabot's docker ecosystem functional.
-# Currently no image is built; compose.yml uses upstream redis-stack directly.
-FROM python:3.12-slim
+# dockerfile for sandbox
+FROM python:3.12.13-slim-trixie
+
+# Install system dependencies
+RUN apt-get update
+RUN apt-get install --no-install-recommends --yes -V wait-for-it
+RUN apt-get dist-upgrade --yes -V
+
+# create user
+RUN useradd --create-home --uid 1000 health
+USER health
+WORKDIR /home/health/
+
+# Install requirements
+COPY --chown=health:health src/requirements.txt .
+RUN pip install --user --upgrade pip
+RUN pip install --require-hashes --no-cache-dir -r requirements.txt
+
+COPY --chown=health:health src ./src
+COPY --chown=health:health import_to_redis.py ./import_to_redis.py
+
+ENTRYPOINT ["wait-for-it", "redis:6380", "--", "python3"]
+CMD ["import_to_redis.py"]

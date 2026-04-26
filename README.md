@@ -63,14 +63,12 @@ Set up RedisInsight by accessing `http://<REDIS_HOST>:<REDIS_INSIGHT_PORT>` in y
 Set up TLS and create a new client certificate for `RedisInsightUI`.
 
 ## Importer
-Activate the environment, update pip and install requirements:
-```bash
-source .venv/bin/activate
-pip install --upgrade pip
-pip install --require-hashes -r src/requirements.txt
-```
 [Export Apple Health data](https://support.apple.com/guide/iphone/share-your-health-data-iph5ede58c3d/ios)
-and save the `export.zip` you obtain in `data` directory. Run `import_to_redis.py` to upload the data to Redis.
+and save the `export.zip` you obtain in `data` directory. Run `import_to_redis.py` in sandbox to upload the data to Redis:
+```bash
+docker compose run --rm --build sandbox import_to_redis.py
+```
+
 ## Development
 ### Install dev requirements
 ```bash

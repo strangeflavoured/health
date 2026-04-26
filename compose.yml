@@ -60,6 +60,21 @@ services:
       redis:
         condition: service_healthy
 
+  sandbox:
+    container_name: health-sandbox
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: "redis"
+      REDIS_CERTS_DIR: "/certs"
+    volumes:
+      - ./output:/home/health/output
+      - ${REDIS_CERTS_DIR}:/certs:ro
+    restart: no
+
 volumes:
   redis-data:
     driver: local
