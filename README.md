@@ -13,6 +13,11 @@ Create virtual environment:
 ```bash
 python3.12 -m venv .venv --prompt health
 ```
+
+## Run tests
+```bash
+docker compose run --rm --build test-runner
+```
 ## Build documentation
 Activate the environment, update pip and install requirements:
 ```bash
