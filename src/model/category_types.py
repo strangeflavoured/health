@@ -192,7 +192,6 @@ class HKCategoryTypeIdentifierAudioExposureEvent(
 ):
     class Values(Enum):
         HKCategoryValueAudioExposureEventLoudEnvironment = 0
-        HKCategoryValueEnvironmentalAudioExposureEventMomentaryLimit = 1
 
 
 class HKCategoryTypeIdentifierEnvironmentalAudioExposureEvent(
