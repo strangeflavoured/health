@@ -4,6 +4,7 @@
 # Then unignore selected files and folders
 !requirements*.txt
 !src/
+!import_to_redis.py
 
 # Then ignore whole classes of files again
 *.pyc
