@@ -1,7 +1,7 @@
 ##  Docker/Redis Stack Cheatsheet
 ### Container starten
 ```bash
-docker compose up -d
+docker compose up -d redis redisinsight
 ```
 
 ### Containerstatus/-logs
@@ -37,8 +37,8 @@ docker inspect --format='{{.State.Health.Status}}' health-redis
 
 ### Container stoppen / entfernen
 ```bash
-docker compose down          # stoppt Container, Volume bleibt erhalten
-docker compose down -v       # stoppt Container UND löscht das Volume (Datenverlust!)
+docker compose down redis redisinsight          # stoppt Container, Volume bleibt erhalten
+docker compose down -v redis redisinsight       # stoppt Container UND löscht das Volume (Datenverlust!)
 ```
 
 ### Backup

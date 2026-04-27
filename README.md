@@ -1,17 +1,9 @@
 # Getting started
-## Prerequisites
-### Importer
-Requires [Python3.12](https://www.python.org/downloads/release/python-31213/) (including `venv` and `pip`).
 
-## Download Repository and create environment
+## Download Repository
 Clone repository and cd into it:
 ```bash
 git clone git@github.com:strangeflavoured/health.git && cd "$(basename "$_" .git)"
-```
-
-Create virtual environment:
-```bash
-python3.12 -m venv .venv --prompt health
 ```
 
 ## Run tests
