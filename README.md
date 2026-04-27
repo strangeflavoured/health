@@ -24,6 +24,8 @@ make -C docs latexpdf
 ```
 The documentation can then be found in `docs/build/html/index.html` and `docs/build/latex/healthanalyser.pdf`
 
+-------
+
 ## Set up Redis Stack
 First [install docker compose](https://docs.docker.com/compose/install).
 Pull the latest redis-stack-server:
@@ -59,6 +61,8 @@ Finally start up [docker container](docs/CHEATSHEET.md).
 Set up RedisInsight by accessing `http://<REDIS_HOST>:<REDIS_INSIGHT_PORT>` in your browser:
 Set up TLS and create a new client certificate for `RedisInsightUI`.
 
+--------
+
 ## Importer
 [Export Apple Health data](https://support.apple.com/guide/iphone/share-your-health-data-iph5ede58c3d/ios)
 and save the `export.zip` you obtain in `data` directory.
@@ -71,6 +75,8 @@ Run `import_to_redis.py` in sandbox to upload the data to Redis:
 ```bash
 docker compose run --rm --build sandbox import_to_redis.py
 ```
+
+----------
 
 ## Development
 ### Install dev requirements

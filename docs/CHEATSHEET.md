@@ -40,7 +40,7 @@ docker inspect --format='{{.State.Health.Status}}' health-redis
 docker compose down redis redisinsight          # stoppt Container, Volume bleibt erhalten
 docker compose down -v redis redisinsight       # stoppt Container UND löscht das Volume (Datenverlust!)
 ```
-
+--------------
 ### Backup
 Create a `dump.rdb` via the redis-cli:
 ```bash
