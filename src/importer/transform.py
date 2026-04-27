@@ -15,7 +15,7 @@ import pandas as pd
 
 from ..model import CATEGORICAL_IDENTIFIER_MAPS
 from ..model.base import MissingUnit
-from .data_check import check_export_data
+from .data_check import KNOWN_CATEGORY_TYPE_VIOLATIONS, check_export_data
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +131,7 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
             "expected only categorical strings."
         )
 
+    _replace_known_violations(df)
     _map_categories(df, no_unit)
     df.loc[no_unit, "unit"] = MissingUnit.CATEGORICAL.value
 
@@ -195,9 +196,24 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
             result.append(str(CATEGORICAL_IDENTIFIER_MAPS[type_][value]))
         except KeyError:
             missing.setdefault(type_, set()).add(value)
-            result.append("")  # placeholder, unused if raising below
 
     if missing:
         raise KeyError(f"Unknown value(s) for type(s): {missing}")
 
     df.loc[categorical_slice.index, "value"] = result
+
+
+def _replace_known_violations(df: pd.DataFrame) -> None:
+    """Replace faulty category identifiers.
+
+    Replaces `type` for :class:`~..model.base.HKCategoryTypeIdentifier` if `value`
+    better matches another identifier. Identifier/value combinations that should
+    be replaced are kept in :const:`~.data_check.KNOWN_CATEGORY_TYPE_VIOLATIONS`.
+    """
+    for faulty_type, (
+        value_list,
+        correct_type,
+    ) in KNOWN_CATEGORY_TYPE_VIOLATIONS.items():
+        df.loc[(df["type"] == faulty_type) & (df["value"].isin(value_list)), "type"] = (
+            correct_type
+        )
