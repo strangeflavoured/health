@@ -1,4 +1,10 @@
 # Getting started
+## Prerequisites
+Have the following installed:
+- [git](https://git-scm.com/install/)
+- [docker compose](https://docs.docker.com/compose/install/)
+
+---------
 
 ## Download Repository
 Clone repository and cd into it:
@@ -15,7 +21,7 @@ docker compose run --rm --build test-runner
 ```bash
 docker compose run --rm --build docs-compiler
 ```
-To compile the pdf documentation run
+To compile the pdf documentation (requires `make`) run
 ```bash
 make -C docs/build/latex
 ```
@@ -25,7 +31,6 @@ The documentation can be found in `docs/build/html/index.html` and `docs/build/l
 -------
 
 ## Set up Redis Stack
-First [install docker compose](https://docs.docker.com/compose/install).
 Pull the latest redis-stack-server:
 ```bash
 docker pull redis/redis-stack-server:latest && docker pull redis/redisinsight:latest
