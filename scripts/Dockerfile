@@ -2,9 +2,7 @@
 FROM python:3.14.0-slim-trixie
 
 # Install system dependencies
-RUN apt-get update
-RUN apt-get install --no-install-recommends --yes -V wait-for-it
-RUN apt-get dist-upgrade --yes -V
+RUN apt update && apt install --no-install-recommends -y -V wait-for-it &&  apt dist-upgrade -y -V && rm -rf /var/lib/apt/lists/*
 
 # create user
 RUN useradd --create-home --uid 1000 health
