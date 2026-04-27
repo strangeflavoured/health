@@ -11,18 +11,16 @@ git clone git@github.com:strangeflavoured/health.git && cd "$(basename "$_" .git
 docker compose run --rm --build test-runner
 ```
 ## Build documentation
-Activate the environment, update pip and install requirements:
+
 ```bash
-source .venv/bin/activate
-pip install --upgrade pip
-pip install --require-hashes -r docs/requirements.txt
+docker compose run --rm --build docs-compiler
 ```
-Compile Documentation (html and Latex):
+To compile the pdf documentation run
 ```bash
-make -C docs html
-make -C docs latexpdf
+make -C docs/build/latex
 ```
-The documentation can then be found in `docs/build/html/index.html` and `docs/build/latex/healthanalyser.pdf`
+
+The documentation can be found in `docs/build/html/index.html` and `docs/build/latex/healthanalyser.pdf`
 
 -------
 
