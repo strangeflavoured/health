@@ -301,7 +301,7 @@ jobs:
           PYEOF
 
       - name: Upload analysis reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dependency-analysis
           path: /tmp/reports/
@@ -399,7 +399,7 @@ jobs:
           deactivate
 
       - name: Upload recompiled files
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: updated-requirements
           path: "**/*.txt"
