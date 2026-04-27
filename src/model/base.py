@@ -60,6 +60,12 @@ class HKCategoryTypeIdentifier(HKIdentifier):
         return {i.name: i.value for i in cls.Values}
 
 
+class HKMiscTypeIdentifier(HKIdentifier):
+    """Sentinel miscellaneous identifier values."""
+
+    identifier_type = "miscellaneous"
+
+
 # ---------------------------------------------------------------------------
 # Groups
 # ---------------------------------------------------------------------------
@@ -127,4 +133,21 @@ class Other(HKGroup):  # noqa: D101
 
 HK_GROUPS: MappingProxyType[str, Any] = MappingProxyType(
     {group.__name__: group for group in HKGroup.__subclasses__()}
+)
+
+
+# ---------------------------------------------------------------------------
+# Misc. data type(s) that don't fit the category/quantity type distinction
+# ---------------------------------------------------------------------------
+
+
+class HKDataTypeSleepDurationGoal(HKIdentifier, Fitness):  # noqa: D101
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Misc Registry
+# ---------------------------------------------------------------------------
+HKMiscTypeIdentifierRegistry: MappingProxyType[str, Any] = MappingProxyType(
+    {group.__name__: group for group in HKMiscTypeIdentifier.__subclasses__()}
 )
