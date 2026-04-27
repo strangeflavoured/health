@@ -28,4 +28,7 @@ if __name__ == "__main__":
             logger.info("Successfully imported Apple Health Export Data.")
         except Exception as e:  # noqa: BLE001
             warnings_logger.error(e)
+            if isinstance(e, ExceptionGroup):
+                for exc in e.exceptions:
+                    warnings_logger.error(exc)
             logger.info("FAILED to import Apple Health Export Data.")
