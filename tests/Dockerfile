@@ -10,11 +10,11 @@ USER health
 WORKDIR /home/health/
 
 # Install requirements
-COPY --chown=health:health ../tests/requirements.txt .
+COPY --chown=health:health ./tests/requirements.txt .
 RUN pip install --user --upgrade pip
 RUN pip install --require-hashes --no-cache-dir -r requirements.txt
 
-COPY --chown=health:health ../src ./src
-COPY --chown=health:health ../tests .
+COPY --chown=health:health ./src ./src
+COPY --chown=health:health ./tests .
 
 ENTRYPOINT ["python3", "-m", "pytest"]
