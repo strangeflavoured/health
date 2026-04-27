@@ -28,6 +28,7 @@ def transform(df: pd.DataFrame) -> None:
 
     Applies the following steps in order:
 
+    0. Check input `df` sanity.
     1. Drop rows whose ``value`` field is ``NaN`` (:func:`_drop_null_values`).
     2. Resolve categorical string values to signed integers or NaN and assign the
        ``"Categorical"`` sentinel unit (:func:`_handle_categorical_units`).
@@ -90,7 +91,8 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
 
     Rows without a ``unit`` value are treated as categorical.  Their string ``value``
     is resolved to a signed integer/NaN via :func:`_map_categories`, and their ``unit``
-    is set to :attr:`~model.base.MissingUnit.CATEGORICAL`.
+    is set to :attr:`~model.base.MissingUnit.CATEGORICAL`. For `type`/`value` pairs
+    in ``KNOWN_CATEGORY_TYPE_VIOLATIONS`` `type` is updated.
 
     Note:
         A warning is logged (and the row left unmodified) if a ``type`` or
@@ -117,7 +119,7 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
     if not null_columns.isin(COLUMNS_WITHOUT_VALUE).all():
         unexpected = null_columns.difference(COLUMNS_WITHOUT_VALUE).tolist()
         raise NotImplementedError(
-            f"Unexpected columns NaN (schema may have changed): {unexpected}"
+            f"Unexpected column(s) have NaN (schema may have changed): {unexpected}"
         )
 
     no_unit: pd.Series = df["unit"].isna()
@@ -160,7 +162,7 @@ def _timestamps_to_unix(series: pd.Series) -> pd.Series:
 
 
 def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
-    """Replace categorical string values with signed integer values in-place.
+    """Replace categorical string values with integer values in-place.
 
     Note:
         The :meth:`~pd.DataFrame.groupby` call creates a temporary copy of the
