@@ -141,13 +141,15 @@ HK_GROUPS: MappingProxyType[str, Any] = MappingProxyType(
 # ---------------------------------------------------------------------------
 
 
-class HKDataTypeSleepDurationGoal(HKIdentifier, Fitness):  # noqa: D101
+class HKDataTypeSleepDurationGoal(HKMiscTypeIdentifier, Fitness):  # noqa: D101
     pass
 
 
 # ---------------------------------------------------------------------------
 # Misc Registry
 # ---------------------------------------------------------------------------
+
+
 HKMiscTypeIdentifierRegistry: MappingProxyType[str, Any] = MappingProxyType(
     {group.__name__: group for group in HKMiscTypeIdentifier.__subclasses__()}
 )
