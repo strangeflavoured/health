@@ -1,5 +1,5 @@
 # dockerfile for sandbox
-FROM python:3.12.13-slim-trixie
+FROM python:3.14.0-slim-trixie
 
 # Install system dependencies
 RUN apt-get update
