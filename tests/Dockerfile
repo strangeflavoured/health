@@ -1,4 +1,4 @@
-# dockerfile for sandbox
+# dockerfile for test-runner
 FROM python:3.14.0-slim-trixie
 
 # Install system dependencies
