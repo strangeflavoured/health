@@ -4,9 +4,6 @@
 # Then unignore selected files and folders
 !requirements*.txt
 !src/
-!scripts/
-!tests/
-!data/
 
 # Then ignore whole classes of files again
 *.pyc

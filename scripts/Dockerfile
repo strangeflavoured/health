@@ -12,12 +12,12 @@ USER health
 WORKDIR /home/health/
 
 # Install requirements
-COPY --chown=health:health ../src/requirements.txt .
+COPY --chown=health:health ./src/requirements.txt .
 RUN pip install --user --upgrade pip
 RUN pip install --require-hashes --no-cache-dir -r requirements.txt
 
-COPY --chown=health:health ../src ./src
-COPY --chown=health:health ../data ./data
+COPY --chown=health:health ./src ./src
+COPY --chown=health:health ./data ./data
 COPY --chown=health:health ./scripts .
 
 ENTRYPOINT ["wait-for-it", "redis:6380", "--", "python3"]
