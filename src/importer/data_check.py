@@ -15,7 +15,11 @@ import logging
 
 import pandas as pd
 
-from ..model import HKCategoryTypeIdentifierRegistry, HKQuantityTypeIdentifierRegistry
+from ..model import (
+    HKCategoryTypeIdentifierRegistry,
+    HKMiscTypeIdentifierRegistry,
+    HKQuantityTypeIdentifierRegistry,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +30,8 @@ logger = logging.getLogger(__name__)
 
 _CATEGORY_TYPES: frozenset[str] = frozenset(HKCategoryTypeIdentifierRegistry.keys())
 _QUANTITY_TYPES: frozenset[str] = frozenset(HKQuantityTypeIdentifierRegistry.keys())
-_ALL_KNOWN_TYPES: frozenset[str] = _CATEGORY_TYPES | _QUANTITY_TYPES
+_MISC_TYPES: frozenset[str] = frozenset(HKMiscTypeIdentifierRegistry.keys())
+_ALL_KNOWN_TYPES: frozenset[str] = _CATEGORY_TYPES | _QUANTITY_TYPES | _MISC_TYPES
 
 
 class DataSanityError(ValueError):
