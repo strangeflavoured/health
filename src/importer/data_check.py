@@ -12,6 +12,7 @@ Typical usage::
 """
 
 import logging
+from types import MappingProxyType
 
 import pandas as pd
 
@@ -32,6 +33,21 @@ _CATEGORY_TYPES: frozenset[str] = frozenset(HKCategoryTypeIdentifierRegistry.key
 _QUANTITY_TYPES: frozenset[str] = frozenset(HKQuantityTypeIdentifierRegistry.keys())
 _MISC_TYPES: frozenset[str] = frozenset(HKMiscTypeIdentifierRegistry.keys())
 _ALL_KNOWN_TYPES: frozenset[str] = _CATEGORY_TYPES | _QUANTITY_TYPES | _MISC_TYPES
+
+# This is the source of truth to work around wrong category types
+# key(str): faulty type
+# value(tuple): first element is a list of faulty values for the type
+# second element is the type that should be used instead
+KNOWN_CATEGORY_TYPE_VIOLATIONS: MappingProxyType[str, tuple[list[str], str]] = (
+    MappingProxyType(
+        {
+            "HKCategoryTypeIdentifierAudioExposureEvent": (
+                ["HKCategoryValueEnvironmentalAudioExposureEventMomentaryLimit"],
+                "HKCategoryTypeIdentifierEnvironmentalAudioExposureEvent",
+            ),
+        }
+    )
+)
 
 
 class DataSanityError(ValueError):
@@ -166,7 +182,16 @@ def _check_category_values_exist(df: pd.DataFrame) -> None:
         )
         bad_mask = ~pd.Index(row.unique).isin(known_values)
         if bad_mask.any():
-            unknown[row.Index] = list(row.unique[bad_mask])
+            bad_values = row.unique[bad_mask]
+
+            # skip handled issues
+            if KNOWN_CATEGORY_TYPE_VIOLATIONS.get(row.Index, None):
+                bad_values = set(bad_values).difference(
+                    KNOWN_CATEGORY_TYPE_VIOLATIONS[row.Index][0]
+                )
+
+            if bad_values:
+                unknown[row.Index] = list(bad_values)
 
     if unknown:
         raise DataSanityError(
