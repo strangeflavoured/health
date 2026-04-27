@@ -30,20 +30,20 @@ Then recompile starting from the level you edited and downward:
 
 ```bash
 # If you edited src/importer/requirements.in:
-pip-compile --generate-hashes --strip-extras --output-file src/importer/requirements.txt src/importer/requirements.in
-pip-compile --generate-hashes --strip-extras --output-file src/requirements.txt src/requirements.in
-pip-compile --generate-hashes --strip-extras --output-file docs/requirements.txt docs/requirements.in
+pip-compile --generate-hashes --upgrade --strip-extras --output-file src/importer/requirements.txt src/importer/requirements.in
+pip-compile --generate-hashes --upgrade --strip-extras --output-file src/requirements.txt src/requirements.in
+pip-compile --generate-hashes --upgrade --strip-extras --output-file docs/requirements.txt docs/requirements.in
 
 # If you edited src/requirements.in:
-pip-compile --generate-hashes --strip-extras --output-file src/requirements.txt src/requirements.in
-pip-compile --generate-hashes --strip-extras --output-file docs/requirements.txt docs/requirements.in
+pip-compile --generate-hashes --upgrade --strip-extras --output-file src/requirements.txt src/requirements.in
+pip-compile --generate-hashes --upgrade --strip-extras --output-file docs/requirements.txt docs/requirements.in
 
 # If you edited docs/requirements.in:
-pip-compile --generate-hashes --strip-extras --output-file docs/requirements.txt docs/requirements.in
+pip-compile --generate-hashes --upgrade --strip-extras --output-file docs/requirements.txt docs/requirements.in
 
 
 # If you edited requirements-dev.in:
-pip-compile --allow-unsafe --generate-hashes --strip-extras --output-file requirements-dev.txt requirements-dev.in
+pip-compile --allow-unsafe --generate-hashes --upgrade --strip-extras --output-file requirements-dev.txt requirements-dev.in
 ```
 
 Commit both the `.in` file and the recompiled `.txt` file(s).
