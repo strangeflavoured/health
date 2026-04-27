@@ -1,8 +1,8 @@
 ## Setup TLS for Redis
 How to generate the TLS certificates and keys to startup [docker](../compose.yml).
-### Install mkcert (Linux)
+### Install mkcert and openssl (Linux)
 ```bash
-sudo apt install mkcert
+sudo apt install mkcert openssl
 mkcert -install          # installs the CA into system + browser trust stores
 ```
 This creates the certificate `rootCA.pem` and the private key `rootCA-key.pem`.
