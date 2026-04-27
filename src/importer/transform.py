@@ -15,6 +15,7 @@ import pandas as pd
 
 from ..model import CATEGORICAL_IDENTIFIER_MAPS
 from ..model.base import MissingUnit
+from .data_check import check_export_data
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,8 @@ def transform(df: pd.DataFrame) -> None:
         # df["startDate"] and df["endDate"] are now int64 Unix timestamps
 
     """
+    check_export_data(df)
+
     logger.info("Transforming export data...")
     _drop_null_values(df)
     _handle_categorical_units(df)
