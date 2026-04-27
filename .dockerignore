@@ -6,6 +6,7 @@
 !src/
 !scripts/
 !tests/
+!data/
 
 # Then ignore whole classes of files again
 *.pyc
