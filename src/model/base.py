@@ -5,6 +5,7 @@ Provides HK_GROUPS registry to public API .
 
 from enum import Enum
 from types import MappingProxyType
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Sentinel
@@ -64,76 +65,66 @@ class HKCategoryTypeIdentifier(HKIdentifier):
 # ---------------------------------------------------------------------------
 
 
-class BodyMeasurements:  # noqa: D101
+class HKGroup:  # noqa: D101
+    group: str
+
+
+class BodyMeasurements(HKGroup):  # noqa: D101
     group = "body_measurements"
 
 
-class Fitness:  # noqa: D101
+class Fitness(HKGroup):  # noqa: D101
     group = "body_measurements"
 
 
-class ReproductiveHealth:  # noqa: D101
+class ReproductiveHealth(HKGroup):  # noqa: D101
     group = "reproductive_health"
 
 
-class Hearing:  # noqa: D101
+class Hearing(HKGroup):  # noqa: D101
     group = "hearing"
 
 
-class VitalSigns:  # noqa: D101
+class VitalSigns(HKGroup):  # noqa: D101
     group = "vital_signs"
 
 
-class LabTestResults:  # noqa: D101
+class LabTestResults(HKGroup):  # noqa: D101
     group = "lab_test_results"
 
 
-class Mobility:  # noqa: D101
+class Mobility(HKGroup):  # noqa: D101
     group = "mobility"
 
 
-class Nutrition:  # noqa: D101
+class Nutrition(HKGroup):  # noqa: D101
     group = "nutrition"
 
 
-class UVExposure:  # noqa: D101
+class UVExposure(HKGroup):  # noqa: D101
     group = "uv_exposure"
 
 
-class Diving:  # noqa: D101
+class Diving(HKGroup):  # noqa: D101
     group = "diving"
 
 
-class Mindfulness:  # noqa: D101
+class Mindfulness(HKGroup):  # noqa: D101
     group = "mindfulness"
 
 
-class Symptoms:  # noqa: D101
+class Symptoms(HKGroup):  # noqa: D101
     group = "symptoms"
 
 
-class Other:  # noqa: D101
+class Other(HKGroup):  # noqa: D101
     group = "other"
 
 
 # ---------------------------------------------------------------------------
-# Registry
+# Group Registry
 # ---------------------------------------------------------------------------
 
-HK_GROUPS = MappingProxyType(
-    {
-        "BodyMeasurements": BodyMeasurements,
-        "Fitness": Fitness,
-        "ReproductiveHealth": ReproductiveHealth,
-        "Hearing": Hearing,
-        "VitalSigns": VitalSigns,
-        "LabTestResults": LabTestResults,
-        "Mobility": Mobility,
-        "Nutrition": Nutrition,
-        "UVExposure": UVExposure,
-        "Diving": Diving,
-        "Mindfulness": Mindfulness,
-        "Symptoms": Symptoms,
-        "Other": Other,
-    }
+HK_GROUPS: MappingProxyType[str, Any] = MappingProxyType(
+    {group.__name__: group for group in HKGroup.__subclasses__()}
 )
