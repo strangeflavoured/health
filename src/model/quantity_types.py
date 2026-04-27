@@ -301,6 +301,12 @@ class HKQuantityTypeIdentifierHeartRateRecoveryOneMinute(
     pass
 
 
+class HKQuantityTypeIdentifierHeartRateVariabilitySDNN(
+    HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
+):
+    pass
+
+
 class HKQuantityTypeIdentifierAtrialFibrillationBurden(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
