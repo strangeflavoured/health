@@ -27,6 +27,10 @@ services:
       REDIS_CLIENT_KEY: ${REDIS_CLIENT_KEY}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
