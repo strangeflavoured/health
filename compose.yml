@@ -64,7 +64,7 @@ services:
     container_name: health-sandbox
     build:
       context: .
-      dockerfile: scripts/Dockerfile
+      dockerfile: docker/Dockerfile.scripts
     env_file:
       - .env
     environment:
