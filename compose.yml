@@ -79,7 +79,7 @@ services:
     container_name: health-test-suite
     build:
       context: .
-      dockerfile: tests/Dockerfile
+      dockerfile: docker/Dockerfile.tests
     restart: no
 
   docs-compiler:
