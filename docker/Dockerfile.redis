@@ -1,6 +1,15 @@
 # dockerfile for redis
 FROM redis/redis-stack-server:7.4.0-v8@sha256:798ab84d9f266936b034ab11c4d04a2b8e4b441884c5aa7d17ac951eefdf742a
 
+# Update system dependencies
+RUN apt update && apt dist-upgrade --yes -V && rm -rf /var/lib/apt/lists/*
+
+# create user
+RUN useradd --create-home --uid 1000 health
+USER health
+WORKDIR /home/health/
+
+
 VOLUME ["/data", "/certs"]
 
 HEALTHCHECK --interval=5m --timeout=5s --retries=5 --start-period=10s \
