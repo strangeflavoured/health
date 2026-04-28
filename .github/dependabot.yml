@@ -97,6 +97,9 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      - dependency-name: "python"  # stay on python version
+        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
 
     # ── pre-commit hooks (.pre-commit-config.yaml) ───────────────────────────────
   - package-ecosystem: "pre-commit"
