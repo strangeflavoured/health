@@ -48,7 +48,9 @@ services:
       start_period: 10s
 
   redisinsight:
-    image: redis/redisinsight:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.redisinsight
     container_name: health-redisinsight
     ports:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:?REDIS_INSIGHT_PORT must be set}:5540"
