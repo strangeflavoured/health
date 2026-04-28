@@ -50,31 +50,7 @@ updates:
           - "minor"
           - "patch"
 
-    # ── Docker (repo root – docker-compose.yml) ──────────────────────────────────
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 2
-    labels:
-      - "dependencies"
-      - "ci-efficient"
-      - "enhancement"
-    commit-message:
-      prefix: "Docker"
-      include: "scope"
-    groups:
-      docker-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
-  # ── Docker (docker – Dockerfiles) ──────────────────────────────────
+  # ── Docker ───────────────────────────────────────────────────────────────────────
   - package-ecosystem: "docker"
     directory: "/docker"
     schedule:
