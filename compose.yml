@@ -1,6 +1,8 @@
 services:
   redis:
-    image: redis/redis-stack-server:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.redis
     container_name: health-redis
     ports:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:?REDIS_PORT must be set}:6380"
@@ -20,6 +22,10 @@ services:
         --maxmemory 900mb
         --maxmemory-policy allkeys-lfu
         --loglevel notice
+      REDIS_CA_CERT: ${REDIS_CA_CERT}
+      REDIS_CLIENT_CERT: ${REDIS_CLIENT_CERT}
+      REDIS_CLIENT_KEY: ${REDIS_CLIENT_KEY}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     restart: unless-stopped
     deploy:
       resources:
@@ -29,23 +35,6 @@ services:
         reservations:       # guaranteed
           cpus: "0.10"
           memory: 256M
-    healthcheck:
-      test:
-        - "CMD-SHELL"
-        - >-
-          redis-cli
-          -p 6380
-          --tls
-          --cacert /certs/${REDIS_CA_CERT}
-          --cert /certs/${REDIS_CLIENT_CERT}
-          --key /certs/${REDIS_CLIENT_KEY}
-          -a "$REDIS_PASSWORD"
-          --no-auth-warning
-          ping 2>/dev/null | grep -q PONG
-      interval: 5m
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 
   redisinsight:
     build:
