@@ -31,36 +31,55 @@ The documentation can be found in `docs/build/html/index.html` and `docs/build/l
 -------
 
 ## Set up Redis Stack
-Pull the latest redis-stack-server:
+Add `.env` file to repo root:
 ```bash
-docker pull redis/redis-stack-server:latest && docker pull redis/redisinsight:latest
+touch .env && chmod 600 .env
 ```
-Then add a `.env` file to the root directory which contains the following variables:
+Add the following contents:
 ```ini
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6380
 REDIS_INSIGHT_PORT=5540
 REDIS_DB=0
-```
-Generate a safe password and add it to `.env`
-```bash
-echo "REDIS_PASSWORD=$(openssl rand -base64 32)" >> .env
-```
-`.env` can be protected from unauthorised access by running
-
-```bash
-chmod 600 .env
-```
-Generate [TLS certificates](docs/REDIS_TLS.md) and add the directory and file names to `.env`, similar to this:
-```ini
-REDIS_CERTS_DIR=~/.redis-certs
+REDIS_CERTS_DIR=secrets
 REDIS_SERVER_CERT=redis.pem
 REDIS_SERVER_KEY=redis.key
 REDIS_CA_CERT=rootCA.pem
-REDIS_CLIENT_CERT=client-cert.pem
-REDIS_CLIENT_KEY=client.key
+REDIS_APP_CERT=app-cert.pem
+REDIS_APP_KEY=app.key
 ```
-Finally start up [docker container](docs/CHEATSHEET.md).
+
+Install `openssl` and `mkcert`:
+```bash
+sudo apt install mkcert openssl
+mkcert -install
+```
+
+Generate a safe redis password and encryption key phrases for infrastructure and app and append them to `.env`:
+```bash
+echo "REDIS_PASSWORD=$(openssl rand -base64 32)\n" >> .env
+echo "KEY_PASSPHRASE_INFRA=$(openssl rand -base64 32)\n" >> .env
+echo "KEY_PASSPHRASE_APP=$(openssl rand -base64 32)\n" >> .env
+```
+
+Generate TLS certificates for infrastructure and app client:
+
+```bash
+bash scripts/generate_certificate.sh $(mkcert -CAROOT)
+bash scripts/generate_certificate.sh --client app $(mkcert -CAROOT)
+```
+Use the previously generated passphrases when prompted.
+
+Add path to CA certificate to `.env`:
+```bash
+echo "CA_PATH=$(mkcert -CAROOT)/rootCA.pem" >> .env
+```
+
+
+Finally start up [docker container](docs/CHEATSHEET.md):
+```bash
+docker compose up -d redis redisinsight
+```
 Set up RedisInsight by accessing `http://<REDIS_HOST>:<REDIS_INSIGHT_PORT>` in your browser:
 Set up TLS and create a new client certificate for `RedisInsightUI`.
 
