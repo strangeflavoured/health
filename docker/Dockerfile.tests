@@ -18,4 +18,4 @@ RUN pip install --user --require-hashes -r requirements.txt
 COPY --chown=health:health ./src ./src
 COPY --chown=health:health ./tests .
 
-ENTRYPOINT ["python3", "-m", "pytest"]
+ENTRYPOINT ["python3", "-m", "pytest", "--cov=src"]
