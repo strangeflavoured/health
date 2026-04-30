@@ -21,7 +21,8 @@ redis-cli \
   --cacert  ${REDIS_CERTS_DIR}/${REDIS_CA_CERT} \
   --cert    ${REDIS_CERTS_DIR}/${REDIS_CLIENT_CERT} \
   --key     ${REDIS_CERTS_DIR}/${REDIS_CLIENT_KEY} \
-  -a "$REDIS_PASSWORD" \
+  --user admin \
+  -a "$ADMIN_PASSWORD" \
   --no-auth-warning
 ```
 
@@ -53,7 +54,8 @@ redis-cli \
   --cacert  ${REDIS_CERTS_DIR}/${REDIS_CA_CERT} \
   --cert    ${REDIS_CERTS_DIR}/${REDIS_CLIENT_CERT} \
   --key     ${REDIS_CERTS_DIR}/${REDIS_CLIENT_KEY} \
-  -a "$REDIS_PASSWORD" \
+  --user admin \
+  -a "$ADMIN_PASSWORD" \
   --no-auth-warning \
   BGSAVE
 ```

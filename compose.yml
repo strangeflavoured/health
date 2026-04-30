@@ -15,7 +15,6 @@ services:
       - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_KEY}:/certs/${REDIS_HEALTHCHECK_KEY}:ro
     environment:
       REDIS_ARGS: >-
-        --requirepass ${REDIS_PASSWORD}
         --tls-port 6380
         --port 0
         --tls-cert-file /certs/${REDIS_SERVER_CERT}
@@ -31,7 +30,10 @@ services:
       REDIS_CA_CERT: ${REDIS_CA_CERT}
       REDIS_HEALTHCHECK_CERT: ${REDIS_HEALTHCHECK_CERT}
       REDIS_HEALTHCHECK_KEY: ${REDIS_HEALTHCHECK_KEY}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      APP_PASSWORD: ${APP_PASSWORD}
+      INSIGHT_PASSWORD: ${INSIGHT_PASSWORD}
+      HEALTHCHECK_PASSWORD: ${HEALTHCHECK_PASSWORD}
     restart: unless-stopped
     cap_drop:
       - ALL
