@@ -12,7 +12,7 @@ def _clean_redis_env(monkeypatch):
         "REDIS_HOST",
         "REDIS_PORT",
         "REDIS_DB",
-        "REDIS_PASSWORD",
+        "APP_PASSWORD",
         "REDIS_APP_CERT",
         "REDIS_APP_KEY",
         "REDIS_CA_CERT",

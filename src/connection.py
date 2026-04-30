@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 _ENV_HOST = "REDIS_HOST"
 _ENV_PORT = "REDIS_PORT"
 _ENV_DB = "REDIS_DB"
-_ENV_PASSWORD = "REDIS_PASSWORD"  # noqa: S105
+_ENV_PASSWORD = "APP_PASSWORD"  # noqa: S105
 _ENV_APP_CERT = "REDIS_APP_CERT"
 _ENV_APP_KEY = "REDIS_APP_KEY"
 _ENV_CA_CERT = "REDIS_CA_CERT"
@@ -69,7 +69,7 @@ class RedisEnvError(EnvironmentError):
 
     Example::
 
-        raise RedisEnvError(missing_env_vars=["REDIS_HOST", "REDIS_PASSWORD"])
+        raise RedisEnvError(missing_env_vars=["REDIS_HOST", "APP_PASSWORD"])
 
     """
 
@@ -146,7 +146,7 @@ class _ConnEnv:
         host: Value of ``REDIS_HOST``.
         port: Value of ``REDIS_PORT`` parsed as ``int``.
         db: Value of ``REDIS_DB`` parsed as ``int``.
-        password: Value of ``REDIS_PASSWORD``.
+        password: Value of ``APP_PASSWORD``.
 
     Example::
 
@@ -204,7 +204,7 @@ def _load_conn_env() -> _ConnEnv:
 
     Raises:
         RedisEnvError: If one or more of ``REDIS_HOST``, ``REDIS_PORT``,
-            ``REDIS_DB``, or ``REDIS_PASSWORD`` are unset or empty.
+            ``REDIS_DB``, or ``APP_PASSWORD`` are unset or empty.
 
     Example::
 
@@ -464,6 +464,7 @@ def _connect_from_env(conn_env: _ConnEnv, tls_kwargs: dict[str, Any]) -> redis.R
         host=conn_env.host,
         port=conn_env.port,
         db=conn_env.db,
+        username="app",
         password=conn_env.password,
         decode_responses=True,
         **tls_kwargs,
@@ -498,7 +499,7 @@ def redis_connect(
         REDIS_HOST=127.0.0.1
         REDIS_PORT=6380
         REDIS_DB=0
-        REDIS_PASSWORD=secret
+        APP_PASSWORD=secret
 
     :func:`~dotenv.load_dotenv` is called once here before any env-var reads,
     ensuring ``.env`` files are honoured in both connection modes without
@@ -538,7 +539,7 @@ def redis_connect(
         TLSConfigError: When TLS is active (``tls=True`` or ``rediss://`` URL)
             and required TLS paths cannot be resolved from kwargs or env vars.
         RedisEnvError: When ``url=None`` and one or more of ``REDIS_HOST``,
-            ``REDIS_PORT``, ``REDIS_DB``, or ``REDIS_PASSWORD`` are unset.
+            ``REDIS_PORT``, ``REDIS_DB``, or ``APP_PASSWORD`` are unset.
 
     Example::
 

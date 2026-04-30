@@ -36,7 +36,7 @@ def _full_env() -> dict[str, str]:
         "REDIS_HOST": "127.0.0.1",
         "REDIS_PORT": "6379",
         "REDIS_DB": "0",
-        "REDIS_PASSWORD": "pw",
+        "APP_PASSWORD": "pw",
     }
 
 
@@ -115,7 +115,7 @@ class TestLoadConnEnv:
         assert "REDIS_HOST" in msg
         assert "REDIS_PORT" in msg
         assert "REDIS_DB" in msg
-        assert "REDIS_PASSWORD" in msg
+        assert "APP_PASSWORD" in msg
 
     def test_raises_with_partial_vars(self):
         env = {"REDIS_HOST": "localhost", "REDIS_PORT": "6379"}
@@ -125,14 +125,14 @@ class TestLoadConnEnv:
         ):
             _load_conn_env()
         assert "REDIS_DB" in str(exc_info.value)
-        assert "REDIS_PASSWORD" in str(exc_info.value)
+        assert "APP_PASSWORD" in str(exc_info.value)
 
     def test_succeeds_with_all_vars(self):
         env = {
             "REDIS_HOST": "127.0.0.1",
             "REDIS_PORT": "6380",
             "REDIS_DB": "2",
-            "REDIS_PASSWORD": "secret",
+            "APP_PASSWORD": "secret",
         }
         with patch.dict(os.environ, env, clear=True):
             conn = _load_conn_env()
@@ -146,7 +146,7 @@ class TestLoadConnEnv:
             "REDIS_HOST": "h",
             "REDIS_PORT": "9999",
             "REDIS_DB": "15",
-            "REDIS_PASSWORD": "p",
+            "APP_PASSWORD": "p",
         }
         with patch.dict(os.environ, env, clear=True):
             conn = _load_conn_env()
@@ -159,7 +159,7 @@ class TestLoadConnEnv:
             pytest.raises(RedisEnvError) as exc_info,
         ):
             _load_conn_env()
-        error_vars = ["REDIS_HOST", "REDIS_PORT", "REDIS_DB", "REDIS_PASSWORD"]
+        error_vars = ["REDIS_HOST", "REDIS_PORT", "REDIS_DB", "APP_PASSWORD"]
         for var in error_vars:
             assert var in str(exc_info.value)
 
@@ -395,10 +395,10 @@ class TestTLSConfigError:
 
 class TestRedisEnvError:
     def test_lists_all_missing_vars(self):
-        err = RedisEnvError(["REDIS_HOST", "REDIS_PASSWORD"])
+        err = RedisEnvError(["REDIS_HOST", "APP_PASSWORD"])
         msg = str(err)
         assert "REDIS_HOST" in msg
-        assert "REDIS_PASSWORD" in msg
+        assert "APP_PASSWORD" in msg
 
     def test_empty_list_does_not_crash(self):
         err = RedisEnvError([])
@@ -430,7 +430,7 @@ class TestRedisEnvError:
             "REDIS_HOST": "h",
             "REDIS_PORT": "6379",
             "REDIS_DB": "0",
-            "REDIS_PASSWORD": "p",
+            "APP_PASSWORD": "p",
         }
         with patch.dict(os.environ, env, clear=True):
             assert isinstance(_load_conn_env(), _ConnEnv)
@@ -440,7 +440,7 @@ class TestRedisEnvError:
             "REDIS_HOST": "h",
             "REDIS_PORT": "not_a_number",
             "REDIS_DB": "0",
-            "REDIS_PASSWORD": "p",
+            "APP_PASSWORD": "p",
         }
         with patch.dict(os.environ, env, clear=True), pytest.raises(ValueError):
             _load_conn_env()
@@ -450,7 +450,7 @@ class TestRedisEnvError:
             "REDIS_HOST": "h",
             "REDIS_PORT": "6379",
             "REDIS_DB": "abc",
-            "REDIS_PASSWORD": "p",
+            "APP_PASSWORD": "p",
         }
         with patch.dict(os.environ, env, clear=True), pytest.raises(ValueError):
             _load_conn_env()
@@ -460,7 +460,7 @@ class TestRedisEnvError:
             "REDIS_HOST": "h",
             "REDIS_PORT": "6379",
             "REDIS_DB": "0",
-            "REDIS_PASSWORD": "p",
+            "APP_PASSWORD": "p",
         }
         with patch.dict(os.environ, env, clear=True):
             conn = _load_conn_env()
