@@ -23,8 +23,8 @@ services:
         --maxmemory-policy allkeys-lfu
         --loglevel notice
       REDIS_CA_CERT: ${REDIS_CA_CERT}
-      REDIS_CLIENT_CERT: ${REDIS_CLIENT_CERT}
-      REDIS_CLIENT_KEY: ${REDIS_CLIENT_KEY}
+      REDIS_CLIENT_CERT: ${REDIS_HEALTHCHECK_CERT}
+      REDIS_CLIENT_KEY: ${REDIS_HEALTHCHECK_KEY}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     restart: unless-stopped
     cap_drop:
