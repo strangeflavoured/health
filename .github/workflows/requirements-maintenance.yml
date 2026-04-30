@@ -421,13 +421,13 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download recompiled requirements
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: updated-requirements
           path: .
 
       - name: Download analysis reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dependency-analysis
           path: /tmp/reports/
