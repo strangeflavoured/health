@@ -63,7 +63,7 @@ jobs:
 
       - name: Publish test results as PR check
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         with:
           name: "Test Report"
           path: test-results.xml
