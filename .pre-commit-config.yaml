@@ -14,7 +14,7 @@ repos:
       - id: ruff-check
         args:
           - --target-version
-          - py311
+          - py312
           - --exit-non-zero-on-fix
           - --fix
           - --show-fixes
