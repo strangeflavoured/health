@@ -17,8 +17,8 @@ HEALTHCHECK --interval=5m --timeout=5s --retries=5 --start-period=10s \
         -p 6380 \
         --tls \
         --cacert /certs/$REDIS_CA_CERT \
-        --cert   /certs/$REDIS_CLIENT_CERT \
-        --key    /certs/$REDIS_CLIENT_KEY \
+        --cert   /certs/$REDIS_HEALTHCHECK_CERT \
+        --key    /certs/$REDIS_HEALTHCHECK_KEY \
         -a "$REDIS_PASSWORD" \
         --no-auth-warning \
         ping 2>/dev/null | grep -q PONG
