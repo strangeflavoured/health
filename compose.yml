@@ -8,7 +8,7 @@ services:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:?REDIS_PORT must be set}:6380"
     volumes:
       - redis-data:/data
-      - ${REDIS_CERTS_DIR}/${REDIS_CA_CERT}:/certs/${REDIS_CA_CERT}:ro
+      - ${CA_PATH}:/certs/${REDIS_CA_CERT}:ro
       - ${REDIS_CERTS_DIR}/${REDIS_SERVER_CERT}:/certs/${REDIS_SERVER_CERT}:ro
       - ${REDIS_CERTS_DIR}/${REDIS_SERVER_KEY}:/certs/${REDIS_SERVER_KEY}:ro
       - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_CERT}:/certs/${REDIS_HEALTHCHECK_CERT}:ro
@@ -55,7 +55,7 @@ services:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:?REDIS_INSIGHT_PORT must be set}:5540"
     volumes:
       - redisinsight-data:/data
-      - ${REDIS_CERTS_DIR}/${REDIS_CA_CERT}:/certs/${REDIS_CA_CERT}:ro
+      - ${CA_PATH}:/certs/${REDIS_CA_CERT}:ro
       - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_CERT}:/certs/${REDIS_REDISINSIGHT_CERT}:ro
       - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_KEY}:/certs/${REDIS_REDISINSIGHT_KEY}:ro
     restart: unless-stopped
@@ -75,7 +75,7 @@ services:
       REDIS_CERTS_DIR: "/certs"
     volumes:
       - ./output:/home/health/output
-      - ${REDIS_CERTS_DIR}/${REDIS_CA_CERT}:/certs/${REDIS_CA_CERT}:ro
+      - ${CA_PATH}:/certs/${REDIS_CA_CERT}:ro
       - ${REDIS_CERTS_DIR}/${REDIS_APP_CERT}:/certs/${REDIS_APP_CERT}:ro
       - ${REDIS_CERTS_DIR}/${REDIS_APP_KEY}:/certs/${REDIS_APP_KEY}:ro
     restart: no
