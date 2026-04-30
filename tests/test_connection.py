@@ -179,8 +179,8 @@ class TestLoadTlsEnv:
 
     def test_resolves_paths_without_certs_dir(self):
         env = {
-            "REDIS_CLIENT_CERT": "client.crt",
-            "REDIS_CLIENT_KEY": "client.key",
+            "REDIS_APP_CERT": "client.crt",
+            "REDIS_APP_KEY": "client.key",
             "REDIS_CA_CERT": "ca.crt",
         }
         with patch.dict(os.environ, env, clear=True):
@@ -191,8 +191,8 @@ class TestLoadTlsEnv:
     def test_certs_dir_is_prepended(self, tmp_path):
         env = {
             "REDIS_CERTS_DIR": str(tmp_path),
-            "REDIS_CLIENT_CERT": "c.crt",
-            "REDIS_CLIENT_KEY": "c.key",
+            "REDIS_APP_CERT": "c.crt",
+            "REDIS_APP_KEY": "c.key",
             "REDIS_CA_CERT": "ca.crt",
         }
         with patch.dict(os.environ, env, clear=True):
@@ -382,11 +382,11 @@ class TestTLSConfigError:
     def test_error_mentions_both_missing_items(self):
         err = TLSConfigError(
             missing_kwargs=["tls_client_cert", "tls_client_key"],
-            missing_env_vars=["REDIS_CLIENT_CERT", "REDIS_CLIENT_KEY"],
+            missing_env_vars=["REDIS_APP_CERT", "REDIS_APP_KEY"],
         )
         msg = str(err)
         assert "tls_client_cert" in msg
-        assert "REDIS_CLIENT_CERT" in msg
+        assert "REDIS_APP_CERT" in msg
 
     def test_empty_lists_does_not_crash(self):
         err = TLSConfigError(missing_kwargs=[], missing_env_vars=[])
@@ -473,8 +473,8 @@ class TestRedisEnvError:
 
     def test_resolves_paths_as_path_objects(self):
         env = {
-            "REDIS_CLIENT_CERT": "c.crt",
-            "REDIS_CLIENT_KEY": "c.key",
+            "REDIS_APP_CERT": "c.crt",
+            "REDIS_APP_KEY": "c.key",
             "REDIS_CA_CERT": "ca.crt",
         }
         with patch.dict(os.environ, env, clear=True):

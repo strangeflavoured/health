@@ -40,8 +40,8 @@ _ENV_HOST = "REDIS_HOST"
 _ENV_PORT = "REDIS_PORT"
 _ENV_DB = "REDIS_DB"
 _ENV_PASSWORD = "REDIS_PASSWORD"  # noqa: S105
-_ENV_CLIENT_CERT = "REDIS_CLIENT_CERT"
-_ENV_CLIENT_KEY = "REDIS_CLIENT_KEY"
+_ENV_APP_CERT = "REDIS_APP_CERT"
+_ENV_APP_KEY = "REDIS_APP_KEY"
 _ENV_CA_CERT = "REDIS_CA_CERT"
 _ENV_CERTS_DIR = "REDIS_CERTS_DIR"
 
@@ -94,7 +94,7 @@ class TLSConfigError(EnvironmentError):
 
     1. Explicit keyword argument to :func:`redis_connect`.
     2. Corresponding environment variable
-       (``REDIS_CLIENT_CERT``, ``REDIS_CLIENT_KEY``, ``REDIS_CA_CERT``).
+       (``REDIS_APP_CERT``, ``REDIS_CLIENT_KEY``, ``REDIS_CA_CERT``).
 
     Args:
         missing_kwargs: Keyword argument names that were not supplied.
@@ -104,7 +104,7 @@ class TLSConfigError(EnvironmentError):
 
         raise TLSConfigError(
             missing_kwargs=["tls_client_cert"],
-            missing_env_vars=["REDIS_CLIENT_CERT"],
+            missing_env_vars=["REDIS_APP_CERT"],
         )
 
     """
@@ -170,8 +170,8 @@ class _TlsEnv:
     validating the mTLS pairing rule before use.
 
     Attributes:
-        tls_client_cert: Value of ``REDIS_CLIENT_CERT``, or ``None``.
-        tls_client_key: Value of ``REDIS_CLIENT_KEY``, or ``None``.
+        tls_client_cert: Value of ``REDIS_APP_CERT``, or ``None``.
+        tls_client_key: Value of ``REDIS_APP_KEY``, or ``None``.
         tls_ca_cert: Value of ``REDIS_CA_CERT``, or ``None``.
 
     Example::
@@ -241,8 +241,8 @@ def _load_tls_env() -> _TlsEnv:
 
     """
     certs_path = os.getenv(_ENV_CERTS_DIR)
-    tls_client_cert = os.getenv(_ENV_CLIENT_CERT)
-    tls_client_key = os.getenv(_ENV_CLIENT_KEY)
+    tls_client_cert = os.getenv(_ENV_APP_CERT)
+    tls_client_key = os.getenv(_ENV_APP_KEY)
     tls_ca_cert = os.getenv(_ENV_CA_CERT)
 
     path = Path(certs_path).expanduser() if certs_path else Path()
@@ -343,10 +343,10 @@ def _resolve_tls_paths(
         missing_env_vars: list[str] = []
         if not cert_present:
             missing_kwargs.append("tls_client_cert")
-            missing_env_vars.append(_ENV_CLIENT_CERT)
+            missing_env_vars.append(_ENV_APP_CERT)
         if not key_present:
             missing_kwargs.append("tls_client_key")
-            missing_env_vars.append(_ENV_CLIENT_KEY)
+            missing_env_vars.append(_ENV_APP_CERT)
         raise TLSConfigError(
             missing_kwargs=missing_kwargs,
             missing_env_vars=missing_env_vars,
@@ -374,9 +374,9 @@ def _build_tls_context(
 
     Args:
         tls_client_cert: Client certificate path or ``None`` (env fallback:
-            ``REDIS_CLIENT_CERT``).
+            ``REDIS_APP_CERT``).
         tls_client_key: Client private-key path or ``None`` (env fallback:
-            ``REDIS_CLIENT_KEY``).
+            ``REDIS_APP_KEY``).
         tls_ca_cert: CA bundle path or ``None`` (env fallback:
             ``REDIS_CA_CERT``; system store used when absent).
         tls_env: TLS paths loaded from environment variables.
@@ -509,7 +509,7 @@ def redis_connect(
     Each ``tls_*`` path is resolved in this order:
 
     1. Explicit keyword argument.
-    2. Corresponding env var (``REDIS_CLIENT_CERT``, ``REDIS_CLIENT_KEY``,
+    2. Corresponding env var (``REDIS_APP_CERT``, ``REDIS_APP_KEY``,
        ``REDIS_CA_CERT``).
     3. ``None`` — valid only for ``tls_ca_cert`` (system CA store is used).
 
@@ -522,9 +522,9 @@ def redis_connect(
         tls: Wrap the connection in TLS.  Also implicitly ``True`` when
             *url* starts with ``rediss://``.
         tls_client_cert: Path to PEM client certificate (mTLS only).
-            Falls back to ``REDIS_CLIENT_CERT`` env var.
+            Falls back to ``REDIS_APP_CERT`` env var.
         tls_client_key: Path to PEM client private key (mTLS only).
-            Falls back to ``REDIS_CLIENT_KEY`` env var.
+            Falls back to ``REDIS_APP_KEY`` env var.
         tls_ca_cert: Path to CA bundle.  Falls back to ``REDIS_CA_CERT``
             env var; ``None`` uses the system CA store.
         tls_check_hostname: Enforce SNI hostname verification.
