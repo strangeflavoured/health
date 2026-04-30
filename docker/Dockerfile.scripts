@@ -18,6 +18,7 @@ RUN pip install --user --require-hashes -r requirements.txt
 COPY --chown=health:health ./src ./src
 COPY --chown=health:health ./data ./data
 COPY --chown=health:health ./scripts/import_to_redis.py .
+COPY --chown=health:health ./scripts/setup_logger.py .
 
 ENTRYPOINT ["wait-for-it", "redis:6380", "--", "python3.12"]
 CMD ["import_to_redis.py"]
