@@ -26,9 +26,11 @@ services:
         --maxmemory 900mb
         --maxmemory-policy allkeys-lfu
         --loglevel notice
+      REDIS_KEY_PASSPHRASE: ${KEY_PASSPHRASE_INFRA}
+      REDIS_SERVER_KEY: ${REDIS_SERVER_KEY}
       REDIS_CA_CERT: ${REDIS_CA_CERT}
-      REDIS_CLIENT_CERT: ${REDIS_HEALTHCHECK_CERT}
-      REDIS_CLIENT_KEY: ${REDIS_HEALTHCHECK_KEY}
+      REDIS_HEALTHCHECK_CERT: ${REDIS_HEALTHCHECK_CERT}
+      REDIS_HEALTHCHECK_KEY: ${REDIS_HEALTHCHECK_KEY}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     restart: unless-stopped
     cap_drop:
@@ -37,6 +39,8 @@ services:
       - no-new-privileges:true
       - seccomp:docker/seccomp-redis.json
       - apparmor:docker-default
+    tmpfs:
+      - /run/secrets:size=1m,mode=0700,uid=1000
     deploy:
       resources:
         limits:
