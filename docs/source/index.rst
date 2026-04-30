@@ -11,7 +11,6 @@ HealthAnalyser Documentation
    :hidden:
    :caption: Notes:
 
-   Setting up TLS <setup-tls>
    Using Redis & Docker <docker-redis>
    Dev tools <dev-tools>
 
