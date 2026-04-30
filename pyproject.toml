@@ -92,7 +92,7 @@ requirements_files = [
     "src/importer/requirements.txt",
 ]
 requirements_files_dev = ["requirements-dev.txt"]
-extend_exclude = ["docs"]
+extend_exclude = ["scripts"]
 known_first_party = ["importer"]
 # deptry can't handle current requirements structure and would flag deps
 # imported in requirements.txt with "-r some/requirements.txt" as transitive.
