@@ -114,6 +114,8 @@ services:
       - /run/secrets:ro
     volumes:
       - ./output:/home/health/output
+      - ./data:/home/health/data
+      - ./data/export.zip:/home/health/data/export.zip:ro
       - ${SECRETS_DIR}/app_password:/run/secrets/app_password:ro
       - ${CA_PATH}:/run/secrets/ca.pem:ro
       - ${REDIS_CERTS_DIR}/${REDIS_APP_CERT}:/run/secrets/app.pem:ro
