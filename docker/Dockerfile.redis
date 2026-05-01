@@ -11,7 +11,7 @@ WORKDIR /home/health/
 
 COPY --chown=health:health --chmod=700 ./docker/redis-entrypoint.sh /redis-entrypoint.sh
 
-VOLUME ["/data", "/certs", "/run/secrets"]
+VOLUME ["/data", "/run/secrets_rw", "/run/secrets"]
 
 CMD ["/redis-entrypoint.sh"]
 
@@ -19,10 +19,10 @@ HEALTHCHECK --interval=5m --timeout=5s --retries=5 --start-period=10s \
     CMD redis-cli \
         -p 6380 \
         --tls \
-        --cacert /certs/$REDIS_CA_CERT \
-        --cert   /certs/$REDIS_HEALTHCHECK_CERT \
-        --key    /certs/$REDIS_HEALTHCHECK_KEY \
+        --cacert /run/secrets/ca.pem \
+        --cert   /run/secrets/healthcheck.pem \
+        --key    /run/secrets/healthcheck.key \
         --user healthcheck \
-        -a "$HEALTHCHECK_PASSWORD" \
+        -a "$(cat /run/secrets/healthcheck_password)" \
         --no-auth-warning \
         ping 2>/dev/null | grep -q PONG
