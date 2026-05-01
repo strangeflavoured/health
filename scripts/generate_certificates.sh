@@ -100,179 +100,58 @@ verify_chain() {
   echo "Chain verified: $label"
 }
 
-# Convert plaintext PKCS#8 (mkcert output) to encrypted PKCS#8
-encrypt_key() {
-  local plain_key="$1"
-  local encrypted_key="$2"
-  local passphrase="$3"
-  openssl pkcs8 -topk8 \
-    -v2 aes-256-cbc \
-    -v2prf hmacWithSHA512 \
-    -iter 600000 \
-    -in "$plain_key" \
-    -out "$encrypted_key" \
-    -passout "pass:${passphrase}"
-  chmod 600 "$encrypted_key"
-  # Overwrite file contents before unlinking
-  shred -u "$plain_key"
-}
-
-# Prompt for a passphrase with confirmation, storing result in the
-# variable varname. Usage: prompt_passphrase "label" VARNAME
-prompt_passphrase() {
-  local label="$1"
-  local varname="$2"
-  local pass confirm
-  read -r -s -p "Enter ${label} passphrase: " pass
-  echo
-  read -r -s -p "Confirm ${label} passphrase: " confirm
-  echo
-  if [[ "$pass" != "$confirm" ]]; then
-    echo "Error: ${label} passphrases do not match" >&2
-    exit 1
-  fi
-  # Assign to the caller's named variable
-  printf -v "$varname" '%s' "$pass"
-}
-
-# Verify a passphrase decrypts an existing key — catches mismatches
-# before any new keys are generated
-verify_passphrase() {
-  local key="$1"
-  local passphrase="$2"
-  if ! openssl pkey -in "$key" -passin "pass:${passphrase}" -noout 2>/dev/null; then
-    echo "Error: passphrase does not match existing key '$key'" >&2
-    echo "To rotate the passphrase, delete the affected .key files and re-run." >&2
-    exit 1
-  fi
-}
-
 # Generate a client certificate and key.
-# Encrypted with the supplied passphrase, or unencrypted if passphrase is empty.
-# Usage: gen_client_cert <cn> <cert_path> <key_path> <passphrase>
-#
-# Passing an empty passphrase produces an unencrypted key — used only for
-# the healthcheck cert where redis-cli cannot supply a passphrase at runtime.
+# Usage: gen_client_cert <cn> <cert_path> <key_path>
 gen_client_cert() {
   local cn="$1"
   local cert="$2"
   local key="$3"
-  local passphrase="$4"
-  local plain_key="${key%.key}-plain.key"
-
-  if [[ -f "$cert" ]] && cert_valid "$cert"; then
-    if [[ -n "$passphrase" && -f "$key" ]]; then
-      verify_passphrase "$key" "$passphrase"
-    fi
-    return 0
-  fi
 
   [[ -f "$cert" ]] && echo "Certificate for '${cn}' expired or expiring soon, regenerating..."
-  PLAIN_KEYS+=("$plain_key")
-  mkcert -ecdsa -client -key-file "$plain_key" -cert-file "$cert" "$cn"
-
-  if [[ -n "$passphrase" ]]; then
-    encrypt_key "$plain_key" "$key" "$passphrase"
-  else
-    # Intentionally unencrypted — caller is responsible for ensuring this
-    # is only used for minimal-privilege certs (e.g. healthcheck)
-    mv "$plain_key" "$key"
-    chmod 600 "$key"
-  fi
+  mkcert -ecdsa -client -key-file "$key" -cert-file "$cert" "$cn"
+  chmod 600 "$key"
 
   verify_chain "$cert" "client certificate (${cn})"
 }
 
 # ---------------------------------------------------------------------------
-# Cleanup trap: shred any plaintext keys if the script exits unexpectedly
-# Registered before any key files are created
-# ---------------------------------------------------------------------------
-PLAIN_KEYS=()
-
-cleanup() {
-  for f in "${PLAIN_KEYS[@]+"${PLAIN_KEYS[@]}"}"; do
-    [[ -f "$f" ]] && shred -u "$f"
-  done
-}
-trap cleanup EXIT
-
-# ---------------------------------------------------------------------------
 # INFRA MODE
 # Generates: server cert, redisinsight client cert, healthcheck client cert
-# All encrypted with the infrastructure passphrase (except healthcheck)
 # ---------------------------------------------------------------------------
 if [[ "$MODE" == "infra" ]]; then
 
-  # Collect infrastructure passphrase
-  # Shared by Redis server and RedisInsight — must match the key_passphrase
-  # Swarm secret. Only prompted when at least one cert needs action.
-  INFRA_KEYS=("$OUT_DIR/redis.key" "$OUT_DIR/redisinsight.key")
-  NEED_INFRA_PASSPHRASE=false
-
-  for key in "${INFRA_KEYS[@]}"; do
-    [[ -f "$key" ]] && NEED_INFRA_PASSPHRASE=true && break
-  done
-
-  if [[ ! -f "$OUT_DIR/redis.pem" ]] || ! cert_valid "$OUT_DIR/redis.pem" || \
-     [[ ! -f "$OUT_DIR/redisinsight-cert.pem" ]] || ! cert_valid "$OUT_DIR/redisinsight-cert.pem" || \
-     [[ ! -f "$OUT_DIR/healthcheck-cert.pem" ]] || ! cert_valid "$OUT_DIR/healthcheck-cert.pem"; then
-    NEED_INFRA_PASSPHRASE=true
-  fi
-
-  INFRA_PASSPHRASE=""
-  if [[ "$NEED_INFRA_PASSPHRASE" == true ]]; then
-    echo "Infrastructure passphrase — shared by Redis server and RedisInsight."
-    echo "This passphrase must match the key_passphrase Swarm secret."
-    prompt_passphrase "infrastructure" INFRA_PASSPHRASE
-
-    # Validate against any existing infra keys before generating anything new
-    for key in "${INFRA_KEYS[@]}"; do
-      [[ -f "$key" ]] && verify_passphrase "$key" "$INFRA_PASSPHRASE"
-    done
-  fi
-
-  # Server certificate — encrypted with infra passphrase
+  # Server certificate
   if [[ ! -f "$OUT_DIR/redis.pem" ]] || ! cert_valid "$OUT_DIR/redis.pem"; then
     [[ -f "$OUT_DIR/redis.pem" ]] && echo "Server certificate expired or expiring soon, regenerating..."
-    PLAIN_KEYS+=("$OUT_DIR/redis-plain.key")
-    mkcert -ecdsa -key-file "$OUT_DIR/redis-plain.key" -cert-file "$OUT_DIR/redis.pem" "${SERVER_SANS[@]}"
-    encrypt_key "$OUT_DIR/redis-plain.key" "$OUT_DIR/redis.key" "$INFRA_PASSPHRASE"
+    mkcert -ecdsa -key-file "$OUT_DIR/redis.key" -cert-file "$OUT_DIR/redis.pem" "${SERVER_SANS[@]}"
     echo "Server SANs: ${SERVER_SANS[*]}"
     verify_chain "$OUT_DIR/redis.pem" "server certificate"
   fi
 
-  # RedisInsight client certificate — encrypted with infra passphrase
+  # RedisInsight client certificate
   gen_client_cert \
     "redisinsight" \
     "$OUT_DIR/redisinsight-cert.pem" \
-    "$OUT_DIR/redisinsight.key" \
-    "$INFRA_PASSPHRASE"
+    "$OUT_DIR/redisinsight.key"
 
-  # Healthcheck client certificate — intentionally unencrypted
-  # redis-cli has no mechanism to supply a passphrase at runtime
+  # Healthcheck client certificate
   gen_client_cert \
     "healthcheck" \
     "$OUT_DIR/healthcheck-cert.pem" \
-    "$OUT_DIR/healthcheck.key" \
-    ""
+    "$OUT_DIR/healthcheck.key"
 
 # ---------------------------------------------------------------------------
 # CLIENT MODE
-# Generates a single named client certificate encrypted with the client's
-# own passphrase, independent of the infrastructure passphrase
+# Generates a single named client certificate
 # ---------------------------------------------------------------------------
 elif [[ "$MODE" == "client" ]]; then
 
   CLIENT_CERT="$OUT_DIR/${CLIENT_CN_SAFE}-cert.pem"
   CLIENT_KEY="$OUT_DIR/${CLIENT_CN_SAFE}.key"
-  CLIENT_PASSPHRASE=""
-
-  echo "Client passphrase for '${CLIENT_CN_SAFE}' — managed independently by this user."
-  prompt_passphrase "client (${CLIENT_CN_SAFE})" CLIENT_PASSPHRASE
 
   gen_client_cert \
     "$CLIENT_CN_SAFE" \
     "$CLIENT_CERT" \
-    "$CLIENT_KEY" \
-    "$CLIENT_PASSPHRASE"
+    "$CLIENT_KEY"
+
 fi
