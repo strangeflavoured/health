@@ -90,6 +90,9 @@ services:
     tmpfs:
       - /run/secrets:ro
     restart: no
+    depends_on:
+      redis:
+        condition: service_healthy
 
   test-runner:
     container_name: health-test-suite
