@@ -11,8 +11,6 @@ WORKDIR /home/health/
 
 COPY --chown=health:health --chmod=700 ./docker/redis-entrypoint.sh /redis-entrypoint.sh
 
-VOLUME ["/data", "/run/secrets_rw", "/run/secrets"]
-
 CMD ["/redis-entrypoint.sh"]
 
 HEALTHCHECK --interval=1m --timeout=5s --retries=5 --start-period=60s --start-interval=5s \
