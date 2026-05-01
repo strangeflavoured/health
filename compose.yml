@@ -63,6 +63,10 @@ services:
     tmpfs:
       - /run/secrets:ro
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       redis:
         condition: service_healthy
