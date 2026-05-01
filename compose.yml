@@ -79,7 +79,7 @@ services:
     environment:
       REDIS_HOST: "redis"
       REDIS_CERTS_DIR: "/run/secrets"
-      REDIS_PORT: $REDIS_PORT
+      REDIS_PORT: "6380"
       REDIS_DB: $REDIS_DB
     volumes:
       - ./output:/home/health/output
