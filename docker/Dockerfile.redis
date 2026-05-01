@@ -15,7 +15,7 @@ VOLUME ["/data", "/run/secrets_rw", "/run/secrets"]
 
 CMD ["/redis-entrypoint.sh"]
 
-HEALTHCHECK --interval=5m --timeout=5s --retries=5 --start-period=10s \
+HEALTHCHECK --interval=1m --timeout=5s --retries=5 --start-period=60s --start-interval=5s \
     CMD redis-cli \
         -p 6380 \
         --tls \
