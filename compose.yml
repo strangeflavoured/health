@@ -1,11 +1,47 @@
 services:
+  docs-compiler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.docs
+    container_name: health-docs
+    restart: no
+    volumes:
+      - ./docs/build:/home/health/docs/build
+
   redis:
     build:
       context: .
       dockerfile: docker/Dockerfile.redis
+    cap_drop:
+      - ALL
     container_name: health-redis
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"      # max. 1 core
+          memory: 1G        # hard limit
+        reservations: # guaranteed
+          cpus: "0.10"
+          memory: 256M
+    environment:
+      REDIS_ARGS: >-
+        --tls-port 6380
+        --port 0
+        --tls-auth-clients yes
+        --appendonly yes
+        --maxmemory 900mb
+        --maxmemory-policy allkeys-lfu
+        --loglevel notice
     ports:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:?REDIS_PORT must be set}:6380"
+    restart: unless-stopped
+    security_opt:
+      - apparmor:docker-default
+      - no-new-privileges:true
+      - seccomp:docker/seccomp-redis.json
+    tmpfs:
+      - /run/secrets:ro
+      - /run/secrets_rw:size=1m,mode=0700,uid=1000
     volumes:
       - redis-data:/data
         # passwords and passphrases
@@ -20,53 +56,13 @@ services:
       - ${REDIS_CERTS_DIR}/${REDIS_SERVER_KEY}:/run/secrets/server.key:ro
       - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_CERT}:/run/secrets/healthcheck.pem:ro
       - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_KEY}:/run/secrets/healthcheck.key:ro
-    environment:
-      REDIS_ARGS: >-
-        --tls-port 6380
-        --port 0
-        --tls-auth-clients yes
-        --appendonly yes
-        --maxmemory 900mb
-        --maxmemory-policy allkeys-lfu
-        --loglevel notice
-    restart: unless-stopped
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-      - seccomp:docker/seccomp-redis.json
-      - apparmor:docker-default
-    tmpfs:
-      - /run/secrets_rw:size=1m,mode=0700,uid=1000
-      - /run/secrets:ro
-    deploy:
-      resources:
-        limits:
-          cpus: "0.50"      # max. 1 core
-          memory: 1G        # hard limit
-        reservations:       # guaranteed
-          cpus: "0.10"
-          memory: 256M
 
   redisinsight:
     build:
       context: .
       dockerfile: docker/Dockerfile.redisinsight
-    container_name: health-redisinsight
-    ports:
-      - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:?REDIS_INSIGHT_PORT must be set}:5540"
-    volumes:
-      - redisinsight-data:/data
-      - ${CA_PATH}:/run/secrets/ca.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_CERT}:/run/secrets/redisinsight.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_KEY}:/run/secrets/redisinsight.key:ro
-    tmpfs:
-      - /run/secrets:ro
-    restart: unless-stopped
     cap_drop:
       - ALL
-    security_opt:
-      - no-new-privileges:true
     depends_on:
       redis:
         condition: service_healthy
@@ -78,26 +74,25 @@ services:
         reservations:
           cpus: "0.05"
           memory: 128M
+    container_name: health-redisinsight
+    ports:
+      - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:?REDIS_INSIGHT_PORT must be set}:5540"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /run/secrets:ro
+    volumes:
+      - redisinsight-data:/data
+      - ${CA_PATH}:/run/secrets/ca.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_CERT}:/run/secrets/redisinsight.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_KEY}:/run/secrets/redisinsight.key:ro
 
   sandbox:
-    container_name: health-sandbox
     build:
       context: .
       dockerfile: docker/Dockerfile.scripts
-    environment:
-      REDIS_HOST: "redis"
-      REDIS_CERTS_DIR: "/run/secrets"
-      REDIS_PORT: "6380"
-      REDIS_DB: $REDIS_DB
-    volumes:
-      - ./output:/home/health/output
-      - ${SECRETS_DIR}/app_password:/run/secrets/app_password:ro
-      - ${CA_PATH}:/run/secrets/ca.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_APP_CERT}:/run/secrets/app.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_APP_KEY}:/run/secrets/app.key:ro
-    tmpfs:
-      - /run/secrets:ro
-    restart: no
+    container_name: health-sandbox
     depends_on:
       redis:
         condition: service_healthy
@@ -109,21 +104,26 @@ services:
         reservations:
           cpus: "0.10"
           memory: 64M
+    environment:
+      REDIS_HOST: "redis"
+      REDIS_CERTS_DIR: "/run/secrets"
+      REDIS_PORT: "6380"
+      REDIS_DB: $REDIS_DB
+    restart: no
+    tmpfs:
+      - /run/secrets:ro
+    volumes:
+      - ./output:/home/health/output
+      - ${SECRETS_DIR}/app_password:/run/secrets/app_password:ro
+      - ${CA_PATH}:/run/secrets/ca.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_APP_CERT}:/run/secrets/app.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_APP_KEY}:/run/secrets/app.key:ro
 
   test-runner:
-    container_name: health-test-suite
     build:
       context: .
       dockerfile: docker/Dockerfile.tests
-    restart: no
-
-  docs-compiler:
-    container_name: health-docs
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.docs
-    volumes:
-      - ./docs/build:/home/health/docs/build
+    container_name: health-test-suite
     restart: no
 
 volumes:
