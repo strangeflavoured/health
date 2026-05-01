@@ -11,7 +11,7 @@ echo "Decrypting Redis server key..."
 openssl pkcs8 \
     -in "$ENCRYPTED_KEY" \
     -out "$DECRYPTED_KEY" \
-    -passin "file:$SECRETS/key_passphrase"
+    -passin "file:$SECRETS/key_passphrase_infra"
 chmod 600 "$DECRYPTED_KEY"
 
 # read secrets
@@ -33,13 +33,17 @@ chmod 600 "$ACL_FILE"
 unset ADMIN_PASSWORD APP_PASSWORD INSIGHT_PASSWORD HEALTHCHECK_PASSWORD
 
 
-REDIS_ARGS="$REDIS_ARGS
+export REDIS_ARGS="--tls-port 6380
+  --port 0
+  --tls-auth-clients yes
+  --tls-ca-cert-file $SECRETS/ca.pem
   --tls-cert-file $SECRETS/server.pem
   --tls-key-file $DECRYPTED_KEY
-  --tls-ca-cert-file $SECRETS/ca.pem
+  --appendonly yes
+  --maxmemory 900mb
+  --maxmemory-policy allkeys-lfu
+  --loglevel notice
   --aclfile $ACL_FILE"
-
-export REDIS_ARGS
 
 # Hand off to the original entrypoint
 exec /entrypoint.sh

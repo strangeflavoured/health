@@ -23,15 +23,6 @@ services:
         reservations: # guaranteed
           cpus: "0.10"
           memory: 256M
-    environment:
-      REDIS_ARGS: >-
-        --tls-port 6380
-        --port 0
-        --tls-auth-clients yes
-        --appendonly yes
-        --maxmemory 900mb
-        --maxmemory-policy allkeys-lfu
-        --loglevel notice
     ports:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:?REDIS_PORT must be set}:6380"
     restart: unless-stopped
