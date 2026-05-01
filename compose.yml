@@ -34,18 +34,18 @@ services:
       - /run/secrets_rw:size=1m,mode=0700,uid=1000
     volumes:
       - redis-data:/data
-        # passwords and passphrases
+        # passwords
       - ${SECRETS_DIR}/admin_password:/run/secrets/admin_password:ro
       - ${SECRETS_DIR}/app_password:/run/secrets/app_password:ro
       - ${SECRETS_DIR}/insight_password:/run/secrets/insight_password:ro
       - ${SECRETS_DIR}/healthcheck_password:/run/secrets/healthcheck_password:ro
-      - ${SECRETS_DIR}/key_passphrase_infra:/run/secrets/key_passphrase:ro
-        # mTLS certificates and keys
+        # mTLS keys
+      - ${SECRETS_DIR}/server.key:/run/secrets/server.key:ro
+      - ${SECRETS_DIR}/healthcheck.key:/run/secrets/healthcheck.key:ro
+        # mTLS certificates
       - ${CA_PATH}:/run/secrets/ca.pem:ro
       - ${REDIS_CERTS_DIR}/${REDIS_SERVER_CERT}:/run/secrets/server.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_SERVER_KEY}:/run/secrets/server.key:ro
       - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_CERT}:/run/secrets/healthcheck.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_KEY}:/run/secrets/healthcheck.key:ro
 
   redisinsight:
     build:
@@ -74,7 +74,7 @@ services:
       - redisinsight-data:/data
       - ${CA_PATH}:/run/secrets/ca.pem:ro
       - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_CERT}:/run/secrets/redisinsight.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_KEY}:/run/secrets/redisinsight.key:ro
+      - ${SECRETS_DIR}/redisinsight.key:/run/secrets/redisinsight.key:ro
 
   sandbox:
     build:
@@ -105,7 +105,6 @@ services:
       - ${SECRETS_DIR}/app_password:/run/secrets/app_password:ro
       - ${CA_PATH}:/run/secrets/ca.pem:ro
       - ${REDIS_CERTS_DIR}/${REDIS_APP_CERT}:/run/secrets/app.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_APP_KEY}:/run/secrets/app.key:ro
 
   test-runner:
     build:
