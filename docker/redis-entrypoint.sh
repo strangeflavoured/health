@@ -3,17 +3,6 @@ set -e
 
 SECRETS="/run/secrets"
 
-ENCRYPTED_KEY="${SECRETS}/server.key"
-DECRYPTED_KEY="/run/secrets_rw/redis.key"
-
-# /run/secrets is a tmpfs mount — never touches disk
-echo "Decrypting Redis server key..."
-openssl pkcs8 \
-    -in "$ENCRYPTED_KEY" \
-    -out "$DECRYPTED_KEY" \
-    -passin "file:$SECRETS/key_passphrase_infra"
-chmod 600 "$DECRYPTED_KEY"
-
 # read secrets
 ADMIN_PASSWORD="$(cat $SECRETS/admin_password)"
 APP_PASSWORD="$(cat $SECRETS/app_password)"
@@ -32,13 +21,12 @@ chmod 600 "$ACL_FILE"
 # Unset password variables immediately after use
 unset ADMIN_PASSWORD APP_PASSWORD INSIGHT_PASSWORD HEALTHCHECK_PASSWORD
 
-
 export REDIS_ARGS="--tls-port 6380
   --port 0
   --tls-auth-clients yes
   --tls-ca-cert-file $SECRETS/ca.pem
   --tls-cert-file $SECRETS/server.pem
-  --tls-key-file $DECRYPTED_KEY
+  --tls-key-file $SECRETS/server.key
   --appendonly yes
   --maxmemory 900mb
   --maxmemory-policy allkeys-lfu
