@@ -8,32 +8,27 @@ services:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:?REDIS_PORT must be set}:6380"
     volumes:
       - redis-data:/data
-      - ${CA_PATH}:/certs/${REDIS_CA_CERT}:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_SERVER_CERT}:/certs/${REDIS_SERVER_CERT}:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_SERVER_KEY}:/certs/${REDIS_SERVER_KEY}:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_CERT}:/certs/${REDIS_HEALTHCHECK_CERT}:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_KEY}:/certs/${REDIS_HEALTHCHECK_KEY}:ro
+        # passwords and passphrases
+      - ${SECRETS_DIR}/admin_password:/run/secrets/admin_password:ro
+      - ${SECRETS_DIR}/app_password:/run/secrets/app_password:ro
+      - ${SECRETS_DIR}/insight_password:/run/secrets/insight_password:ro
+      - ${SECRETS_DIR}/healthcheck_password:/run/secrets/healthcheck_password:ro
+      - ${SECRETS_DIR}/key_passphrase_infra:/run/secrets/key_passphrase:ro
+        # mTLS certificates and keys
+      - ${CA_PATH}:/run/secrets/ca.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_SERVER_CERT}:/run/secrets/server.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_SERVER_KEY}:/run/secrets/server.key:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_CERT}:/run/secrets/healthcheck.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_KEY}:/run/secrets/healthcheck.key:ro
     environment:
       REDIS_ARGS: >-
         --tls-port 6380
         --port 0
-        --tls-cert-file /certs/${REDIS_SERVER_CERT}
-        --tls-key-file /certs/${REDIS_SERVER_KEY}
-        --tls-ca-cert-file /certs/${REDIS_CA_CERT}
         --tls-auth-clients yes
         --appendonly yes
         --maxmemory 900mb
         --maxmemory-policy allkeys-lfu
         --loglevel notice
-      REDIS_KEY_PASSPHRASE: ${KEY_PASSPHRASE_INFRA}
-      REDIS_SERVER_KEY: ${REDIS_SERVER_KEY}
-      REDIS_CA_CERT: ${REDIS_CA_CERT}
-      REDIS_HEALTHCHECK_CERT: ${REDIS_HEALTHCHECK_CERT}
-      REDIS_HEALTHCHECK_KEY: ${REDIS_HEALTHCHECK_KEY}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      APP_PASSWORD: ${APP_PASSWORD}
-      INSIGHT_PASSWORD: ${INSIGHT_PASSWORD}
-      HEALTHCHECK_PASSWORD: ${HEALTHCHECK_PASSWORD}
     restart: unless-stopped
     cap_drop:
       - ALL
@@ -42,7 +37,8 @@ services:
       - seccomp:docker/seccomp-redis.json
       - apparmor:docker-default
     tmpfs:
-      - /run/secrets:size=1m,mode=0700,uid=1000
+      - /run/secrets_rw:size=1m,mode=0700,uid=1000
+      - /run/secrets:ro
     deploy:
       resources:
         limits:
@@ -61,9 +57,11 @@ services:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:?REDIS_INSIGHT_PORT must be set}:5540"
     volumes:
       - redisinsight-data:/data
-      - ${CA_PATH}:/certs/${REDIS_CA_CERT}:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_CERT}:/certs/${REDIS_REDISINSIGHT_CERT}:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_KEY}:/certs/${REDIS_REDISINSIGHT_KEY}:ro
+      - ${CA_PATH}:/run/secrets/ca.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_CERT}:/run/secrets/redisinsight.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_KEY}:/run/secrets/redisinsight.key:ro
+    tmpfs:
+      - /run/secrets:ro
     restart: unless-stopped
     depends_on:
       redis:
@@ -74,16 +72,19 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.scripts
-    env_file:
-      - .env
     environment:
       REDIS_HOST: "redis"
-      REDIS_CERTS_DIR: "/certs"
+      REDIS_CERTS_DIR: "/run/secrets"
+      REDIS_PORT: $REDIS_PORT
+      REDIS_DB: $REDIS_DB
     volumes:
       - ./output:/home/health/output
-      - ${CA_PATH}:/certs/${REDIS_CA_CERT}:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_APP_CERT}:/certs/${REDIS_APP_CERT}:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_APP_KEY}:/certs/${REDIS_APP_KEY}:ro
+      - ${SECRETS_DIR}/app_password:/run/secrets/app_password:ro
+      - ${CA_PATH}:/run/secrets/ca.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_APP_CERT}:/run/secrets/app.pem:ro
+      - ${REDIS_CERTS_DIR}/${REDIS_APP_KEY}:/run/secrets/app.key:ro
+    tmpfs:
+      - /run/secrets:ro
     restart: no
 
   test-runner:

@@ -3,4 +3,4 @@ FROM redis/redisinsight:3.4.2@sha256:85562d67a9128ac7f764bb3d1ac909fcf77708c7c8f
 
 EXPOSE 5540
 
-VOLUME ["/data", "/certs"]
+VOLUME ["/data", "/run/secrets"]
