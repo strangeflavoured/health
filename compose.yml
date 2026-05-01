@@ -40,7 +40,6 @@ services:
       - no-new-privileges:true
       - seccomp:docker/seccomp-redis.json
     tmpfs:
-      - /run/secrets:ro
       - /run/secrets_rw:size=1m,mode=0700,uid=1000
     volumes:
       - redis-data:/data
@@ -80,8 +79,6 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    tmpfs:
-      - /run/secrets:ro
     volumes:
       - redisinsight-data:/data
       - ${CA_PATH}:/run/secrets/ca.pem:ro
@@ -110,8 +107,6 @@ services:
       REDIS_PORT: "6380"
       REDIS_DB: $REDIS_DB
     restart: no
-    tmpfs:
-      - /run/secrets:ro
     volumes:
       - ./output:/home/health/output
       - ./data:/home/health/data
