@@ -5,14 +5,14 @@ import logging
 import redis
 from setup_logger import configure_logging
 
-from src.connection import redis_connect
+from src.connection import docker_redis_connect
 from src.importer import HealthDataImporter
 
 if __name__ == "__main__":
     configure_logging(__file__)
     logger = logging.getLogger(__name__)
 
-    r = redis_connect(tls=True)
+    r = docker_redis_connect()
 
     try:
         r.ping()
