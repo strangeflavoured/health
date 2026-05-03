@@ -3,7 +3,7 @@
 import logging
 
 import redis
-from setup_logger import configure_logging
+from setup_logger import configure_logging, log_peak_memory
 
 from src.connection import docker_redis_connect
 from src.importer import HealthDataImporter
@@ -24,6 +24,7 @@ if __name__ == "__main__":
     try:
         HealthDataImporter(connection=r).etl(write_feather=True)
         logger.info("Successfully imported Apple Health Export Data.")
+        log_peak_memory(logger)
     except Exception as e:  # noqa: BLE001
         logger.error(e)
         if isinstance(e, ExceptionGroup):
