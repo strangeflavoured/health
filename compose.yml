@@ -103,7 +103,7 @@ services:
       resources:
         limits:
           cpus: "1.0"
-          memory: 1024M
+          memory: 4G
         reservations:
           cpus: "0.10"
           memory: 64M
