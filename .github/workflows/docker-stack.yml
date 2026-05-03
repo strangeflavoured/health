@@ -12,7 +12,7 @@ jobs:
   stack:
     name: Build and run full docker stack
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
 
     env:
       # Required by compose.yml
