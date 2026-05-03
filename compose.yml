@@ -23,6 +23,7 @@ services:
         reservations: # guaranteed
           cpus: "0.10"
           memory: 256M
+    mem_swappiness: 0
     ports:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:?REDIS_PORT must be set}:6380"
     restart: unless-stopped
@@ -65,6 +66,7 @@ services:
           cpus: "0.05"
           memory: 128M
     container_name: health-redisinsight
+    mem_swappiness: 0
     ports:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:?REDIS_INSIGHT_PORT must be set}:5540"
     restart: unless-stopped
@@ -97,6 +99,7 @@ services:
       REDIS_CERTS_DIR: "/run/secrets"
       REDIS_PORT: "6380"
       REDIS_DB: $REDIS_DB
+    mem_swappiness: 0
     restart: no
     volumes:
       - ./output:/home/health/output
