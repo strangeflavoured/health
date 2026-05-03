@@ -20,4 +20,3 @@ COPY --chown=health:health ./scripts/import_to_redis.py .
 COPY --chown=health:health ./scripts/setup_logger.py .
 
 ENTRYPOINT ["python3.12"]
-CMD ["import_to_redis.py"]
