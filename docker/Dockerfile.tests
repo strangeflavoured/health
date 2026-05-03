@@ -11,8 +11,9 @@ WORKDIR /home/health/
 
 # Install requirements
 COPY --chown=health:health ./tests/requirements.txt .
+COPY --chown=health:health ./pip-requirements.txt .
 ENV PATH="/home/health/.local/bin:$PATH"
-RUN pip install --user --upgrade pip
+RUN pip install --user --require-hashes -r pip-requirements.txt
 RUN pip install --user --require-hashes -r requirements.txt
 
 COPY --chown=health:health ./src ./src
