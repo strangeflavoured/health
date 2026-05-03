@@ -13,6 +13,7 @@ HealthAnalyser Documentation
 
    Using Redis & Docker <docker-redis>
    Dev tools <dev-tools>
+   Pass secrets <pass-secrets>
 
 .. toctree::
    :hidden:
