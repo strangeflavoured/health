@@ -14,7 +14,7 @@ COPY --chown=health:health --chmod=700 ./docker/redis-entrypoint.sh /redis-entry
 CMD ["/entrypoint.sh"]
 
 HEALTHCHECK --interval=1m --timeout=5s --retries=5 --start-period=60s --start-interval=5s \
-    CMD redis-cli \
+    CMD sh -c 'output=$(redis-cli \
         -p 6380 \
         --tls \
         --cacert /run/secrets/ca.pem \
@@ -23,4 +23,6 @@ HEALTHCHECK --interval=1m --timeout=5s --retries=5 --start-period=60s --start-in
         --user healthcheck \
         -a "$(cat /run/secrets/healthcheck_password)" \
         --no-auth-warning \
-        ping 2>/dev/null | grep -q PONG
+        ping 2>&1); \
+        echo "$output"; \
+        echo "$output" | grep -q PONG'
