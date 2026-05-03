@@ -1,0 +1,192 @@
+name: docker-stack
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stack:
+    name: Build and run full docker stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # Required by compose.yml
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: "6380"
+      REDIS_INSIGHT_PORT: "5540"
+      REDIS_DB: "0"
+
+      # Secrets injected from the repo's GH Actions secrets.
+      REDIS_CERT_CA:            ${{ secrets.REDIS_CERT_CA }}
+      REDIS_CERT_SERVER:        ${{ secrets.REDIS_CERT_SERVER }}
+      REDIS_CERT_HEALTHCHECK:   ${{ secrets.REDIS_CERT_HEALTHCHECK }}
+      REDIS_CERT_REDISINSIGHT:  ${{ secrets.REDIS_CERT_REDISINSIGHT }}
+      REDIS_CERT_APP:           ${{ secrets.REDIS_CERT_APP }}
+
+      REDIS_KEY_SERVER:         ${{ secrets.REDIS_KEY_SERVER }}
+      REDIS_KEY_HEALTHCHECK:    ${{ secrets.REDIS_KEY_HEALTHCHECK }}
+      REDIS_KEY_REDISINSIGHT:   ${{ secrets.REDIS_KEY_REDISINSIGHT }}
+      REDIS_KEY_APP:            ${{ secrets.REDIS_KEY_APP }}
+
+      REDIS_PASSWORD_ADMIN:        ${{ secrets.REDIS_PASSWORD_ADMIN }}
+      REDIS_PASSWORD_APP:          ${{ secrets.REDIS_PASSWORD_APP }}
+      REDIS_PASSWORD_HEALTHCHECK:  ${{ secrets.REDIS_PASSWORD_HEALTHCHECK }}
+      REDIS_PASSWORD_INSIGHT:      ${{ secrets.REDIS_PASSWORD_INSIGHT }}
+
+      REDIS_HASH_ADMIN:        ${{ secrets.REDIS_HASH_ADMIN }}
+      REDIS_HASH_APP:          ${{ secrets.REDIS_HASH_APP }}
+      REDIS_HASH_HEALTHCHECK:  ${{ secrets.REDIS_HASH_HEALTHCHECK }}
+      REDIS_HASH_INSIGHT:      ${{ secrets.REDIS_HASH_INSIGHT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      # ---- Build images individually so each gets its own gha cache scope.
+      - name: Build redis image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.redis
+          tags: health-redis:ci
+          load: true
+          cache-from: type=gha,scope=redis
+          cache-to: type=gha,scope=redis,mode=max
+
+      - name: Build redisinsight image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.redisinsight
+          tags: health-redisinsight:ci
+          load: true
+          cache-from: type=gha,scope=redisinsight
+          cache-to: type=gha,scope=redisinsight,mode=max
+
+      - name: Build test-runner image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.tests
+          tags: health-test-runner:ci
+          load: true
+          cache-from: type=gha,scope=tests
+          cache-to: type=gha,scope=tests,mode=max
+
+      - name: Build docs-compiler image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.docs
+          tags: health-docs:ci
+          load: true
+          cache-from: type=gha,scope=docs
+          cache-to: type=gha,scope=docs,mode=max
+
+      - name: Build sandbox image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.scripts
+          tags: health-sandbox:ci
+          load: true
+          cache-from: type=gha,scope=scripts
+          cache-to: type=gha,scope=scripts,mode=max
+
+      # ---- Materialize secrets ----
+      - name: Materialize secrets from GH Actions secrets
+        run: |
+          chmod +x scripts/load-ci-secrets.sh
+          ./scripts/load-ci-secrets.sh
+          echo "SECRETS_DIR=/dev/shm/health-secrets-$(id -u)" >> "$GITHUB_ENV"
+
+      # ---- Generate compose override that pins prebuilt images ----
+      - name: Write compose override
+        run: |
+          cat > compose.ci.yml <<'EOF'
+          services:
+            redis:
+              image: health-redis:ci
+              build: !reset null
+            redisinsight:
+              image: health-redisinsight:ci
+              build: !reset null
+            test-runner:
+              image: health-test-runner:ci
+              build: !reset null
+            docs-compiler:
+              image: health-docs:ci
+              build: !reset null
+              # Drop volumes
+              volumes: !reset []
+            sandbox:
+              image: health-sandbox:ci
+              build: !reset null
+              # Drop the data mounts
+              volumes: !reset
+                - ./output:/home/health/output
+          EOF
+          echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
+
+      # ---- Redis + RedisInsight ----
+      - name: Start redis and redisinsight
+        run: docker compose up -d redis redisinsight
+
+      - name: Wait for redis to be healthy
+        run: |
+          for i in {1..60}; do
+            status=$(docker inspect --format='{{.State.Health.Status}}' health-redis 2>/dev/null || echo "missing")
+            echo "[$i/60] redis health: $status"
+            if [[ "$status" == "healthy" ]]; then exit 0; fi
+            if [[ "$status" == "missing" ]]; then
+              echo "Container not found"
+              docker compose ps
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "redis did not become healthy in time"
+          docker compose logs redis
+          docker inspect --format='{{json .State.Health}}' health-redis | jq
+          exit 1
+
+      # ---- Test runner, docs compiler, sandbox ----
+      - name: Run test-runner
+        run: docker compose run --rm test-runner
+
+      - name: Run docs-compiler
+        run: docker compose run --rm docs-compiler
+
+      - name: Run sandbox
+        run: docker compose run --rm sandbox
+
+      # ---- Diagnostics on failure ----
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          echo "::group::redis logs"
+          docker compose logs redis || true
+          echo "::endgroup::"
+          echo "::group::redisinsight logs"
+          docker compose logs redisinsight || true
+          echo "::endgroup::"
+          echo "::group::compose ps"
+          docker compose ps -a || true
+          echo "::endgroup::"
+
+      # ---- Cleanup ----
+      - name: Tear down stack
+        if: always()
+        run: |
+          docker compose down -v --remove-orphans || true
+          rm -rf "${SECRETS_DIR:-}" || true
