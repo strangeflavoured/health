@@ -1,6 +1,7 @@
 .*
 !/.gitignore
 !/.github
+!.env-example
 
 *__pycache__/
 *.zip
