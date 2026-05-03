@@ -29,7 +29,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          pip install --require-hashes -r pip-requirements.txt
           if [ -f docs/requirements.txt ]; then
             pip install -r docs/requirements.txt
           else
