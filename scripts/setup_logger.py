@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+import resource
 from pathlib import Path
 
 
@@ -24,3 +25,9 @@ def configure_logging(script_name: str) -> None:
         force=True,
         format="%(asctime)s %(name)s[%(process)d] %(levelname)s %(message)s",
     )
+
+
+def log_peak_memory(logger: logging.Logger) -> None:
+    """Log peak memory usage."""
+    kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    logger.info("Peak memory: %.1f MB", kb / 1024)
