@@ -117,6 +117,7 @@ services:
     secrets:
       - source: ca.pem
       - source: app.pem
+      - source: app.key
       - source: app_password
     volumes:
       - ./output:/home/health/output
