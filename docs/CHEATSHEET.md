@@ -1,63 +1,69 @@
 ##  Docker/Redis Stack Cheatsheet
-### Container starten
+### Build Container
 ```bash
-docker compose up -d redis redisinsight
+docker compose build [--no-cache] redis redisinsight
 ```
 
-### Containerstatus/-logs
+### Start Container
+Instead of using `docker compose up` use the `compose-wrapper`:
+```bash
+./scripts/compose-wrapper.sh up [-d] redis redisinsight
+```
+This wrapper injects `pass` secrets to docker via the host tmpfs `/dev/shm`.
+To remove all secrets from the tmpfs run
+```bash
+./scripts/compose-wrapper.sh down
+```
+
+### Container status/logs
 ```bash
 docker compose ps
 docker compose logs -f redis
 ```
 
-### Mit Redis-CLI verbinden
+### Connect to Redis-CLI
+With `redis` container running and healthy:
 ```bash
-# read redis environment variables
-source .env
-
-redis-cli \
-  -p ${REDIS_PORT} \
+docker compose exec redis sh -c 'redis-cli \
   --tls \
-  --cacert  ${REDIS_CERTS_DIR}/${REDIS_CA_CERT} \
-  --cert    ${REDIS_CERTS_DIR}/${REDIS_CLIENT_CERT} \
-  --key     ${REDIS_CERTS_DIR}/${REDIS_CLIENT_KEY} \
-  --user admin \
-  -a "$ADMIN_PASSWORD" \
-  --no-auth-warning
+  --cacert /run/secrets/ca.pem \
+  --cert /run/secrets/app.pem \
+  --key /run/secrets/app.key \
+  --user app \
+  -a "$(cat /run/secrets/app_password)" \
+  --no-auth-warning \
+  -p 6380'
 ```
 
-### Ressourcen-Verbrauch überwachen
+### Check resource usage
 ```bash
 docker stats health-redis
 ```
 
-### Healthcheck-Status prüfen
+### Check health
 ```bash
-docker inspect --format='{{.State.Health.Status}}' health-redis
+docker inspect --format='{{json .State.Health}}' $(docker compose ps -q redis) | jq
 ```
 
 ### Container stoppen / entfernen
 ```bash
-docker compose down redis redisinsight          # stoppt Container, Volume bleibt erhalten
-docker compose down -v redis redisinsight       # stoppt Container UND löscht das Volume (Datenverlust!)
+./scripts/compose-wrapper.sh down redis redisinsight          # stoppt Container, Volume bleibt erhalten
+./scripts/compose-wrapper.sh down -v redis redisinsight       # stoppt Container UND löscht das Volume (Datenverlust!)
 ```
 --------------
 ### Backup
 Create a `dump.rdb` via the redis-cli:
 ```bash
-# read redis environment variables
-source .env
-
-redis-cli \
-  -p ${REDIS_PORT} \
+docker compose exec redis sh -c 'redis-cli \
   --tls \
-  --cacert  ${REDIS_CERTS_DIR}/${REDIS_CA_CERT} \
-  --cert    ${REDIS_CERTS_DIR}/${REDIS_CLIENT_CERT} \
-  --key     ${REDIS_CERTS_DIR}/${REDIS_CLIENT_KEY} \
-  --user admin \
-  -a "$ADMIN_PASSWORD" \
+  --cacert /run/secrets/ca.pem \
+  --cert /run/secrets/app.pem \
+  --key /run/secrets/app.key \
+  --user app \
+  -a "$(cat /run/secrets/app_password)" \
   --no-auth-warning \
-  BGSAVE
+  -p 6380 \
+  BGSAVE'
 ```
 Find the mount point via
 ```bash
