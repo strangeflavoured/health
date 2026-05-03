@@ -71,18 +71,16 @@ def parse_apple_health(zip_path: str | Path) -> pd.DataFrame:
         >>> heart_rate["value"].astype(float).mean()
 
     """
+    rows = []
+
     with (
         zipfile.ZipFile(zip_path) as zf,
         zf.open("apple_health_export/export.xml") as f,
     ):
-        tree = ETree.parse(f)
-
-    root = tree.getroot()
-
-    rows = [
-        {col: record.attrib.get(col) for col in _COLUMNS}
-        for record in root.iter("Record")
-    ]
+        for _event, elem in ETree.iterparse(f, events=("end",)):
+            if elem.tag == "Record":
+                rows.append({col: elem.attrib.get(col) for col in _COLUMNS})
+                elem.clear()
 
     df = pd.DataFrame(rows)
 
