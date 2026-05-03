@@ -13,6 +13,9 @@ is_detached() {
 }
 
 write_secrets() {
+  if [[ -d "$SECRETS_DIR" ]]; then
+    rm -rf "$SECRETS_DIR"
+  fi
   mkdir -p "$SECRETS_DIR"
   chmod 700 "$SECRETS_DIR"
   # CERTIFICATES
