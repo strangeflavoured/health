@@ -8,6 +8,15 @@ services:
     volumes:
       - ./docs/build:/home/health/docs/build
 
+  redis-init:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.redis-init
+    restart: no
+    user: root
+    volumes:
+      - redis-data:/data
+
   redis:
     build:
       context: .
@@ -15,6 +24,9 @@ services:
     cap_drop:
       - ALL
     container_name: health-redis
+    depends_on:
+      redis-init:
+        condition: service_completed_successfully
     deploy:
       resources:
         limits:
