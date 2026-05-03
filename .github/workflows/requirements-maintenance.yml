@@ -357,7 +357,7 @@ jobs:
                   # --require-hashes mode doesn't choke on unlocked build-system deps.
                   # Only needed for dev requirements where these appear as transitive deps
                   # of tools like pip-tools itself.
-                  if in_file == "requirements-dev.in":
+                  if in_file in ["requirements-dev.in", "pip-requirements.in"]:
                       cmd.append("--allow-unsafe")
 
                   cmd.append(in_file)
