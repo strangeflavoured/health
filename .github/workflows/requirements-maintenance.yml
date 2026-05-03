@@ -139,7 +139,7 @@ jobs:
 
       - name: Install analysis tools
         run: |
-          pip install --upgrade pip
+          pip install --require-hashes -r pip-requirements.txt
           pip install pip-tools deptry packaging
 
       # ── 2a. Unused dependencies (deptry reads pyproject.toml automatically) ──
@@ -242,7 +242,7 @@ jobs:
         run: |
           python -m venv /tmp/conflict-check-venv
           source /tmp/conflict-check-venv/bin/activate
-          pip install --upgrade pip -q
+          pip install --require-hashes -r pip-requirements.txt -q
 
           CONFLICT=0
           while IFS= read -r IN_FILE; do
@@ -323,7 +323,7 @@ jobs:
           cache: "pip"
 
       - name: Install pip-tools
-        run: pip install --upgrade pip pip-tools
+        run: pip install --require-hashes -r pip-requirements.txt && pip install --update pip-tools
 
       # Compiles group by group in topological order.
       # Within a group all .in files are independent of each other
@@ -382,7 +382,7 @@ jobs:
         run: |
           python -m venv /tmp/verify-venv
           source /tmp/verify-venv/bin/activate
-          pip install --upgrade pip -q
+          pip install --require-hashes -r pip-requirements.txt -q
 
           while IFS= read -r IN_FILE; do
             TXT_FILE="${IN_FILE%.in}.txt"

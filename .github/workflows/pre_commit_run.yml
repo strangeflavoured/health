@@ -90,7 +90,7 @@ jobs:
         if: steps.venv-cache.outputs.cache-hit != 'true'
         run: |
           python -m venv .venv
-          .venv/bin/pip install --upgrade pip -q
+          .venv/bin/pip install --require-hashes -r pip-requirements.txt -q
           .venv/bin/pip install \
             --require-hashes \
             -r src/requirements.txt \
