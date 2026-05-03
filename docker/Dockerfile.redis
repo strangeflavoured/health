@@ -11,7 +11,7 @@ WORKDIR /home/health/
 
 COPY --chown=health:health --chmod=700 ./docker/redis-entrypoint.sh /redis-entrypoint.sh
 
-CMD ["/redis-entrypoint.sh"]
+CMD ["/entrypoint.sh"]
 
 HEALTHCHECK --interval=1m --timeout=5s --retries=5 --start-period=60s --start-interval=5s \
     CMD redis-cli \

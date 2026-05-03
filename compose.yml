@@ -24,29 +24,39 @@ services:
           cpus: "0.10"
           memory: 256M
     mem_swappiness: 0
+    environment:
+      REDIS_ARGS: >-
+        --tls-port 6380
+        --port 0
+        --tls-auth-clients yes
+        --tls-ca-cert-file /run/secrets/ca.pem
+        --tls-cert-file /run/secrets/server.pem
+        --tls-key-file /run/secrets/server.key
+        --appendonly yes
+        --maxmemory 900mb
+        --maxmemory-policy allkeys-lfu
+        --loglevel notice
+        --aclfile /run/secrets/users.acl
     ports:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:?REDIS_PORT must be set}:6380"
     restart: unless-stopped
+    secrets:
+      - source: users.acl
+      - source: ca.pem
+      - source: server.pem
+      - source: server.key
+      - source: healthcheck.pem
+      - source: healthcheck.key
+      - source: admin_password
+      - source: app_password
+      - source: healthcheck_password
+      - source: insight_password
     security_opt:
       - apparmor:docker-default
       - no-new-privileges:true
       - seccomp:docker/seccomp-redis.json
-    tmpfs:
-      - /run/secrets_rw:size=1m,mode=0700,uid=1000
     volumes:
       - redis-data:/data
-        # passwords
-      - ${SECRETS_DIR}/admin_password:/run/secrets/admin_password:ro
-      - ${SECRETS_DIR}/app_password:/run/secrets/app_password:ro
-      - ${SECRETS_DIR}/insight_password:/run/secrets/insight_password:ro
-      - ${SECRETS_DIR}/healthcheck_password:/run/secrets/healthcheck_password:ro
-        # mTLS keys
-      - ${SECRETS_DIR}/server.key:/run/secrets/server.key:ro
-      - ${SECRETS_DIR}/healthcheck.key:/run/secrets/healthcheck.key:ro
-        # mTLS certificates
-      - ${CA_PATH}:/run/secrets/ca.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_SERVER_CERT}:/run/secrets/server.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_HEALTHCHECK_CERT}:/run/secrets/healthcheck.pem:ro
 
   redisinsight:
     build:
@@ -70,13 +80,14 @@ services:
     ports:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:?REDIS_INSIGHT_PORT must be set}:5540"
     restart: unless-stopped
+    secrets:
+      - source: ca.pem
+      - source: redisinsight.pem
+      - source: redisinsight.key
     security_opt:
       - no-new-privileges:true
     volumes:
       - redisinsight-data:/data
-      - ${CA_PATH}:/run/secrets/ca.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_REDISINSIGHT_CERT}:/run/secrets/redisinsight.pem:ro
-      - ${SECRETS_DIR}/redisinsight.key:/run/secrets/redisinsight.key:ro
 
   sandbox:
     build:
@@ -101,13 +112,14 @@ services:
       REDIS_DB: $REDIS_DB
     mem_swappiness: 0
     restart: no
+    secrets:
+      - source: ca.pem
+      - source: app.pem
+      - source: app_password
     volumes:
       - ./output:/home/health/output
       - ./data:/home/health/data
       - ./data/export.zip:/home/health/data/export.zip:ro
-      - ${SECRETS_DIR}/app_password:/run/secrets/app_password:ro
-      - ${CA_PATH}:/run/secrets/ca.pem:ro
-      - ${REDIS_CERTS_DIR}/${REDIS_APP_CERT}:/run/secrets/app.pem:ro
 
   test-runner:
     build:
@@ -115,6 +127,39 @@ services:
       dockerfile: docker/Dockerfile.tests
     container_name: health-test-suite
     restart: no
+
+secrets:
+  users.acl:
+    file: ${SECRETS_DIR}/users.acl
+  # CERTIFICATES
+  ca.pem:
+    file: ${SECRETS_DIR}/ca.pem
+  server.pem:
+    file: ${SECRETS_DIR}/server.pem
+  healthcheck.pem:
+    file: ${SECRETS_DIR}/healthcheck.pem
+  redisinsight.pem:
+    file: ${SECRETS_DIR}/redisinsight.pem
+  app.pem:
+    file: ${SECRETS_DIR}/app.pem
+  # KEYS
+  server.key:
+    file: ${SECRETS_DIR}/server.key
+  healthcheck.key:
+    file: ${SECRETS_DIR}/healthcheck.key
+  redisinsight.key:
+    file: ${SECRETS_DIR}/redisinsight.key
+  app.key:
+    file: ${SECRETS_DIR}/app.key
+  # PASSWORDS
+  admin_password:
+    file: ${SECRETS_DIR}/admin_password
+  healthcheck_password:
+    file: ${SECRETS_DIR}/healthcheck_password
+  insight_password:
+    file: ${SECRETS_DIR}/insight_password
+  app_password:
+    file: ${SECRETS_DIR}/app_password
 
 volumes:
   redis-data:
