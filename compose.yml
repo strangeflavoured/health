@@ -47,6 +47,8 @@ services:
       - source: server.key
       - source: healthcheck.pem
       - source: healthcheck.key
+      - source: app.pem
+      - source: app.key
       - source: admin_password
       - source: app_password
       - source: healthcheck_password
