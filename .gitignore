@@ -24,6 +24,12 @@ venv/
 *.sqlite3
 staticfiles/
 
+# ===== NODE / REACT =====
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+!frontend/.prettierrc
+
 # ===== ENVIRONMENT & SECRETS =====
 .env
 .env.*
