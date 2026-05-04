@@ -130,13 +130,3 @@ Run script without rebuilding sandbox:
 ```bash
 ./scripts/compose-wrapper.sh run --rm sandbox script_to_run.py
 ```
-
-### Install dev requirements
-```bash
-pip install --require-hashes -r requirements-dev.txt
-```
-
-Before a commit, run pre-commit and fix issues:
-```bash
-pre-commit run
-```
