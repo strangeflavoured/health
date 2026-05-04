@@ -54,7 +54,7 @@ jobs:
 
       # ---- Build images individually so each gets its own gha cache scope.
       - name: Build redis image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.redis
@@ -64,7 +64,7 @@ jobs:
           cache-to: type=gha,scope=redis,mode=max
 
       - name: Build redisinsight image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.redisinsight
@@ -74,7 +74,7 @@ jobs:
           cache-to: type=gha,scope=redisinsight,mode=max
 
       - name: Build test-runner image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.tests
@@ -84,7 +84,7 @@ jobs:
           cache-to: type=gha,scope=tests,mode=max
 
       - name: Build docs-compiler image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.docs
@@ -94,7 +94,7 @@ jobs:
           cache-to: type=gha,scope=docs,mode=max
 
       - name: Build sandbox image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.scripts
