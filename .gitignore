@@ -1,7 +1,6 @@
 .*
 !/.gitignore
 !/.github
-!.env-example
 
 *__pycache__/
 *.zip
@@ -13,3 +12,39 @@ output/
 secrets/
 
 *.asc
+
+# ===== PYTHON / DJANGO =====
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# Django
+*.sqlite3
+staticfiles/
+
+# ===== ENVIRONMENT & SECRETS =====
+.env
+.env.*
+!.env.example     # keep the example template
+secrets/          # your Docker secrets directory
+
+# ===== CERTS =====
+*.pem
+*.crt
+*.key
+*.csr
+
+# ===== DOCKER =====
+# nothing to ignore - compose files belong in the repo
+
+# ===== EDITORS =====
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
