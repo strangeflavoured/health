@@ -113,12 +113,24 @@ mkdir -p ./output && sudo chown 1000:1000 ./output
 Run `import_to_redis.py` in sandbox to upload the data to Redis:
 ```bash
 ./scripts/compse-wrapper.sh up -d redis
-./scripts/compose-wrapper.sh run --rm --build sandbox import_to_redis.py
+./scripts/compse-wrapper.sh build -f compose.yml sandbox
+./scripts/compose-wrapper.sh run --rm sandbox import_to_redis.py
 ```
 
 ----------
 
 ## Development
+### Build Sandbox
+Build sandbox with `compose-override.yml`:
+```bash
+./scripts/compose-wrapper.sh build sandbox
+```
+### Run scripts in Sandbox
+Run script without rebuilding sandbox:
+```bash
+./scripts/compose-wrapper.sh run --rm sandbox script_to_run.py
+```
+
 ### Install dev requirements
 ```bash
 pip install --require-hashes -r requirements-dev.txt
