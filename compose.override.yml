@@ -5,6 +5,9 @@ services:
       - ./backend/config:/home/health/config:ro
       - ./src:/home/health/src:ro
 
+  frontend:
+    command: npm run dev -- --host
+
   sandbox:
     volumes:
       - ./src:/home/health/src:ro

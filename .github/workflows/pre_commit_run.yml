@@ -98,6 +98,17 @@ jobs:
             -r backend/requirements/base.txt \
             -q
 
+      # ── 4c. Set up node for eslint ─────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
       # ── 5a. PR run – changed files only ───────────────────────────────────
       # Uses `--from-ref`/`--to-ref` to scope hooks to the PR diff only.
       # This is significantly cheaper than --all-files on large repos.

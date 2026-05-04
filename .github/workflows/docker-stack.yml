@@ -113,6 +113,16 @@ jobs:
           cache-from: type=gha, scope=backend
           cache-to: type=gha, scope=backend
 
+      - name: Build frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile.frontend
+          tags: health-frontend:ci
+          load: true
+          cache-from: type=gha, scope=frontend
+          cache-to: type=gha, scope=frontend
+
       # ---- Materialize secrets ----
       - name: Materialize secrets from GH Actions secrets
         run: |
@@ -158,12 +168,15 @@ jobs:
             backend:
               image: health-backend:ci
               build: !reset null
+            frontend:
+              image: health-frontend:ci
+              build: !reset null
           EOF
           echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
 
-      # ---- Redis + RedisInsight + Backend ----
-      - name: Start redis, redisinsight and backend
-        run: docker compose up -d redis redisinsight backend
+      # ---- Redis + RedisInsight + Backend + Frontend ----
+      - name: Start redis, redisinsight, backend and frontend
+        run: docker compose up -d redis redisinsight backend frontend
 
       - name: Wait for redis to be healthy
         run: |
@@ -205,6 +218,9 @@ jobs:
           echo "::endgroup::"
           echo "::group::backend logs"
           docker compose logs backend || true
+          echo "::endgroup::"
+          echo "::group::frontend logs"
+          docker compose logs frontend || true
           echo "::endgroup::"
           echo "::group::compose ps"
           docker compose ps -a || true

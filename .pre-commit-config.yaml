@@ -44,3 +44,22 @@ repos:
     hooks:
       - id: shfmt
         args: [ "-i", "2", "-ci" ]
+
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        language: system
+        entry: bash -c 'cd frontend && npx eslint --no-warn-ignored --max-warnings=0 .'
+        files: ^frontend/.*\.(js|jsx)$
+        pass_filenames: false
+
+      - id: prettier
+        name: prettier
+        language: node
+        entry: npx prettier
+        args: [ --write ]
+        files: \.(js|jsx|css|json|md)$
+        types: [ file ]
+        additional_dependencies:
+          - prettier
