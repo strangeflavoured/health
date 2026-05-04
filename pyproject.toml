@@ -58,6 +58,7 @@ exclude = [
 "docs/*" = ["D100"]
 "src/model/category_types.py" = ["D101", "D106"]
 "src/model/quantity_types.py" = ["D101"]
+"backend/config/settings/*.py" = ["F403", "F405"]
 
 [tool.vulture]
 # ── Scan targets ──────────────────────────────────────────────────────────────
