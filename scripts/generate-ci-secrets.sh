@@ -5,11 +5,19 @@
 # Requires: openssl, gh (authenticated), base64.
 set -euo pipefail
 
+# ---------------------------------------------------------------------------
+# Argument parsing — determine mode first
+# ---------------------------------------------------------------------------
+MODE="GitHub Secrets"
+if [[ $# -gt 0 && "$1" == "dependabot" ]]; then
+  MODE="Dependabot Secrets"
+fi
+
 REPO=${REPO:-strangeflavoured/health}
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
-echo "Generating CI secrets in $WORK..."
+echo "Generating CI secrets in $WORK for $MODE..."
 
 # --- CA ---
 openssl genrsa -out "$WORK/ca.key" 4096 2>/dev/null
@@ -73,7 +81,11 @@ set_secret_from_file() {
   local tmp
   tmp=$(mktemp)
   base64 < "$path" > "$tmp"          # with line wrapping — gh handles it fine
-  gh secret set "$name" --repo "$REPO" < "$tmp"
+  if [[ "$MODE" == "Dependabot Secrets" ]]; then
+    gh secret set "$name" --repo "$REPO" --app dependabot < "$tmp"
+  else
+    gh secret set "$name" --repo "$REPO" < "$tmp"
+  fi
   rm -f "$tmp"
   echo "  set $name"
 }
@@ -84,7 +96,11 @@ set_secret() {
   local tmp
   tmp=$(mktemp)
   printf '%s' "$value" | base64 > "$tmp"
-  gh secret set "$name" --repo "$REPO" < "$tmp"
+  if [[ "$MODE" == "Dependabot Secrets" ]]; then
+    gh secret set "$name" --repo "$REPO" --app dependabot < "$tmp"
+  else
+    gh secret set "$name" --repo "$REPO" < "$tmp"
+  fi
   rm -f "$tmp"
   echo "  set $name"
 }
