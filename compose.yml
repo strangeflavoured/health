@@ -1,4 +1,27 @@
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.backend
+    command: python manage.py runserver 0.0.0.0:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file: ./backend/.env
+    environment:
+      REDIS_HOST: "redis"
+      REDIS_CERTS_DIR: "/run/secrets"
+      REDIS_PORT: "6380"
+      REDIS_DB: $REDIS_DB
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    secrets:
+      - source: ca.pem
+      - source: app.pem
+      - source: app.key
+      - source: app_password
+
   docs-compiler:
     build:
       context: .
