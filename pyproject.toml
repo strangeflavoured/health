@@ -66,6 +66,7 @@ exclude = [
 # rather than by Python imports.
 paths = [
     "src",
+    "backend",
     "vulture_allowlist.py",   # always include so suppressions are validated
 ]
 
@@ -90,6 +91,7 @@ ignore_decorators = []
 requirements_files = [
     "src/requirements.txt",
     "src/importer/requirements.txt",
+    "backend/requirements/base.txt",
 ]
 requirements_files_dev = ["requirements-dev.txt"]
 extend_exclude = ["scripts"]
