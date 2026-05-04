@@ -95,6 +95,7 @@ jobs:
             --require-hashes \
             -r src/requirements.txt \
             -r requirements-dev.txt \
+            -r backend/requirements/base.txt \
             -q
 
       # ── 5a. PR run – changed files only ───────────────────────────────────
