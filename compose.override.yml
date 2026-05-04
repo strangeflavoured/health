@@ -1,4 +1,10 @@
 services:
+  backend:
+    volumes:
+      - ./backend/apps:/home/health/apps:ro
+      - ./backend/config:/home/health/config:ro
+      - ./src:/home/health/src:ro
+
   sandbox:
     volumes:
       - ./src:/home/health/src:ro
