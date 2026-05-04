@@ -1,0 +1,6 @@
+services:
+  sandbox:
+    volumes:
+      - ./src:/home/health/src:ro
+      - ./scripts/setup_logger.py:/home/health/scripts/setup_logger.py:ro
+      - ./scripts/import_to_redis.py:/home/health/scripts/import_to_redis.py:ro
