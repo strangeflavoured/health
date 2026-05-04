@@ -103,12 +103,32 @@ jobs:
           cache-from: type=gha,scope=scripts
           cache-to: type=gha,scope=scripts,mode=max
 
+      - name: Build backend image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile.backend
+          tags: health-backend:ci
+          load: true
+          cache-from: type=gha, scope=backend
+          cache-to: type=gha, scope=backend
+
       # ---- Materialize secrets ----
       - name: Materialize secrets from GH Actions secrets
         run: |
           chmod +x scripts/load-ci-secrets.sh
           ./scripts/load-ci-secrets.sh
           echo "SECRETS_DIR=/dev/shm/health-secrets-$(id -u)" >> "$GITHUB_ENV"
+
+      - name: Create backend .env
+        run: |
+          cat > backend/.env << EOF
+          DJANGO_SETTINGS_MODULE=config.settings.dev
+          DJANGO_SECRET_KEY=ci-insecure-key-not-for-prod
+          REDIS_HOST=redis
+          REDIS_PORT=6380
+          REDIS_DB=0
+          EOF
 
       # ---- Generate compose override that pins prebuilt images ----
       - name: Write compose override
@@ -135,12 +155,15 @@ jobs:
               # Drop the data mounts
               volumes: !reset
                 - ./output:/home/health/output
+            backend:
+              image: health-backend:ci
+              build: !reset null
           EOF
           echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
 
-      # ---- Redis + RedisInsight ----
-      - name: Start redis and redisinsight
-        run: docker compose up -d redis redisinsight
+      # ---- Redis + RedisInsight + Backend ----
+      - name: Start redis, redisinsight and backend
+        run: docker compose up -d redis redisinsight backend
 
       - name: Wait for redis to be healthy
         run: |
@@ -179,6 +202,9 @@ jobs:
           echo "::endgroup::"
           echo "::group::redisinsight logs"
           docker compose logs redisinsight || true
+          echo "::endgroup::"
+          echo "::group::backend logs"
+          docker compose logs backend || true
           echo "::endgroup::"
           echo "::group::compose ps"
           docker compose ps -a || true
