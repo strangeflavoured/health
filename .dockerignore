@@ -3,6 +3,7 @@
 
 # Then unignore selected files and folders
 !requirements*.txt
+!pip-requirements.txt
 !src/
 
 # Then ignore whole classes of files again
