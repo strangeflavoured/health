@@ -234,13 +234,13 @@ jobs:
 
       # ---- Test runner, docs compiler, sandbox ----
       - name: Run test-runner
-        run: docker compose run --rm test-runner
+        run: docker compose run test-runner
 
       - name: Run docs-compiler
-        run: docker compose run --rm docs-compiler
+        run: docker compose run docs-compiler
 
       - name: Run sandbox
-        run: docker compose run --rm sandbox
+        run: docker compose run sandbox
 
       # ---- Diagnostics on failure ----
       - name: Dump container logs on failure
@@ -257,6 +257,15 @@ jobs:
           echo "::endgroup::"
           echo "::group::frontend logs"
           docker compose logs frontend || true
+          echo "::endgroup::"
+          echo "::group::test-runner logs"
+          docker compose logs test-runner || true
+          echo "::endgroup::"
+          echo "::group::docs-compiler logs"
+          docker compose logs docs-compiler || true
+          echo "::endgroup::"
+          echo "::group::sandbox logs"
+          docker compose logs sandbox || true
           echo "::endgroup::"
           echo "::group::compose ps"
           docker compose ps -a || true
