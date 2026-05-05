@@ -62,7 +62,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: .venv
-          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('requirements-dev.txt', 'src/requirements.txt', 'src/importer/requirements.txt') }}
+          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('pip-requirements.txt', 'requirements-dev.txt', 'src/requirements.txt', 'src/importer/requirements.txt', 'backend/requirements/base.txt') }}
           restore-keys: |
             venv-${{ runner.os }}-py3.12-
 
@@ -94,6 +94,7 @@ jobs:
           .venv/bin/pip install \
             --require-hashes \
             -r src/requirements.txt \
+            -r src/importer/requirements.txt \
             -r requirements-dev.txt \
             -r backend/requirements/base.txt \
             -q
