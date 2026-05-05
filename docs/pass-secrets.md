@@ -15,6 +15,7 @@ gpg --full-generate-key
 ```
 
 When prompted:
+
 - Key type: `(1) RSA and RSA`
 - Key size: `4096`
 - Expiry: `0` (no expiry) or `2y` for better hygiene
@@ -77,6 +78,7 @@ pass health/redis/passwords/my_super_secret_password
 ```
 
 Verify PEM round-trip integrity for each key:
+
 ```bash
 pass health/redis/keys/my_cert.key | openssl pkey -noout -text 2>&1 | head -5
 # Should show key type and parameters, not an error
@@ -132,6 +134,7 @@ sudo visudo -f /etc/sudoers.d/health-tmpfs
 ```
 
 Add:
+
 ```
 user ALL=(ALL) NOPASSWD: /bin/mount -t tmpfs *, /bin/umount /run/health-secrets, /bin/rm -rf /run/health-secrets, /bin/mkdir -p /run/health-secrets, /bin/chown * /run/health-secrets
 ```
@@ -222,6 +225,7 @@ pass insert --multiline health/redis/certs/new_cert.pem < /path/to/cert.pem
 ```
 
 Then:
+
 1. Add a decryption line to `scripts/compose-wrapper.sh`: `printf '%s' "$(pass show health/redis/new_secret)" > "$SECRETS_DIR/new_secret"`
 2. Add a secret mount in `compose.yml` for the affected service.
 3. Update the entrypoint or application code to read from `/run/secrets/new_secret`
