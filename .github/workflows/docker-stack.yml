@@ -97,11 +97,11 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.scripts
+          file: docker/Dockerfile.sandbox
           tags: health-sandbox:ci
           load: true
-          cache-from: type=gha,scope=scripts
-          cache-to: type=gha,scope=scripts,mode=max
+          cache-from: type=gha,scope=sandbox
+          cache-to: type=gha,scope=sandbox,mode=max
 
       - name: Build backend image
         uses: docker/build-push-action@v7
