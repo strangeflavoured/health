@@ -139,7 +139,7 @@ services:
   sandbox:
     build:
       context: .
-      dockerfile: docker/Dockerfile.scripts
+      dockerfile: docker/Dockerfile.sandbox
     container_name: health-sandbox
     depends_on:
       redis:
