@@ -178,11 +178,11 @@ jobs:
       - name: Start redis, redisinsight, backend and frontend
         run: docker compose up -d redis redisinsight backend frontend
 
-      - name: Wait for redis to be healthy
+      - name: Wait for frontend to be healthy
         run: |
           for i in {1..60}; do
-            status=$(docker inspect --format='{{.State.Health.Status}}' health-redis 2>/dev/null || echo "missing")
-            echo "[$i/60] redis health: $status"
+            status=$(docker inspect --format='{{.State.Health.Status}}' health-frontend-1 2>/dev/null || echo "missing")
+            echo "[$i/60] frontend health: $status"
             if [[ "$status" == "healthy" ]]; then exit 0; fi
             if [[ "$status" == "missing" ]]; then
               echo "Container not found"
@@ -191,9 +191,13 @@ jobs:
             fi
             sleep 5
           done
-          echo "redis did not become healthy in time"
+          echo "frontend did not become healthy in time"
           docker compose logs redis
           docker inspect --format='{{json .State.Health}}' health-redis | jq
+          docker compose logs backend
+          docker inspect --format='{{json .State.Health}}' health-backend | jq
+          docker compose logs frontend
+          docker inspect --format='{{json .State.Health}}' health-frontend | jq
           exit 1
 
       # ---- Test runner, docs compiler, sandbox ----
