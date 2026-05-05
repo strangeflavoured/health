@@ -8,6 +8,13 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 128M
     env_file: ./backend/.env
     environment:
       REDIS_HOST: "redis"
