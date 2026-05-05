@@ -21,6 +21,7 @@ services:
       REDIS_CERTS_DIR: "/run/secrets"
       REDIS_PORT: "6380"
       REDIS_DB: $REDIS_DB
+    mem_swappiness: 0
     ports:
       - "8000:8000"
     restart: unless-stopped
