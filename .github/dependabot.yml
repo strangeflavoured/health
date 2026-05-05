@@ -12,6 +12,7 @@ updates:
       timezone: "Etc/UTC"
     open-pull-requests-limit: 2
     labels:
+      - "automated"
       - "dependencies"
       - "gh-actions"
     commit-message:
@@ -35,6 +36,7 @@ updates:
       timezone: "Etc/UTC"
     open-pull-requests-limit: 2
     labels:
+      - "automated"
       - "dependencies"
       - "pip"
     commit-message:
@@ -57,6 +59,7 @@ updates:
       timezone: "Etc/UTC"
     open-pull-requests-limit: 2
     labels:
+      - "automated"
       - "dependencies"
       - "pip"
       - "backend"
@@ -81,6 +84,7 @@ updates:
       timezone: "Etc/UTC"
     open-pull-requests-limit: 2
     labels:
+      - "automated"
       - "dependencies"
       - "docker"
     commit-message:
@@ -107,6 +111,7 @@ updates:
       timezone: "Etc/UTC"
     open-pull-requests-limit: 1
     labels:
+      - "automated"
       - "dependencies"
       - "pre-commit hooks"
     commit-message:
@@ -130,6 +135,7 @@ updates:
       timezone: "Etc/UTC"
     open-pull-requests-limit: 2
     labels:
+      - "automated"
       - "dependencies"
       - "npm"
       - "frontend"
