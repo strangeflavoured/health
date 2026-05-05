@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: ./docker/Dockerfile.backend
     command: python manage.py runserver 0.0.0.0:8000
+    container_name: health-backend
     depends_on:
       redis:
         condition: service_healthy
@@ -36,6 +37,7 @@ services:
       context: .
       dockerfile: ./docker/Dockerfile.frontend
     command: npm run build
+    container_name: health-frontend
     depends_on:
       backend:
         condition: service_healthy
