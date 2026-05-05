@@ -15,4 +15,7 @@ RUN pip install --require-hashes -r pip-requirements.txt && pip install --requir
 COPY ./backend .
 COPY ./src ./src
 
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s --start-interval=5s \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')"
+
 USER health
