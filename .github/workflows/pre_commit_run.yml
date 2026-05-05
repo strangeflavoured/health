@@ -101,7 +101,7 @@ jobs:
 
       # ── 4c. Set up node for eslint ─────────────────────
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
