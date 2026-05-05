@@ -61,7 +61,7 @@ updates:
       - "pip"
       - "backend"
     commit-message:
-      prefix: "Pip"
+      prefix: "Pip(backend)"
       include: "scope"
     groups:
       python-dependencies:
@@ -110,7 +110,7 @@ updates:
       - "dependencies"
       - "pre-commit hooks"
     commit-message:
-      prefix: "chore: pre-commit"
+      prefix: "Chore: pre-commit"
       include: "scope"
     groups:
       pre-commit-hooks:
