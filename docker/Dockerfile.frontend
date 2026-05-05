@@ -4,4 +4,8 @@ WORKDIR /app
 COPY --chown=node:node ./frontend/package*.json .
 RUN npm install
 COPY --chown=node:node ./frontend .
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s --start-interval=5s \
+    CMD wget --spider -q http://localhost:5173
+
 USER node
