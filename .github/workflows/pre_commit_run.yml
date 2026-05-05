@@ -94,6 +94,7 @@ jobs:
           .venv/bin/pip install \
             --require-hashes \
             -r src/requirements.txt \
+            -r src/importer/requirements.txt \
             -r requirements-dev.txt \
             -r backend/requirements/base.txt \
             -q
