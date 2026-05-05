@@ -178,22 +178,58 @@ jobs:
       - name: Start redis, redisinsight, backend and frontend
         run: docker compose up -d redis redisinsight backend frontend
 
-      - name: Wait for redis to be healthy
+      - name: Wait for containers to be healthy
         run: |
+          redis_healthy=false
+          backend_healthy=false
+          frontend_healthy=false
           for i in {1..60}; do
-            status=$(docker inspect --format='{{.State.Health.Status}}' health-redis 2>/dev/null || echo "missing")
-            echo "[$i/60] redis health: $status"
-            if [[ "$status" == "healthy" ]]; then exit 0; fi
-            if [[ "$status" == "missing" ]]; then
-              echo "Container not found"
-              docker compose ps
-              exit 1
+            if ! $redis_healthy; then
+              status=$(docker inspect --format='{{.State.Health.Status}}' health-redis 2>/dev/null || echo "missing")
+              echo "[$i/60] redis health: $status"
+              if [[ "$status" == "healthy" ]]; then
+                redis_healthy=true
+              fi
             fi
+
+            if ! $backend_healthy; then
+              status=$(docker inspect --format='{{.State.Health.Status}}' health-backend 2>/dev/null || echo "missing")
+              echo "[$i/60] backend health: $status"
+              if [[ "$status" == "healthy" ]]; then
+                backend_healthy=true
+              fi
+            fi
+
+            if ! $frontend_healthy; then
+              status=$(docker inspect --format='{{.State.Health.Status}}' health-frontend 2>/dev/null || echo "missing")
+              echo "[$i/60] frontend health: $status"
+              if [[ "$status" == "healthy" ]]; then
+                frontend_healthy=true
+              fi
+            fi
+
+            if $redis_healthy && $backend_healthy && $frontend_healthy; then exit 0; fi
             sleep 5
           done
-          echo "redis did not become healthy in time"
-          docker compose logs redis
-          docker inspect --format='{{json .State.Health}}' health-redis | jq
+
+          if ! $redis_healthy; then
+            echo "redis did not become healthy in time"
+            docker compose logs redis
+            docker inspect --format='{{json .State.Health}}' health-redis | jq
+          fi
+
+          if ! $backend_healthy; then
+            echo "backend did not become healthy in time"
+            docker compose logs backend
+            docker inspect --format='{{json .State.Health}}' health-backend | jq
+          fi
+
+          if ! $frontend_healthy; then
+            echo "frontend did not become healthy in time"
+            docker compose logs frontend
+            docker inspect --format='{{json .State.Health}}' health-frontend | jq
+          fi
+
           exit 1
 
       # ---- Test runner, docs compiler, sandbox ----
