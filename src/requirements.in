@@ -1,5 +1,2 @@
 redis>=7.4.0
 python-dotenv>=1.0.0
-
-# deps from submodules
--r importer/requirements.in
