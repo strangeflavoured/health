@@ -148,6 +148,7 @@ jobs:
             redis:
               image: health-redis:ci
               build: !reset null
+              restart: on-failure
             redisinsight:
               image: health-redisinsight:ci
               build: !reset null
@@ -168,9 +169,11 @@ jobs:
             backend:
               image: health-backend:ci
               build: !reset null
+              restart: on-failure
             frontend:
               image: health-frontend:ci
               build: !reset null
+              restart: on-failure
           EOF
           echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
 
