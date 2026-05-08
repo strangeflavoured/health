@@ -248,6 +248,12 @@ jobs:
           reporter: java-junit
           fail-on-error: false
 
+      - name: Move coverage file to workspace root
+        if: always() && steps.test_runner.conclusion != 'skipped'
+        run: |
+          cp coverage-data/.coverage .coverage
+          ls -la .coverage
+
       - name: Post coverage comment
         if: always() && github.event_name == 'pull_request' && steps.test_runner.conclusion != 'skipped'
         uses: py-cov-action/python-coverage-comment-action@v3
