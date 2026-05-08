@@ -187,10 +187,11 @@ jobs:
           redis_healthy=false
           backend_healthy=false
           frontend_healthy=false
-          for i in {1..60}; do
+          n_tries=20
+          for i in {1..$n_tries}; do
             if ! $redis_healthy; then
               status=$(docker inspect --format='{{.State.Health.Status}}' health-redis 2>/dev/null || echo "missing")
-              echo "[$i/60] redis health: $status"
+              echo "[$i/$n_tries] redis health: $status"
               if [[ "$status" == "healthy" ]]; then
                 redis_healthy=true
               fi
@@ -198,7 +199,7 @@ jobs:
 
             if ! $backend_healthy; then
               status=$(docker inspect --format='{{.State.Health.Status}}' health-backend 2>/dev/null || echo "missing")
-              echo "[$i/60] backend health: $status"
+              echo "[$i/$n_tries] backend health: $status"
               if [[ "$status" == "healthy" ]]; then
                 backend_healthy=true
               fi
@@ -206,7 +207,7 @@ jobs:
 
             if ! $frontend_healthy; then
               status=$(docker inspect --format='{{.State.Health.Status}}' health-frontend 2>/dev/null || echo "missing")
-              echo "[$i/60] frontend health: $status"
+              echo "[$i/$n_tries] frontend health: $status"
               if [[ "$status" == "healthy" ]]; then
                 frontend_healthy=true
               fi
