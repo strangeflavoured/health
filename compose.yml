@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.backend
+      target: runtime
     command: python manage.py runserver 0.0.0.0:8000
     container_name: health-backend
     depends_on:
