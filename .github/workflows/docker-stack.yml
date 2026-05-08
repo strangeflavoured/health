@@ -110,8 +110,8 @@ jobs:
           file: docker/Dockerfile.backend
           tags: health-backend:ci
           load: true
-          cache-from: type=gha, scope=backend
-          cache-to: type=gha, scope=backend
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend
 
       - name: Build frontend image
         uses: docker/build-push-action@v7
@@ -120,8 +120,8 @@ jobs:
           file: docker/Dockerfile.frontend
           tags: health-frontend:ci
           load: true
-          cache-from: type=gha, scope=frontend
-          cache-to: type=gha, scope=frontend
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend
 
       # ---- Materialize secrets ----
       - name: Materialize secrets from GH Actions secrets
