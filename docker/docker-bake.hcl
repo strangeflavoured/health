@@ -2,6 +2,18 @@ group "default" {
   targets = ["redis", "redisinsight", "tests", "docs", "sandbox", "backend", "frontend"]
 }
 
+group "app" {
+  targets = ["redis", "backend", "frontend"]
+}
+
+group "infra" {
+  targets = ["redis", "redisinsight"]
+}
+
+group "ci-checks" {
+  targets = ["tests", "docs"]
+}
+
 target "redis" {
   context    = "."
   dockerfile = "docker/Dockerfile.redis"
