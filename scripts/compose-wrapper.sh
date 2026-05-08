@@ -92,6 +92,10 @@ EOF
     echo "Secrets cleaned up from $SECRETS_DIR"
     ;;
 
+  build)
+    docker buildx bake -f docker/docker-bake.hcl
+    ;;
+
   *)
     # Pass through any other compose command unchanged (logs, ps, exec, etc.)
     docker compose "$@"
