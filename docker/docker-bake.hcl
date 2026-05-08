@@ -1,0 +1,66 @@
+group "default" {
+  targets = ["redis", "redisinsight", "tests", "docs", "sandbox", "backend", "frontend"]
+}
+
+target "redis" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.redis"
+  tags       = ["health-redis:ci"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=redis"]
+  cache-to   = ["type=gha,scope=redis,mode=max"]
+}
+
+target "redisinsight" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.redisinsight"
+  tags       = ["health-redisinsight:ci"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=redisinsight"]
+  cache-to   = ["type=gha,scope=redisinsight,mode=max"]
+}
+
+target "tests" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.tests"
+  tags       = ["health-test-runner:ci"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=tests"]
+  cache-to   = ["type=gha,scope=tests,mode=max"]
+}
+
+target "docs" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.docs"
+  tags       = ["health-docs:ci"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=docs"]
+  cache-to   = ["type=gha,scope=docs,mode=max"]
+}
+
+target "sandbox" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.sandbox"
+  tags       = ["health-sandbox:ci"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=sandbox"]
+  cache-to   = ["type=gha,scope=sandbox,mode=max"]
+}
+
+target "backend" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.backend"
+  tags       = ["health-backend:ci"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=backend"]
+  cache-to   = ["type=gha,scope=backend,mode=max"]
+}
+
+target "frontend" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.frontend"
+  tags       = ["health-frontend:ci"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=frontend"]
+  cache-to   = ["type=gha,scope=frontend,mode=max"]
+}
