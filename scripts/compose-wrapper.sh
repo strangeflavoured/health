@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# check if args are provided
+if [ "$#" -eq 0 ]; then
+    echo "Error: docker compose needs at least one arg." >&2
+    exit 1
+else
+  compose_mode="$1"
+  shift
+fi
+
 SECRETS_DIR=/dev/shm/health-secrets-$(id -u)
 export SECRETS_DIR
 
@@ -62,13 +71,14 @@ cleanup_secrets() {
   rm -rf "$SECRETS_DIR"
 }
 
-case "${1:-}" in
+
+case "$compose_mode" in
   up)
     write_secrets
 
     if is_detached "$@"; then
       # Detached: don't clean up on exit, container needs the files
-      docker compose "$@"
+      docker compose up "$@"
       cat <<EOF
 
 ================================================================
@@ -82,22 +92,22 @@ EOF
     else
       # Foreground: trap cleanup so Ctrl+C / exit removes secrets
       trap cleanup_secrets EXIT INT TERM
-      docker compose "$@"
+      docker compose up "$@"
     fi
     ;;
 
   down)
-    docker compose "$@"
+    docker compose down "$@"
     cleanup_secrets
     echo "Secrets cleaned up from $SECRETS_DIR"
     ;;
 
   build)
-    docker buildx bake -f docker/docker-bake.hcl
+    docker buildx bake -f docker/docker-bake.hcl "$@"
     ;;
 
   *)
     # Pass through any other compose command unchanged (logs, ps, exec, etc.)
-    docker compose "$@"
+    docker compose "$compose_mode" "$@"
     ;;
 esac
