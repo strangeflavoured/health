@@ -51,6 +51,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Detect changed paths
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            docker:
+              - 'docker/**'
+              - 'compose.yml'
+              - 'compose.override.yml'
+            backend:
+              - 'backend/**'
+              - 'docker/Dockerfile.backend'
+            frontend:
+              - 'frontend/**'
+              - 'docker/Dockerfile.frontend'
+            tests:
+              - 'src/**'
+              - 'tests/**'
+              - 'docker/Dockerfile.tests'
+            docs:
+              - 'docs/**'
+              - 'src/**'
+              - 'docker/Dockerfile.docs'
+            sandbox:
+              - 'scripts/**'
+              - 'docker/Dockerfile.sandbox'
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
         with:
@@ -178,12 +205,15 @@ jobs:
 
       # ---- Test runner, docs compiler, sandbox ----
       - name: Run test-runner
+        if: steps.changes.outputs.tests == 'true' || steps.changes.outputs.docker == 'true'
         run: docker compose run test-runner
 
       - name: Run docs-compiler
+        if: steps.changes.outputs.docs == 'true' || steps.changes.outputs.docker == 'true'
         run: docker compose run docs-compiler
 
       - name: Run sandbox
+        if: steps.changes.outputs.sandbox == 'true' || steps.changes.outputs.docker == 'true'
         run: docker compose run sandbox
 
       # ---- Diagnostics on failure ----
