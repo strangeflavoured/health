@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # dockerfile for test-runner
 FROM python:3.12-slim-bookworm@sha256:58525e1a8dada8e72d6f8a11a0ddff8d981fd888549108db52455d577f927f77
 
@@ -13,8 +14,9 @@ WORKDIR /home/health/
 COPY --chown=health:health ./tests/requirements.txt .
 COPY --chown=health:health ./pip-requirements.txt .
 ENV PATH="/home/health/.local/bin:$PATH"
-RUN pip install --user --require-hashes -r pip-requirements.txt
-RUN pip install --user --require-hashes -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --user --require-hashes -r pip-requirements.txt && \
+    pip install --user --require-hashes -r requirements.txt
 
 COPY --chown=health:health ./src ./src
 COPY --chown=health:health ./tests .
