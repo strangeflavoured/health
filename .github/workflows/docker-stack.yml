@@ -154,7 +154,7 @@ jobs:
               volumes: !reset
                 - ./output:/home/health/output
             backend:
-              image: health-backend:ci
+              image: health-backend:dev
               build: !reset null
               restart: on-failure
             frontend:

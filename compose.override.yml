@@ -1,5 +1,6 @@
 services:
   backend:
+    image: health-backend:dev
     volumes:
       - ./backend/apps:/home/health/apps:ro
       - ./backend/config:/home/health/config:ro

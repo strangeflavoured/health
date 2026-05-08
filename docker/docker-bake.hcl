@@ -1,5 +1,5 @@
 group "default" {
-  targets = ["redis", "redisinsight", "tests", "docs", "sandbox", "backend", "frontend"]
+  targets = ["redis", "redisinsight", "tests", "docs", "sandbox", "backend-dev", "frontend"]
 }
 
 group "app" {
@@ -12,6 +12,10 @@ group "infra" {
 
 group "ci-checks" {
   targets = ["tests", "docs"]
+}
+
+group "backend" {
+  targets = ["backend-dev", "backend-test", "backend-prod"]
 }
 
 target "redis" {
@@ -59,10 +63,31 @@ target "sandbox" {
   cache-to   = ["type=gha,scope=sandbox,mode=max"]
 }
 
-target "backend" {
+target "backend-dev" {
   context    = "."
   dockerfile = "docker/Dockerfile.backend"
-  tags       = ["health-backend:ci"]
+  target     = "dev"
+  tags       = ["health-backend:dev"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=backend"]
+  cache-to   = ["type=gha,scope=backend,mode=max"]
+}
+
+target "backend-test" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.backend"
+  target     = "test"
+  tags       = ["health-backend:test"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=backend"]
+  cache-to   = ["type=gha,scope=backend,mode=max"]
+}
+
+target "backend-prod" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.backend"
+  target     = "prod"
+  tags       = ["health-backend:prod"]
   output     = ["type=docker"]
   cache-from = ["type=gha,scope=backend"]
   cache-to   = ["type=gha,scope=backend,mode=max"]
