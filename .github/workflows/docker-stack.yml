@@ -257,11 +257,11 @@ jobs:
           MINIMUM_ORANGE: 60
 
       - name: Run docs-compiler
-        if: steps.changes.outputs.docs == 'true' || steps.changes.outputs.docker == 'true'
+        if: always() && (steps.changes.outputs.docs == 'true' || steps.changes.outputs.docker == 'true')
         run: docker compose run docs-compiler
 
       - name: Run sandbox
-        if: steps.changes.outputs.sandbox == 'true' || steps.changes.outputs.docker == 'true'
+        if: always() && (steps.changes.outputs.sandbox == 'true' || steps.changes.outputs.docker == 'true')
         run: docker compose run sandbox
 
       # ---- Diagnostics on failure ----
