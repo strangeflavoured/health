@@ -2,7 +2,7 @@ FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4
 
 WORKDIR /app
 COPY --chown=node:node ./frontend/package*.json .
-RUN npm install
+RUN --mount=type=cache,target=/app/node_modules/.cache npm install
 COPY --chown=node:node ./frontend .
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s --start-interval=5s \
