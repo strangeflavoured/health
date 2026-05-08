@@ -62,7 +62,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: .venv
-          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('pip-requirements.txt', 'requirements-dev.txt', 'src/requirements.txt', 'backend/requirements/base.txt') }}
+          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('pip-requirements.txt', 'requirements-dev.txt', 'src/requirements.txt', 'backend/requirements/base.txt', 'backend/requirements/tests.txt') }}
           restore-keys: |
             venv-${{ runner.os }}-py3.12-
 
@@ -97,6 +97,7 @@ jobs:
             -r src/importer/requirements.txt \
             -r requirements-dev.txt \
             -r backend/requirements/base.txt \
+            -r backend/requirements/tests.txt \
             -q
 
       # ── 4c. Set up node for eslint ─────────────────────
