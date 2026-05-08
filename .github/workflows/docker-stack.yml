@@ -52,76 +52,11 @@ jobs:
         with:
           driver: docker-container
 
-      # ---- Build images individually so each gets its own gha cache scope.
-      - name: Build redis image
-        uses: docker/build-push-action@v7
+      - name: Build all images via bake
+        uses: docker/bake-action@v5
         with:
-          context: .
-          file: docker/Dockerfile.redis
-          tags: health-redis:ci
+          files: docker/docker-bake.hcl
           load: true
-          cache-from: type=gha,scope=redis
-          cache-to: type=gha,scope=redis,mode=max
-
-      - name: Build redisinsight image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: docker/Dockerfile.redisinsight
-          tags: health-redisinsight:ci
-          load: true
-          cache-from: type=gha,scope=redisinsight
-          cache-to: type=gha,scope=redisinsight,mode=max
-
-      - name: Build test-runner image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: docker/Dockerfile.tests
-          tags: health-test-runner:ci
-          load: true
-          cache-from: type=gha,scope=tests
-          cache-to: type=gha,scope=tests,mode=max
-
-      - name: Build docs-compiler image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: docker/Dockerfile.docs
-          tags: health-docs:ci
-          load: true
-          cache-from: type=gha,scope=docs
-          cache-to: type=gha,scope=docs,mode=max
-
-      - name: Build sandbox image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: docker/Dockerfile.sandbox
-          tags: health-sandbox:ci
-          load: true
-          cache-from: type=gha,scope=sandbox
-          cache-to: type=gha,scope=sandbox,mode=max
-
-      - name: Build backend image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: docker/Dockerfile.backend
-          tags: health-backend:ci
-          load: true
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,scope=backend,mode=max
-
-      - name: Build frontend image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: docker/Dockerfile.frontend
-          tags: health-frontend:ci
-          load: true
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,scope=frontend,mode=max
 
       # ---- Materialize secrets ----
       - name: Materialize secrets from GH Actions secrets
