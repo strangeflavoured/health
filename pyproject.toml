@@ -103,3 +103,7 @@ ignore = ["DEP003"]
 
 [tool.deptry.per_rule_ignores]
 DEP002 = ["furo"]
+
+[tool.coverage.run]
+relative_files = true
+source = ["src"]

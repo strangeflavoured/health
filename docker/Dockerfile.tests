@@ -20,5 +20,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY --chown=health:health ./src ./src
 COPY --chown=health:health ./tests .
+COPY --chown=health:health ./pyproject.toml .
 
 ENTRYPOINT ["python3", "-m", "pytest", "--cov=src"]
