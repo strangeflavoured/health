@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: read
+  checks: write
+  pull-requests: write
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -109,6 +111,10 @@ jobs:
       # ---- Generate compose override that pins prebuilt images ----
       - name: Write compose override
         run: |
+          # create directory for test coverage output
+          mkdir -p test-output coverage-data
+          chown -R 1000:1000 test-output coverage-data
+
           cat > compose.ci.yml <<'EOF'
           services:
             redis:
@@ -121,6 +127,23 @@ jobs:
             test-runner:
               image: health-test-runner:ci
               build: !reset null
+              environment:
+                - COVERAGE_FILE=/home/health/coverage-data/.coverage
+              volumes:
+                - ./test-output:/home/health/test-output
+                - ./coverage-data:/home/health/coverage-data
+              command: >
+                python -m pytest tests/
+                -p pytest_cov
+                --tb=long -v
+                --continue-on-collection-errors
+                --no-header
+                --cov=src/
+                --cov-report=term-missing
+                --cov-report=xml:/home/health/test-output/coverage.xml
+                --cov-fail-under=80
+                --junit-xml=/home/health/test-output/test-results.xml
+                -p no:warnings
             docs-compiler:
               image: health-docs:ci
               build: !reset null
@@ -207,6 +230,34 @@ jobs:
       - name: Run test-runner
         if: steps.changes.outputs.tests == 'true' || steps.changes.outputs.docker == 'true'
         run: docker compose run test-runner
+
+      - name: Upload JUnit test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: test-output/test-results.xml
+          retention-days: 30
+
+      - name: Publish test results as PR check
+        if: always()
+        uses: dorny/test-reporter@v3
+        with:
+          name: Test Report
+          path: test-output/test-results.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Post coverage comment
+        if: always()
+        uses: py-cov-action/python-coverage-comment-action@v3
+        env:
+          COVERAGE_FILE: /home/health/coverage-data/.coverage
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERAGE_DATA_BRANCH: python-coverage-comment-action-data
+          MINIMUM_GREEN: 80
+          MINIMUM_ORANGE: 60
 
       - name: Run docs-compiler
         if: steps.changes.outputs.docs == 'true' || steps.changes.outputs.docker == 'true'
