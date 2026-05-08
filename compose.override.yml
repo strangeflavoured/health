@@ -1,5 +1,7 @@
 services:
   backend:
+    build:
+      target: dev
     volumes:
       - ./backend/apps:/home/health/apps:ro
       - ./backend/config:/home/health/config:ro
