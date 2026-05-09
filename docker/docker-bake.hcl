@@ -1,5 +1,5 @@
 group "default" {
-  targets = ["redis", "redisinsight", "tests", "docs", "sandbox", "backend", "frontend"]
+  targets = ["redis", "redisinsight", "tests", "docs", "sandbox", "backend-dev", "frontend"]
 }
 
 group "app" {
