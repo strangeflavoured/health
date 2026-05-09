@@ -59,10 +59,31 @@ target "sandbox" {
   cache-to   = ["type=gha,scope=sandbox,mode=max"]
 }
 
-target "backend" {
+target "backend-dev" {
   context    = "."
   dockerfile = "docker/Dockerfile.backend"
-  tags       = ["health-backend:ci"]
+	target     = "dev"
+  tags       = ["health-backend:dev"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=backend"]
+  cache-to   = ["type=gha,scope=backend,mode=max"]
+}
+
+target "backend-test" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.backend"
+	target     = "test"
+  tags       = ["health-backend:test"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=backend"]
+  cache-to   = ["type=gha,scope=backend,mode=max"]
+}
+
+target "backend-runtime" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.backend"
+	target     = "runtime"
+  tags       = ["health-backend:runtime"]
   output     = ["type=docker"]
   cache-from = ["type=gha,scope=backend"]
   cache-to   = ["type=gha,scope=backend,mode=max"]
