@@ -118,14 +118,14 @@ jobs:
           cat > compose.ci.yml <<'EOF'
           services:
             redis:
-              image: health-redis:ci
+              image: health-redis
               build: !reset null
               restart: on-failure
             redisinsight:
-              image: health-redisinsight:ci
+              image: health-redisinsight
               build: !reset null
             test-runner:
-              image: health-test-runner:ci
+              image: health-test-runner
               build: !reset null
               environment:
                 - COVERAGE_FILE=/home/health/coverage-data/.coverage
@@ -143,12 +143,12 @@ jobs:
                 --junit-xml=/home/health/test-output/test-results.xml
                 -p no:warnings
             docs-compiler:
-              image: health-docs:ci
+              image: health-docs
               build: !reset null
               # Drop volumes
               volumes: !reset []
             sandbox:
-              image: health-sandbox:ci
+              image: health-sandbox
               build: !reset null
               # Drop the data mounts
               volumes: !reset
