@@ -125,7 +125,7 @@ jobs:
               image: health-test-runner
               build: !reset null
               environment:
-                - COVERAGE_FILE=/home/health/coverage-data/.coverage
+                - COVERAGE_FILE=/home/health/coverage-data/.coverage-src
               volumes:
                 - ./test-output:/home/health/test-output
                 - ./coverage-data:/home/health/coverage-data
@@ -135,9 +135,9 @@ jobs:
                 --continue-on-collection-errors
                 --no-header
                 --cov-report=term-missing
-                --cov-report=xml:/home/health/test-output/coverage.xml
+                --cov-report=xml:/home/health/test-output/coverage-src.xml
                 --cov-fail-under=80
-                --junit-xml=/home/health/test-output/test-results.xml
+                --junit-xml=/home/health/test-output/test-results-src.xml
                 -p no:warnings
             docs-compiler:
               image: health-docs
@@ -164,7 +164,7 @@ jobs:
               image: health-backend:test
               build: !reset null
               environment:
-                - COVERAGE_FILE=/home/health/coverage-data/.coverage
+                - COVERAGE_FILE=/home/health/coverage-data/.coverage-backend
               volumes:
                 - ./test-output:/home/health/test-output
                 - ./coverage-data:/home/health/coverage-data
@@ -174,9 +174,9 @@ jobs:
                 --continue-on-collection-errors
                 --no-header
                 --cov-report=term-missing
-                --cov-report=xml:/home/health/test-output/coverage-python.xml
+                --cov-report=xml:/home/health/test-output/coverage-backend.xml
                 --cov-fail-under=80
-                --junit-xml=/home/health/test-output/test-results.xml
+                --junit-xml=/home/health/test-output/test-results-backend.xml
                 -p no:warnings
             frontend-test:
               extends: frontend
@@ -272,36 +272,33 @@ jobs:
         run: docker compose run frontend-test
 
       - name: Upload JUnit test results
-        if: always() && steps.test_runner.conclusion != 'skipped'
+        if: always() && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
         uses: actions/upload-artifact@v7
         with:
           name: test-results
-          path: test-output/test-results.xml
+          path: test-output/test-results-*.xml
           retention-days: 30
 
       - name: Publish test results as PR check
-        if: always() && github.event_name == 'pull_request' && steps.test_runner.conclusion != 'skipped'
+        if: always() && github.event_name == 'pull_request' && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
         uses: dorny/test-reporter@v3
         with:
           name: Test Report
-          path: test-output/test-results.xml
+          path: test-output/test-results-*.xml
           reporter: java-junit
           fail-on-error: false
 
-      - name: Move coverage file to workspace root
-        if: always() && steps.test_runner.conclusion != 'skipped'
-        run: |
-          cp coverage-data/.coverage .coverage
-          ls -la .coverage
-
-      - name: Post coverage comment
-        if: always() && github.event_name == 'pull_request' && steps.test_runner.conclusion != 'skipped'
-        uses: py-cov-action/python-coverage-comment-action@v3
+      - name: Upload coverage to Codecov
+        if: always() && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
+        uses: codecov/codecov-action@v4
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERAGE_DATA_BRANCH: python-coverage-comment-action-data
-          MINIMUM_GREEN: 80
-          MINIMUM_ORANGE: 60
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: |
+            test-output/coverage-src.xml
+            test-output/coverage-backend.xml
+            test-output/coverage-js/lcov.info
+          flags: integration,python,javascript
+          fail_ci_if_error: false
 
       - name: Run docs-compiler
         if: always() && (steps.changes.outputs.docs == 'true' || steps.changes.outputs.docker == 'true')
