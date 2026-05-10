@@ -111,10 +111,6 @@ jobs:
       # ---- Generate compose override that pins prebuilt images ----
       - name: Write compose override
         run: |
-          # create directory for test coverage output
-          mkdir -p test-output coverage-data
-          sudo chown -R 1000:1000 test-output coverage-data
-
           cat > compose.ci.yml <<'EOF'
           services:
             redis:
@@ -233,6 +229,11 @@ jobs:
           exit 1
 
       # ---- Test runner, docs compiler, sandbox ----
+      - name: Prepare test output directory
+        run: |
+          mkdir -p test-output coverage-data
+          sudo chown -R 1000:1000 test-output coverage-data
+
       - name: Run test-runner
         id: test_runner
         if: always() && (steps.changes.outputs.tests == 'true' || steps.changes.outputs.docker == 'true')
