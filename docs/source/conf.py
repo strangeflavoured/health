@@ -32,14 +32,21 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx_autodoc_typehints",
-    "sphinx_mdinclude",
     "sphinx_design",
     "sphinx.ext.intersphinx",
     "sphinx_tippy",
     "sphinx.ext.githubpages",
+    "myst_parser",
 ]
 
-source_suffix = {".rst": "restructuredtext", ".md": "restructuredtext"}
+myst_enable_extensions = [
+    "colon_fence",  # ::: fences
+    "deflist",  # definition lists
+    "html_image",  # raw <img> tags
+    "linkify",  # auto-link bare URLs
+    "strikethrough",
+    "tasklist",
+]
 
 autoclass_content = "class"
 autodoc_default_options = {
