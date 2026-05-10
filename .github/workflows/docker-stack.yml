@@ -73,10 +73,6 @@ jobs:
               - 'src/**'
               - 'tests/**'
               - 'docker/Dockerfile.tests'
-            docs:
-              - 'docs/**'
-              - 'src/**'
-              - 'docker/Dockerfile.docs'
             sandbox:
               - 'scripts/**'
               - 'docker/Dockerfile.sandbox'
@@ -139,11 +135,6 @@ jobs:
                 --cov-fail-under=80
                 --junit-xml=/home/health/test-output/test-results-src.xml
                 -p no:warnings
-            docs-compiler:
-              image: health-docs
-              build: !reset null
-              # Drop volumes
-              volumes: !reset []
             sandbox:
               image: health-sandbox
               build: !reset null
@@ -299,10 +290,6 @@ jobs:
             test-output/coverage-js/lcov.info
           flags: integration,python,javascript
           fail_ci_if_error: false
-
-      - name: Run docs-compiler
-        if: always() && (steps.changes.outputs.docs == 'true' || steps.changes.outputs.docker == 'true')
-        run: docker compose run docs-compiler
 
       - name: Run sandbox
         if: always() && (steps.changes.outputs.sandbox == 'true' || steps.changes.outputs.docker == 'true')
