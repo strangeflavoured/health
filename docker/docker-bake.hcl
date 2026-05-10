@@ -1,17 +1,21 @@
 group "default" {
-  targets = ["redis", "redisinsight", "tests", "docs", "sandbox", "backend-dev", "frontend"]
+  targets = ["infra", "dev", "tests", "docs", "sandbox"]
 }
 
-group "app" {
-  targets = ["redis", "backend", "frontend"]
+group "dev" {
+  targets = ["backend-dev", "frontend-dev"]
+}
+
+group "prod" {
+  targets = ["backend-prod", "frontend-prod"]
 }
 
 group "infra" {
-  targets = ["redis", "redisinsight"]
+  targets = ["redis-init", "redis", "redisinsight"]
 }
 
-group "ci-checks" {
-  targets = ["tests", "docs"]
+group "tests" {
+  targets = ["src-test", "backend-test", "frontend-test"]
 }
 
 group "backend" {
@@ -22,10 +26,19 @@ group "frontend" {
   targets = ["frontend-dev", "frontend-test", "frontend-prod"]
 }
 
+target "redis-init" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.redis-init"
+  tags       = ["health-redis-init"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=redis-init"]
+  cache-to   = ["type=gha,scope=redis-init,mode=max"]
+}
+
 target "redis" {
   context    = "."
   dockerfile = "docker/Dockerfile.redis"
-  tags       = ["health-redis:ci"]
+  tags       = ["health-redis"]
   output     = ["type=docker"]
   cache-from = ["type=gha,scope=redis"]
   cache-to   = ["type=gha,scope=redis,mode=max"]
@@ -34,16 +47,16 @@ target "redis" {
 target "redisinsight" {
   context    = "."
   dockerfile = "docker/Dockerfile.redisinsight"
-  tags       = ["health-redisinsight:ci"]
+  tags       = ["health-redisinsight"]
   output     = ["type=docker"]
   cache-from = ["type=gha,scope=redisinsight"]
   cache-to   = ["type=gha,scope=redisinsight,mode=max"]
 }
 
-target "tests" {
+target "src-test" {
   context    = "."
   dockerfile = "docker/Dockerfile.tests"
-  tags       = ["health-test-runner:ci"]
+  tags       = ["health-test-runner"]
   output     = ["type=docker"]
   cache-from = ["type=gha,scope=tests"]
   cache-to   = ["type=gha,scope=tests,mode=max"]
@@ -52,7 +65,7 @@ target "tests" {
 target "docs" {
   context    = "."
   dockerfile = "docker/Dockerfile.docs"
-  tags       = ["health-docs:ci"]
+  tags       = ["health-docs"]
   output     = ["type=docker"]
   cache-from = ["type=gha,scope=docs"]
   cache-to   = ["type=gha,scope=docs,mode=max"]
@@ -61,7 +74,7 @@ target "docs" {
 target "sandbox" {
   context    = "."
   dockerfile = "docker/Dockerfile.sandbox"
-  tags       = ["health-sandbox:ci"]
+  tags       = ["health-sandbox"]
   output     = ["type=docker"]
   cache-from = ["type=gha,scope=sandbox"]
   cache-to   = ["type=gha,scope=sandbox,mode=max"]
