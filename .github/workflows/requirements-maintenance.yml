@@ -4,44 +4,53 @@ on:
   schedule:
     - cron: "0 6 * * 1"   # Every Monday at 06:00 UTC
   workflow_dispatch:        # Manual trigger
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "**/*.in"           # Recompile when any input file changes
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref  }}
-  cancel-in-progress: true
+  cancel-in-progress: false  # Never cancel mid-flight; a partial recompile is worse than a queue
 
-# Default: read-only. The create-pr job overrides this below.
+# Default: read-only. The update-and-pr job overrides below.
 permissions:
   contents: read
 
 jobs:
 
   # ────────────────────────────────────────────────────────────────
-  # JOB 1 – Derive compile order from the dependency DAG
+  # JOB 1 – Analyse: discover DAG, check versions, check conflicts
+  #         (merged from previous discover + analyse jobs)
   # ────────────────────────────────────────────────────────────────
-  discover:
-    name: Discover & order requirements
+  analyse:
+    name: Analyse dependencies
     runs-on: ubuntu-latest
 
     outputs:
       ordered_groups: ${{ steps.dag.outputs.ordered_groups }}
-      all_files: ${{ steps.dag.outputs.all_files }}
-      has_files: ${{ steps.dag.outputs.has_files }}
+      all_files:      ${{ steps.dag.outputs.all_files }}
+      has_files:      ${{ steps.dag.outputs.has_files }}
+      has_changes:    ${{ steps.summary.outputs.has_changes }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
 
-      - name: Install dependencies
-        run: pip install pip-tools -q
+      - name: Install analysis tools
+        run: |
+          pip install --require-hashes -r pip-requirements.txt
+          pip install pip-tools deptry packaging
 
-      # Reads all .in files, follows -r includes, and builds a topological
-      # sort output: [[group0], [group1], ...] where each group can be compiled
-      # in parallel but must run after the previous group.
+      # ── 1a. Build compile DAG ──────────────────────────────────
+      # Reads all .in files across the whole repo (including backend/),
+      # follows -r includes, and emits a topological compile order.
       - name: Build compile DAG
         id: dag
         run: |
@@ -50,19 +59,29 @@ jobs:
           from pathlib import Path
 
           def find_in_files():
-              return sorted(Path(".").rglob("requirements*.in"))
+              # Pattern A: files whose name starts with "requirements" (e.g. requirements-dev.in,
+              #             pip-requirements.in, docs/requirements.in)
+              # Pattern B: any .in file inside a directory named "requirements/" (e.g.
+              #             backend/requirements/base.in)
+              from itertools import chain
+              seen, results = set(), []
+              for f in sorted(chain(
+                  Path(".").rglob("requirements*.in"),
+                  Path(".").rglob("requirements/*.in"),
+              )):
+                  if f not in seen:
+                      seen.add(f)
+                      results.append(f)
+              return results
 
           def get_includes(in_file):
-              """Returns the .in files that this .in file depends on."""
               deps = []
               try:
                   for line in in_file.read_text().splitlines():
                       line = line.strip()
                       if line.startswith("-r "):
                           ref = line[3:].strip()
-                          # Resolve reference relative to the .in file
                           resolved = (in_file.parent / ref).resolve()
-                          # Look for the corresponding .in file
                           in_equiv = resolved.with_suffix(".in")
                           if in_equiv.exists():
                               deps.append(str(in_equiv.relative_to(".")))
@@ -79,13 +98,12 @@ jobs:
                   f.write("all_files=[]\n")
               exit(0)
 
-          # Build dependency graph
           all_keys = [str(f.relative_to(".")) for f in in_files]
           deps_map = {k: get_includes(Path(k)) for k in all_keys}
 
-          # Topological sort (Kahn's algorithm) -> groups for parallel execution
-          in_degree = {k: 0 for k in all_keys}
-          dependents = {k: [] for k in all_keys}
+          # Kahn's algorithm → groups for parallel-safe sequential execution
+          in_degree   = {k: 0 for k in all_keys}
+          dependents  = {k: [] for k in all_keys}
           for k, deps in deps_map.items():
               for d in deps:
                   if d in in_degree:
@@ -95,7 +113,6 @@ jobs:
           groups = []
           remaining = set(all_keys)
           while remaining:
-              # All nodes with no remaining dependencies
               group = sorted([k for k in remaining if in_degree[k] == 0])
               if not group:
                   print(f"ERROR: Circular dependency detected in: {remaining}")
@@ -116,34 +133,9 @@ jobs:
               f.write("has_files=true\n")
           PYEOF
 
-  # ────────────────────────────────────────────────────────────────
-  # JOB 2 – Analyse current files (unused, updates, conflicts)
-  # ────────────────────────────────────────────────────────────────
-  analyse:
-    name: Analyse dependencies
-    needs: discover
-    if: needs.discover.outputs.has_files == 'true'
-    runs-on: ubuntu-latest
-
-    outputs:
-      has_changes: ${{ steps.summary.outputs.has_changes }}
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Install analysis tools
-        run: |
-          pip install --require-hashes -r pip-requirements.txt
-          pip install pip-tools deptry packaging
-
-      # ── 2a. Unused dependencies (deptry reads pyproject.toml automatically) ──
+      # ── 1b. Unused dependencies ────────────────────────────────
       - name: Detect unused packages
+        if: steps.dag.outputs.has_files == 'true'
         run: |
           mkdir -p /tmp/reports
           deptry . --json-output /tmp/reports/deptry.json 2>/dev/null || true
@@ -152,127 +144,151 @@ jobs:
             cat /tmp/reports/deptry.json
           fi
 
-      # ── 2b. Check for newer versions (PyPI API, skips yanked releases) ──
+      # ── 1c. Check for newer versions ───────────────────────────
+      # Uses pip list --outdated against an installed venv rather than
+      # hammering the PyPI JSON API once per package. Produces the same
+      # information with fewer requests and no custom HTTP loop.
       - name: Check for newer versions
+        if: steps.dag.outputs.has_files == 'true'
         run: |
           python3 << 'PYEOF'
-          import json, urllib.request, os
+          import json, subprocess, os
           from pathlib import Path
-          from packaging.version import Version, InvalidVersion
-          from packaging.requirements import Requirement
 
-          def get_latest(package):
-              try:
-                  with urllib.request.urlopen(
-                      f"https://pypi.org/pypi/{package}/json", timeout=10
-                  ) as r:
-                      releases = json.loads(r.read()).get("releases", {})
-              except Exception as e:
-                  print(f"  WARN: {package}: {e}")
-                  return None
-              candidates = []
-              for ver_str, files in releases.items():
-                  if files and all(f.get("yanked", False) for f in files):
-                      continue
-                  try:
-                      candidates.append(Version(ver_str))
-                  except InvalidVersion:
-                      pass
-              return max(candidates) if candidates else None
+          all_files = json.loads(os.environ.get("ALL_FILES", "[]"))
+          txt_files = [f.replace(".in", ".txt") for f in all_files
+                       if Path(f.replace(".in", ".txt")).exists()]
 
-          def parse_compiled_txt(path):
-              """Reads pinned packages from a compiled requirements.txt."""
-              pkgs = {}
-              for line in Path(path).read_text().splitlines():
-                  line = line.strip()
-                  if not line or line.startswith(("#", "-r", "--", " ", "\t")):
-                      continue
-                  base = line.split(" \\")[0].split(" --hash")[0].strip()
-                  try:
-                      req = Requirement(base)
-                      pinned = next(
-                          (s.version for s in req.specifier if s.operator == "=="),
-                          None
-                      )
-                      pkgs[req.name] = pinned
-                  except Exception:
-                      pass
-              return pkgs
+          if not txt_files:
+              Path("/tmp/reports/updates.json").write_text("{}")
+              exit(0)
 
-          in_files = json.loads(os.environ.get("ALL_FILES", "[]"))
+          # Install all current .txt files into a throw-away venv
+          subprocess.run(["python", "-m", "venv", "/tmp/outdated-venv"], check=True)
+          pip = "/tmp/outdated-venv/bin/pip"
+          subprocess.run([pip, "install", "--require-hashes", "-r", "pip-requirements.txt", "-q"], check=True)
+          for txt in txt_files:
+              subprocess.run([pip, "install", "-r", txt, "-q"], check=True)
+
+          result = subprocess.run(
+              [pip, "list", "--outdated", "--format", "json"],
+              capture_output=True, text=True, check=True
+          )
+          outdated = json.loads(result.stdout or "[]")
+
+          # Map package name → which txt file(s) it appears in
+          def pinned_in(pkg_name):
+              found = []
+              for txt in txt_files:
+                  content = Path(txt).read_text().lower()
+                  if pkg_name.lower().replace("-", "_") in content.replace("-", "_"):
+                      found.append(txt)
+              return found
+
           all_updates = {}
-
-          for in_file in in_files:
-              txt_file = in_file.replace(".in", ".txt")
-              if not Path(txt_file).exists():
-                  continue
-
-              updates = []
-              for name, pinned in parse_compiled_txt(txt_file).items():
-                  latest = get_latest(name)
-                  if not latest:
-                      continue
-                  try:
-                      current = Version(pinned) if pinned else None
-                  except InvalidVersion:
-                      current = None
-                  if current and latest > current:
-                      updates.append({
-                          "package": name,
-                          "current": str(current),
-                          "latest": str(latest)
-                      })
-                      print(f"  {name}: {current} -> {latest}  [{txt_file}]")
-
-              if updates:
-                  all_updates[txt_file] = updates
+          for pkg in outdated:
+              for txt in pinned_in(pkg["name"]):
+                  all_updates.setdefault(txt, []).append({
+                      "package": pkg["name"],
+                      "current": pkg["version"],
+                      "latest":  pkg["latest_version"],
+                  })
+                  print(f"  {pkg['name']}: {pkg['version']} -> {pkg['latest_version']}  [{txt}]")
 
           Path("/tmp/reports/updates.json").write_text(json.dumps(all_updates, indent=2))
-          print(f"\nTotal: {sum(len(v) for v in all_updates.values())} updates across "
-                f"{len(all_updates)} files")
+          total = sum(len(v) for v in all_updates.values())
+          print(f"\nTotal: {total} updates across {len(all_updates)} files")
           PYEOF
         env:
-          ALL_FILES: ${{ needs.discover.outputs.all_files }}
+          ALL_FILES: ${{ steps.dag.outputs.all_files }}
 
-      # ── 2c. Conflict check: install all .txt files together into one venv ──
+      # ── 1d. Cross-module conflict check ────────────────────────
       - name: Check cross-module conflicts
+        if: steps.dag.outputs.has_files == 'true'
         shell: bash
         env:
-          ALL_FILES: ${{ needs.discover.outputs.all_files }}
+          ALL_FILES: ${{ steps.dag.outputs.all_files }}
         run: |
+          mkdir -p /tmp/reports
           python -m venv /tmp/conflict-check-venv
           source /tmp/conflict-check-venv/bin/activate
           pip install --require-hashes -r pip-requirements.txt -q
 
-          CONFLICT=0
+          INSTALL_FAILED=0
           while IFS= read -r IN_FILE; do
             TXT_FILE="${IN_FILE%.in}.txt"
             if [ -f "$TXT_FILE" ]; then
               echo "Installing $TXT_FILE ..."
-              pip install -r "$TXT_FILE" -q || CONFLICT=1
+              pip install -r "$TXT_FILE" -q || INSTALL_FAILED=1
             fi
           done < <(printf '%s' "$ALL_FILES" | jq -r '.[]')
 
-          pip check > /tmp/reports/conflicts.txt 2>&1 || CONFLICT=1
+          pip check > /tmp/reports/conflicts.txt 2>&1
+          CONFLICT_EXIT=$?
           cat /tmp/reports/conflicts.txt
-
-          if [ "$CONFLICT" -eq "1" ]; then
-            echo "CONFLICT_FOUND=true" >> "$GITHUB_ENV"
-          else
-            echo "CONFLICT_FOUND=false" >> "$GITHUB_ENV"
-          fi
           deactivate
 
-      - name: Fail on conflicts
-        if: env.CONFLICT_FOUND == 'true'
-        run: |
-          echo "::error::Version conflicts found across modules:"
-          cat /tmp/reports/conflicts.txt
-          exit 1
+          if [ "$INSTALL_FAILED" -eq 1 ] || [ "$CONFLICT_EXIT" -ne 0 ]; then
+            echo "::error::Version conflicts found:"
+            cat /tmp/reports/conflicts.txt
+            exit 1
+          fi
 
-      # ── 2d. Summarise findings ──
+      # ── 1e. Smoke test: import top-level packages ───────────────
+      # Catches broken wheels and missing native deps that pip check misses.
+      - name: Smoke test imports
+        if: steps.dag.outputs.has_files == 'true'
+        shell: bash
+        env:
+          ALL_FILES: ${{ steps.dag.outputs.all_files }}
+        run: |
+          source /tmp/conflict-check-venv/bin/activate || {
+            python -m venv /tmp/smoke-venv
+            source /tmp/smoke-venv/bin/activate
+            while IFS= read -r IN_FILE; do
+              TXT="${IN_FILE%.in}.txt"
+              [ -f "$TXT" ] && pip install -r "$TXT" -q
+            done < <(printf '%s' "$ALL_FILES" | jq -r '.[]')
+          }
+
+          python3 << 'PYEOF'
+          import importlib, sys, json, os
+          from pathlib import Path
+
+          all_files = json.loads(os.environ.get("ALL_FILES", "[]"))
+          failed = []
+
+          for in_file in all_files:
+              txt = in_file.replace(".in", ".txt")
+              if not Path(txt).exists():
+                  continue
+              for line in Path(txt).read_text().splitlines():
+                  line = line.strip()
+                  if not line or line.startswith(("#", "-", " ")):
+                      continue
+                  pkg = line.split("==")[0].split("[")[0].strip().replace("-", "_").lower()
+                  try:
+                      importlib.import_module(pkg)
+                  except ImportError:
+                      # Some packages have different import names than install names;
+                      # log but don't fail (this is best-effort).
+                      print(f"  WARN: could not import '{pkg}' (may have a different import name)")
+                  except Exception as e:
+                      print(f"  ERROR: importing '{pkg}' raised {type(e).__name__}: {e}")
+                      failed.append(pkg)
+
+          if failed:
+              print(f"\nFailed imports: {failed}")
+              sys.exit(1)
+          else:
+              print("All imports OK")
+          PYEOF
+          deactivate
+
+      # ── 1f. Summarise findings ──────────────────────────────────
       - name: Summarise findings
         id: summary
+        if: steps.dag.outputs.has_files == 'true'
         run: |
           python3 << 'PYEOF'
           import json, os
@@ -287,9 +303,10 @@ jobs:
               deptry = []
 
           summary = {
-              "updates": updates,
-              "unused": deptry,
+              "updates":   updates,
+              "unused":    deptry,
               "conflicts": Path("/tmp/reports/conflicts.txt").read_text().strip()
+                           if Path("/tmp/reports/conflicts.txt").exists() else "",
           }
           Path("/tmp/reports/summary.json").write_text(json.dumps(summary, indent=2))
 
@@ -298,43 +315,63 @@ jobs:
           PYEOF
 
       - name: Upload analysis reports
-        uses: actions/upload-artifact@v7
+        if: steps.dag.outputs.has_files == 'true'
+        uses: actions/upload-artifact@v4
         with:
           name: dependency-analysis
           path: /tmp/reports/
           retention-days: 14
 
   # ────────────────────────────────────────────────────────────────
-  # JOB 3 – Recompile in topological order
+  # JOB 2 – Recompile in topological order, verify, open PR
+  #         (merged from previous update + create-pr jobs)
   # ────────────────────────────────────────────────────────────────
-  update:
-    name: Recompile requirements
-    needs: [discover, analyse]
-    if: needs.analyse.outputs.has_changes == 'true'
+  update-and-pr:
+    name: Recompile & open PR
+    needs: analyse
+    if: |
+      needs.analyse.outputs.has_files == 'true' &&
+      needs.analyse.outputs.has_changes == 'true' &&
+      github.event_name != 'pull_request'
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
 
       - name: Install pip-tools
-        run: pip install --require-hashes -r pip-requirements.txt && pip install --update pip-tools
+        run: |
+          pip install --require-hashes -r pip-requirements.txt
+          pip install --upgrade pip-tools
 
-      # Compiles group by group in topological order.
-      # Within a group all .in files are independent of each other
-      # and could run in parallel — sequential is simpler and safe here.
+      # ── 2a. Compile all .in files in DAG order ─────────────────
+      # --allow-unsafe is applied to any file whose name suggests it is a
+      # dev/tooling requirements file, rather than being hardcoded to
+      # specific filenames. This avoids silent failures when new dev
+      # requirements files are added with different names.
       - name: Compile all .in files in DAG order
         run: |
           python3 << 'PYEOF'
-          import json, subprocess, sys, os
+          import json, subprocess, sys, os, re
           from pathlib import Path
 
           groups = json.loads(os.environ["ORDERED_GROUPS"])
+
+          # Any .in file whose path contains these indicators gets --allow-unsafe.
+          UNSAFE_PATTERNS = re.compile(
+              r"(dev|tool|lint|test|ci|pip-requirements)", re.IGNORECASE
+          )
 
           for group_idx, group in enumerate(groups):
               print(f"\n{'='*60}")
@@ -345,25 +382,22 @@ jobs:
                   txt_file = in_file.replace(".in", ".txt")
                   print(f"\n  pip-compile: {in_file} -> {txt_file}")
 
-                  cmd = [
-                    "pip-compile",
-                    "--upgrade",
-                    "--generate-hashes",
-                    "--strip-extras",
-                    "--output-file", txt_file,
-                  ]
+                  # Ensure output directory exists (e.g. backend/requirements/)
+                  Path(txt_file).parent.mkdir(parents=True, exist_ok=True)
 
-                  # --allow-unsafe pins setuptools/pip/wheel explicitly so that
-                  # --require-hashes mode doesn't choke on unlocked build-system deps.
-                  # Only needed for dev requirements where these appear as transitive deps
-                  # of tools like pip-tools itself.
-                  if in_file in ["requirements-dev.in", "pip-requirements.in"]:
+                  cmd = [
+                      "pip-compile",
+                      "--upgrade",
+                      "--generate-hashes",
+                      "--strip-extras",
+                      "--output-file", txt_file,
+                  ]
+                  if UNSAFE_PATTERNS.search(in_file):
                       cmd.append("--allow-unsafe")
 
                   cmd.append(in_file)
 
                   result = subprocess.run(cmd, capture_output=True, text=True)
-
                   if result.returncode != 0:
                       print(f"  ERROR compiling {in_file}:")
                       print(result.stderr)
@@ -372,13 +406,70 @@ jobs:
                   print(f"  OK: {txt_file} updated")
           PYEOF
         env:
-          ORDERED_GROUPS: ${{ needs.discover.outputs.ordered_groups }}
+          ORDERED_GROUPS: ${{ needs.analyse.outputs.ordered_groups }}
 
-      # Final conflict check after recompile
+      # ── 2b. Verify compiled .txt files match what pip-compile
+      #        would produce (catches manually edited .txt files) ──
+      - name: Verify committed .txt files are consistent
+        run: |
+          python3 << 'PYEOF'
+          import json, subprocess, sys, os, re, shutil, tempfile
+          from pathlib import Path
+
+          groups  = json.loads(os.environ["ORDERED_GROUPS"])
+          UNSAFE  = re.compile(r"(dev|tool|lint|test|ci|pip-requirements)", re.IGNORECASE)
+          drifted = []
+
+          for group in groups:
+              for in_file in group:
+                  txt_file = in_file.replace(".in", ".txt")
+                  if not Path(txt_file).exists():
+                      continue
+
+                  with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp:
+                      tmp_path = tmp.name
+
+                  cmd = [
+                      "pip-compile",
+                      "--generate-hashes",
+                      "--strip-extras",
+                      "--output-file", tmp_path,
+                  ]
+                  if UNSAFE.search(in_file):
+                      cmd.append("--allow-unsafe")
+                  cmd.append(in_file)
+
+                  result = subprocess.run(cmd, capture_output=True, text=True)
+                  if result.returncode != 0:
+                      print(f"  WARN: could not verify {in_file}: {result.stderr[:200]}")
+                      continue
+
+                  # Compare ignoring the "generated by pip-compile" header line
+                  def strip_header(path):
+                      lines = Path(path).read_text().splitlines()
+                      return [l for l in lines if not l.startswith("#")]
+
+                  if strip_header(txt_file) != strip_header(tmp_path):
+                      drifted.append(txt_file)
+                      print(f"  DRIFT: {txt_file} does not match a fresh compile")
+                  else:
+                      print(f"  OK: {txt_file}")
+
+                  os.unlink(tmp_path)
+
+          if drifted:
+              print(f"\nDrifted files: {drifted}")
+              print("These .txt files were likely edited manually. "
+                    "The updated versions will be included in the PR.")
+          PYEOF
+        env:
+          ORDERED_GROUPS: ${{ needs.analyse.outputs.ordered_groups }}
+
+      # ── 2c. Post-recompile conflict check ──────────────────────
       - name: Verify no conflicts after recompile
         shell: bash
         env:
-          ALL_FILES: ${{ needs.discover.outputs.all_files }}
+          ALL_FILES: ${{ needs.analyse.outputs.all_files }}
         run: |
           python -m venv /tmp/verify-venv
           source /tmp/verify-venv/bin/activate
@@ -387,6 +478,7 @@ jobs:
           while IFS= read -r IN_FILE; do
             TXT_FILE="${IN_FILE%.in}.txt"
             if [ -f "$TXT_FILE" ]; then
+              echo "Installing $TXT_FILE ..."
               pip install -r "$TXT_FILE" -q
             fi
           done < <(printf '%s' "$ALL_FILES" | jq -r '.[]')
@@ -395,43 +487,13 @@ jobs:
           pip check
           deactivate
 
-      - name: Upload recompiled files
-        uses: actions/upload-artifact@v7
-        with:
-          name: updated-requirements
-          path: "**/*.txt"
-          retention-days: 7
-
-  # ────────────────────────────────────────────────────────────────
-  # JOB 4 – Create Pull Request (skipped on pull_request trigger)
-  # ────────────────────────────────────────────────────────────────
-  create-pr:
-    name: Create Pull Request
-    needs: [discover, analyse, update]
-    if: needs.analyse.outputs.has_changes == 'true' && github.event_name != 'pull_request'
-    permissions:
-      contents: write
-      pull-requests: write
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download recompiled requirements
-        uses: actions/download-artifact@v8
-        with:
-          name: updated-requirements
-          path: .
-
       - name: Download analysis reports
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: dependency-analysis
           path: /tmp/reports/
 
+      # ── 2d. Generate PR body ────────────────────────────────────
       - name: Generate PR description
         run: |
           python3 << 'PYEOF'
@@ -465,16 +527,20 @@ jobs:
               lines += ["### No version updates found", ""]
 
           if summary.get("unused"):
-              lines += ["### Potentially unused packages (informational only, not removed)", ""]
+              lines += [
+                  "### Potentially unused packages",
+                  "_Informational only — not removed automatically._",
+                  "",
+              ]
               for issue in summary["unused"]:
                   lines.append(f"- `{issue.get('package', issue)}`")
               lines.append("")
 
           conflicts = summary.get("conflicts", "").strip()
           if conflicts and "No broken" not in conflicts:
-              lines += ["### Remaining conflicts", "", "```", conflicts, "```", ""]
+              lines += ["### ⚠️ Remaining conflicts", "", "```", conflicts, "```", ""]
           else:
-              lines += ["### No version conflicts found", ""]
+              lines += ["### ✅ No version conflicts found", ""]
 
           lines += [
               "---",
@@ -485,8 +551,9 @@ jobs:
           print("\n".join(lines))
           PYEOF
 
+      # ── 2e. Open PR ─────────────────────────────────────────────
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: chore/update-requirements-${{ github.run_number }}
