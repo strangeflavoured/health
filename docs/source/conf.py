@@ -36,6 +36,7 @@ extensions = [
     "sphinx_design",
     "sphinx.ext.intersphinx",
     "sphinx_tippy",
+    "sphinx.ext.githubpages",
 ]
 
 source_suffix = {".rst": "restructuredtext", ".md": "restructuredtext"}
