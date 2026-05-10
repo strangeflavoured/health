@@ -63,6 +63,7 @@ jobs:
               - 'compose.yml'
               - 'compose.override.yml'
             backend:
+              - 'src/**'
               - 'backend/**'
               - 'docker/Dockerfile.backend'
             frontend:
@@ -162,10 +163,31 @@ jobs:
               extends: backend
               image: health-backend:test
               build: !reset null
+              environment:
+                - COVERAGE_FILE=/home/health/coverage-data/.coverage
+              volumes:
+                - ./test-output:/home/health/test-output
+                - ./coverage-data:/home/health/coverage-data
+              command: >
+                -p pytest_cov
+                --tb=long -v
+                --continue-on-collection-errors
+                --no-header
+                --cov-report=term-missing
+                --cov-report=xml:/home/health/test-output/coverage-python.xml
+                --cov-fail-under=80
+                --junit-xml=/home/health/test-output/test-results.xml
+                -p no:warnings
             frontend-test:
               extends: frontend
               image: health-frontend:test
               build: !reset null
+              volumes:
+                - ./test-output:/app/test-output
+              command: >
+                --coverage.reporter=lcov
+                --coverage.reporter=text
+                --coverage.reportsDirectory=/app/test-output/coverage-js
           EOF
           echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
 
@@ -238,6 +260,16 @@ jobs:
         id: test_runner
         if: always() && (steps.changes.outputs.tests == 'true' || steps.changes.outputs.docker == 'true')
         run: docker compose run test-runner
+
+      - name: Run backend tests
+        id: backend_tests
+        if: always() && (steps.changes.outputs.backend == 'true' || steps.changes.outputs.docker == 'true')
+        run: docker compose run backend-test
+
+      - name: Run frontend tests
+        id: frontend_tests
+        if: always() && (steps.changes.outputs.frontend == 'true' || steps.changes.outputs.docker == 'true')
+        run: docker compose run frontend-test
 
       - name: Upload JUnit test results
         if: always() && steps.test_runner.conclusion != 'skipped'
