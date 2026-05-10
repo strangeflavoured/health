@@ -44,7 +44,6 @@ services:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.frontend
-    command: npm run build
     container_name: health-frontend
     depends_on:
       backend:

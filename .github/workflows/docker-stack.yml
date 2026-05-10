@@ -158,10 +158,9 @@ jobs:
               build: !reset null
               restart: on-failure
             frontend:
-              image: health-frontend:ci
+              image: health-frontend:dev
               build: !reset null
               restart: on-failure
-              command: npm run dev -- --host
               user: root
           EOF
           echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"

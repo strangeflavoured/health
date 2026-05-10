@@ -7,7 +7,7 @@ services:
       - ./src:/home/health/src:ro
 
   frontend:
-    command: npm run dev -- --host
+    image: health-frontend:dev
 
   sandbox:
     volumes:

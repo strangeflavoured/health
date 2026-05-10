@@ -1,11 +1,30 @@
-FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4
+FROM node:25.4.0-alpine@sha256:d1cdf008963e1627f47c4426c33481e538190300ad2514e9f8d5c75755888521 AS base
 
+RUN mkdir -p /app && chown node:node /app
 WORKDIR /app
-COPY --chown=node:node ./frontend/package*.json .
-RUN --mount=type=cache,target=/app/node_modules/.cache npm install
 COPY --chown=node:node ./frontend .
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+USER node
 
+FROM base AS dev-base
+USER root
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
+USER node
+
+FROM dev-base AS dev
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s --start-interval=5s \
     CMD wget --spider -q http://localhost:5173
+CMD ["npm", "run", "dev", "--", "--host"]
 
-USER node
+FROM dev-base AS test
+ENTRYPOINT ["npm", "run", "test:coverage", "--"]
+
+FROM dev-base AS builder
+RUN --mount=type=cache,target=/app/node_modules/.cache npm run build
+
+FROM nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591 AS prod
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
+    CMD wget --spider -q http://localhost:80 || exit 1

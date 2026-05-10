@@ -18,6 +18,10 @@ group "backend" {
   targets = ["backend-dev", "backend-test", "backend-prod"]
 }
 
+group "frontend" {
+  targets = ["frontend-dev", "frontend-test", "frontend-prod"]
+}
+
 target "redis" {
   context    = "."
   dockerfile = "docker/Dockerfile.redis"
@@ -93,10 +97,31 @@ target "backend-prod" {
   cache-to   = ["type=gha,scope=backend,mode=max"]
 }
 
-target "frontend" {
+target "frontend-dev" {
   context    = "."
   dockerfile = "docker/Dockerfile.frontend"
-  tags       = ["health-frontend:ci"]
+  target     = "dev"
+  tags       = ["health-frontend:dev"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=frontend"]
+  cache-to   = ["type=gha,scope=frontend,mode=max"]
+}
+
+target "frontend-test" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.frontend"
+  target     = "test"
+  tags       = ["health-frontend:test"]
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=frontend"]
+  cache-to   = ["type=gha,scope=frontend,mode=max"]
+}
+
+target "frontend-prod" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.frontend"
+  target     = "prod"
+  tags       = ["health-frontend:prod"]
   output     = ["type=docker"]
   cache-from = ["type=gha,scope=frontend"]
   cache-to   = ["type=gha,scope=frontend,mode=max"]
