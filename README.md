@@ -1,3 +1,12 @@
+# Health Analyser
+
+[![CodeQL Advanced](https://github.com/strangeflavoured/health/actions/workflows/codeql.yml/badge.svg)](https://github.com/strangeflavoured/health/actions/workflows/codeql.yml)
+[![Dependabot Updates](https://github.com/strangeflavoured/health/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/strangeflavoured/health/actions/workflows/dependabot/dependabot-updates)
+[![pre-commit](https://github.com/strangeflavoured/health/actions/workflows/pre_commit_run.yml/badge.svg)](https://github.com/strangeflavoured/health/actions/workflows/pre_commit_run.yml)
+[![docker-stack](https://github.com/strangeflavoured/health/actions/workflows/docker-stack.yml/badge.svg)](https://github.com/strangeflavoured/health/actions/workflows/docker-stack.yml)
+[![requirements](https://github.com/strangeflavoured/health/actions/workflows/requirements-maintenance.yml/badge.svg)](https://github.com/strangeflavoured/health/actions/workflows/requirements-maintenance.yml)
+[![vulture](https://github.com/strangeflavoured/health/actions/workflows/vulture.yml/badge.svg)](https://github.com/strangeflavoured/health/actions/workflows/vulture.yml)
+
 # Getting started
 
 ## Prerequisites
