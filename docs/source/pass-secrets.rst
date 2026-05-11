@@ -1,1 +1,2 @@
-.. mdinclude:: ../pass-secrets.md
+.. include:: ../pass-secrets.md
+   :parser: myst_parser.sphinx_
