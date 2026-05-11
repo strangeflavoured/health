@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   stack:
-    name: Run Tests in containers
+    name: Run Tests
     runs-on: ubuntu-latest
 
     env:
