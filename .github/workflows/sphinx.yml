@@ -19,9 +19,31 @@ permissions:
   id-token: write
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            docs:
+              - 'backend/**'
+              - 'compose.yml'
+              - 'docker/Dockerfile.docs'
+              - 'docs/**'
+              - 'frontend/**'
+              - 'src/**'
+
   build-docs:
     runs-on: ubuntu-latest
     name: Build docs
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
     env:
       # Required by compose.yml
       REDIS_HOST: 127.0.0.1
@@ -81,8 +103,21 @@ jobs:
         with:
           path: _site
 
+  ci-success:
+    name: Built Docs
+    needs: [ changes, build-docs ]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify no failures
+        run: |
+          if [[ "${{ needs.changes.result }}" == "failure" ]] || \
+             [[ "${{ needs.build-docs.result }}" == "failure" ]]; then
+            exit 1
+          fi
+
   deploy:
-    needs: build-docs
+    needs: [ changes, build-docs ]
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
