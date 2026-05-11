@@ -11,3 +11,4 @@ sphinx_design>=0.7.0
 sphinx_tippy>=0.4.3
 furo>=2025.12.19
 myst-parser>=5.0.0
+linkify-it-py>=2.1.0
