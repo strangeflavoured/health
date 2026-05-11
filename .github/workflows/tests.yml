@@ -99,6 +99,7 @@ jobs:
               environment:
                 - COVERAGE_FILE=/home/health/coverage-data/.coverage-backend
               extends:
+                file: compose.yml
                 service: backend
               image: health-backend:test
               volumes:
@@ -112,6 +113,7 @@ jobs:
                 --coverage.reporter=text
                 --coverage.reportsDirectory=/app/test-output/coverage-js
               extends:
+                file: compose.yml
                 service: frontend
               image: health-frontend:test
               restart: on-failure
