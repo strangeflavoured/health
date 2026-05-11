@@ -62,6 +62,7 @@ exclude = [
 "backend/**/tests.py" = ["D100", "D103", "ANN", "S101"]
 "backend/**/test_*.py" = ["D100", "D103", "ANN", "S101"]
 "backend/**/*_tests.py" = ["D100", "D103", "ANN", "S101"]
+"scripts/**/test_*" = ["D101", "D102", "ANN", "S101"]
 
 [tool.vulture]
 # ── Scan targets ──────────────────────────────────────────────────────────────
