@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   stack:
-    name: Build and run full docker stack
+    name: Docker Stack Integration Test
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
