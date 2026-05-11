@@ -6,7 +6,7 @@ on:
     # Skipping on docs/config saves minutes on non-code PRs.
     paths:
       - "src/**/*.py"
-      - "app/**/*.py"
+      - "backend/**/*.py"
       - "vulture_allowlist.py"
       - "pyproject.toml"
 
