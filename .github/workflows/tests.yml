@@ -98,7 +98,8 @@ jobs:
                 -p no:warnings
               environment:
                 - COVERAGE_FILE=/home/health/coverage-data/.coverage-backend
-              extends: backend
+              extends:
+                service: backend
               image: health-backend:test
               volumes:
                 - ./test-output:/home/health/test-output
@@ -110,7 +111,8 @@ jobs:
                 --coverage.reporter=lcov
                 --coverage.reporter=text
                 --coverage.reportsDirectory=/app/test-output/coverage-js
-              extends: frontend
+              extends:
+                service: frontend
               image: health-frontend:test
               restart: on-failure
               user: root
