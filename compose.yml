@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.backend
-      target: runtime
+      target: dev
     container_name: health-backend
     depends_on:
       redis:
@@ -31,6 +31,12 @@ services:
       - source: app.key
       - source: app_password
 
+  backend-test:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.backend
+      target: test
+
   docs-compiler:
     build:
       context: .
@@ -44,6 +50,7 @@ services:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.frontend
+      target: dev
     container_name: health-frontend
     depends_on:
       backend:
@@ -58,6 +65,12 @@ services:
     ports:
       - "5173:5173"
     restart: unless-stopped
+
+  frontend-test:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.frontend
+      target: test
 
   redis-init:
     build:

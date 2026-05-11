@@ -6,18 +6,13 @@ services:
       - ./backend/config:/home/health/config:ro
       - ./src:/home/health/src:ro
   backend-test:
-    extends:
-      service: backend
     image: health-backend:test
 
   frontend:
     image: health-frontend:dev
 
   frontend-test:
-    extends:
-      service: frontend
     image: health-frontend:test
-
 
   sandbox:
     volumes:
