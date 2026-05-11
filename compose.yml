@@ -31,6 +31,12 @@ services:
       - source: app.key
       - source: app_password
 
+  backend-test:
+    build:
+      target: test
+    depends_on: !reset null
+    extends: backend
+
   docs-compiler:
     build:
       context: .
@@ -58,6 +64,12 @@ services:
     ports:
       - "5173:5173"
     restart: unless-stopped
+
+  frontend-test:
+    build:
+      target: test
+    depends_on: !reset null
+    extends: frontend
 
   redis-init:
     build:
