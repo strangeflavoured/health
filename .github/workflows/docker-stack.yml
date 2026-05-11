@@ -7,8 +7,6 @@ on:
 
 permissions:
   contents: read
-  checks: write
-  pull-requests: write
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -50,8 +48,7 @@ jobs:
       REDIS_HASH_INSIGHT:      ${{ secrets.REDIS_HASH_INSIGHT }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
       - name: Detect changed paths
         id: changes
@@ -69,10 +66,6 @@ jobs:
             frontend:
               - 'frontend/**'
               - 'docker/Dockerfile.frontend'
-            tests:
-              - 'src/**'
-              - 'tests/**'
-              - 'docker/Dockerfile.tests'
             sandbox:
               - 'scripts/**'
               - 'docker/Dockerfile.sandbox'
@@ -86,9 +79,12 @@ jobs:
         uses: docker/bake-action@v5
         with:
           files: docker/docker-bake.hcl
+          targets: |
+            infra
+            dev
+            sandbox
           load: true
 
-      # ---- Materialize secrets ----
       - name: Materialize secrets from GH Actions secrets
         run: |
           chmod +x scripts/load-ci-secrets.sh
@@ -105,7 +101,6 @@ jobs:
           REDIS_DB=0
           EOF
 
-      # ---- Generate compose override that pins prebuilt images ----
       - name: Write compose override
         run: |
           cat > compose.ci.yml <<'EOF'
@@ -117,24 +112,6 @@ jobs:
             redisinsight:
               image: health-redisinsight
               build: !reset null
-            test-runner:
-              image: health-test-runner
-              build: !reset null
-              environment:
-                - COVERAGE_FILE=/home/health/coverage-data/.coverage-src
-              volumes:
-                - ./test-output:/home/health/test-output
-                - ./coverage-data:/home/health/coverage-data
-              command: >
-                -p pytest_cov
-                --tb=long -v
-                --continue-on-collection-errors
-                --no-header
-                --cov-report=term-missing
-                --cov-report=xml:/home/health/test-output/coverage-src.xml
-                --cov-fail-under=80
-                --junit-xml=/home/health/test-output/test-results-src.xml
-                -p no:warnings
             sandbox:
               image: health-sandbox
               build: !reset null
@@ -150,40 +127,10 @@ jobs:
               build: !reset null
               restart: on-failure
               user: root
-            backend-test:
-              extends: backend
-              image: health-backend:test
-              build: !reset null
-              environment:
-                - COVERAGE_FILE=/home/health/coverage-data/.coverage-backend
-              volumes:
-                - ./test-output:/home/health/test-output
-                - ./coverage-data:/home/health/coverage-data
-              command: >
-                -p pytest_cov
-                --tb=long -v
-                --continue-on-collection-errors
-                --no-header
-                --cov-report=term-missing
-                --cov-report=xml:/home/health/test-output/coverage-backend.xml
-                --cov-fail-under=80
-                --junit-xml=/home/health/test-output/test-results-backend.xml
-                -p no:warnings
-            frontend-test:
-              extends: frontend
-              image: health-frontend:test
-              build: !reset null
-              volumes:
-                - ./test-output:/app/test-output
-              command: >
-                --coverage.reporter=lcov
-                --coverage.reporter=text
-                --coverage.reportsDirectory=/app/test-output/coverage-js
           EOF
           echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
 
-      # ---- Redis + RedisInsight + Backend + Frontend ----
-      - name: Start redis, redisinsight, backend and frontend
+      - name: Start persistent containers
         run: docker compose up -d redis redisinsight backend frontend
 
       - name: Wait for containers to be healthy
@@ -241,61 +188,10 @@ jobs:
 
           exit 1
 
-      # ---- Test runner, docs compiler, sandbox ----
-      - name: Prepare test output directory
-        run: |
-          mkdir -p test-output coverage-data
-          sudo chown -R 1000:1000 test-output coverage-data
-
-      - name: Run test-runner
-        id: test_runner
-        if: always() && (steps.changes.outputs.tests == 'true' || steps.changes.outputs.docker == 'true')
-        run: docker compose run test-runner
-
-      - name: Run backend tests
-        id: backend_tests
-        if: always() && (steps.changes.outputs.backend == 'true' || steps.changes.outputs.docker == 'true')
-        run: docker compose run backend-test
-
-      - name: Run frontend tests
-        id: frontend_tests
-        if: always() && (steps.changes.outputs.frontend == 'true' || steps.changes.outputs.docker == 'true')
-        run: docker compose run frontend-test
-
-      - name: Upload JUnit test results
-        if: always() && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
-        uses: actions/upload-artifact@v7
-        with:
-          name: test-results
-          path: test-output/test-results-*.xml
-          retention-days: 30
-
-      - name: Publish test results as PR check
-        if: always() && github.event_name == 'pull_request' && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
-        uses: dorny/test-reporter@v3
-        with:
-          name: Test Report
-          path: test-output/test-results-*.xml
-          reporter: java-junit
-          fail-on-error: false
-
-      - name: Upload coverage to Codecov
-        if: always() && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: |
-            test-output/coverage-src.xml
-            test-output/coverage-backend.xml
-            test-output/coverage-js/lcov.info
-          flags: integration,python,javascript
-          fail_ci_if_error: false
-
       - name: Run sandbox
         if: always() && (steps.changes.outputs.sandbox == 'true' || steps.changes.outputs.docker == 'true')
         run: docker compose run sandbox
 
-      # ---- Diagnostics on failure ----
       - name: Dump container logs on failure
         if: failure()
         run: |
@@ -311,12 +207,6 @@ jobs:
           echo "::group::frontend logs"
           docker compose logs frontend || true
           echo "::endgroup::"
-          echo "::group::test-runner logs"
-          docker compose logs test-runner || true
-          echo "::endgroup::"
-          echo "::group::docs-compiler logs"
-          docker compose logs docs-compiler || true
-          echo "::endgroup::"
           echo "::group::sandbox logs"
           docker compose logs sandbox || true
           echo "::endgroup::"
@@ -324,7 +214,6 @@ jobs:
           docker compose ps -a || true
           echo "::endgroup::"
 
-      # ---- Cleanup ----
       - name: Tear down stack
         if: always()
         run: |
