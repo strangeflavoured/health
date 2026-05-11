@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.backend
-      target: runtime
+      target: dev
     container_name: health-backend
     depends_on:
       redis:
@@ -33,9 +33,9 @@ services:
 
   backend-test:
     build:
+      context: .
+      dockerfile: ./docker/Dockerfile.backend
       target: test
-    depends_on: !reset null
-    extends: backend
 
   docs-compiler:
     build:
@@ -50,6 +50,7 @@ services:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.frontend
+      target: dev
     container_name: health-frontend
     depends_on:
       backend:
@@ -67,9 +68,9 @@ services:
 
   frontend-test:
     build:
+      context: .
+      dockerfile: ./docker/Dockerfile.frontend
       target: test
-    depends_on: !reset null
-    extends: frontend
 
   redis-init:
     build:
