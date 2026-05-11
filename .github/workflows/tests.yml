@@ -1,0 +1,190 @@
+name: docker-stack
+
+on:
+  pull_request:
+    branches: ["**"]
+    paths:
+      - 'backend/**'
+      - 'compose.yml'
+      - 'compose.override.yml'
+      - 'docker/Dockerfile.backend'
+      - 'docker/Dockerfile.frontend'
+      - 'docker/Dockerfile.tests'
+      - 'frontend/**'
+      - 'src/**'
+      - 'tests/**'
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+    cancel-in-progress: true
+
+jobs:
+  stack:
+    name: Run Tests in containers
+    runs-on: ubuntu-latest
+
+    env:
+      # Required by compose.yml
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: "6380"
+      REDIS_INSIGHT_PORT: "5540"
+      REDIS_DB: "0"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          driver: docker-container
+
+      - name: Build test images via bake
+        uses: docker/bake-action@v5
+        with:
+          files: docker/docker-bake.hcl
+          targets: tests
+          load: true
+
+      - name: Create backend .env
+        run: |
+          cat > backend/.env << EOF
+          DJANGO_SETTINGS_MODULE=config.settings.dev
+          DJANGO_SECRET_KEY=ci-insecure-key-not-for-prod
+          REDIS_HOST=redis
+          REDIS_PORT=6380
+          REDIS_DB=0
+          EOF
+
+      - name: Write compose override
+        run: |
+          cat > compose.ci.yml <<'EOF'
+          services:
+            test-runner:
+              build: !reset null
+              command: >
+                -p pytest_cov
+                --tb=long -v
+                --continue-on-collection-errors
+                --no-header
+                --cov-report=term-missing
+                --cov-report=xml:/home/health/test-output/coverage-src.xml
+                --cov-fail-under=80
+                --junit-xml=/home/health/test-output/test-results-src.xml
+                -p no:warnings
+              environment:
+                - COVERAGE_FILE=/home/health/coverage-data/.coverage-src
+              image: health-test-runner
+              volumes:
+                - ./test-output:/home/health/test-output
+                - ./coverage-data:/home/health/coverage-data
+            backend-test:
+              build: !reset null
+              command: >
+                -p pytest_cov
+                --tb=long -v
+                --continue-on-collection-errors
+                --no-header
+                --cov-report=term-missing
+                --cov-report=xml:/home/health/test-output/coverage-backend.xml
+                --cov-fail-under=80
+                --junit-xml=/home/health/test-output/test-results-backend.xml
+                -p no:warnings
+              environment:
+                - COVERAGE_FILE=/home/health/coverage-data/.coverage-backend
+              extends: backend
+              image: health-backend:test
+              volumes:
+                - ./test-output:/home/health/test-output
+                - ./coverage-data:/home/health/coverage-data
+              restart: on-failure
+            frontend-test:
+              build: !reset null
+              command: >
+                --coverage.reporter=lcov
+                --coverage.reporter=text
+                --coverage.reportsDirectory=/app/test-output/coverage-js
+              extends: frontend
+              image: health-frontend:test
+              restart: on-failure
+              user: root
+              volumes:
+                - ./test-output:/app/test-output
+          EOF
+          echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
+
+      - name: Prepare test output directory
+        run: |
+          mkdir -p test-output coverage-data
+          sudo chown -R 1000:1000 test-output coverage-data
+
+      - name: Run src tests
+        id: test_runner
+        if: always()
+        run: docker compose run test-runner
+
+      - name: Run backend tests
+        id: backend_tests
+        if: always()
+        run: docker compose run backend-test
+
+      - name: Run frontend tests
+        id: frontend_tests
+        if: always()
+        run: docker compose run frontend-test
+
+      - name: Upload JUnit test results
+        if: always() && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: test-output/test-results-*.xml
+          retention-days: 30
+
+      - name: Publish test results as PR check
+        if: always() && github.event_name == 'pull_request' && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
+        uses: dorny/test-reporter@v3
+        with:
+          name: Test Report
+          path: test-output/test-results-*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload coverage to Codecov
+        if: always() && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: |
+            test-output/coverage-src.xml
+            test-output/coverage-backend.xml
+            test-output/coverage-js/lcov.info
+          flags: integration,python,javascript
+          fail_ci_if_error: false
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          echo "::group::src-test logs"
+          docker compose logs test-runner || true
+          echo "::endgroup::"
+          echo "::group::backend-test logs"
+          docker compose logs backend-test || true
+          echo "::endgroup::"
+          echo "::group::frontend-test logs"
+          docker compose logs frontend-test || true
+          echo "::endgroup::"
+          echo "::group::compose ps"
+          docker compose ps -a || true
+          echo "::endgroup::"
+
+      - name: Tear down stack
+        if: always()
+        run: |
+          docker compose down -v --remove-orphans || true
