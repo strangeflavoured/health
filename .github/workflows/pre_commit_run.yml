@@ -36,27 +36,48 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - "**"
+              - "!**/*.md"
+              - "!**/*.rst"
+              - "!**/*.txt"
+              - "!.gitignore"
+              - "!.gitattributes"
+              - "!LICENSE"
+              - "!CHANGELOG"
+              - "!NOTICE"
+              - "!docs/**"
+
   pre-commit:
     name: Run pre-commit hooks
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15          # hard ceiling – prevents runaway jobs billing minutes silently
+    timeout-minutes: 15
 
     steps:
-      # ── 1. Checkout ────────────────────────────────────────────────────────
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
-          # Full history needed for accurate `git diff` on PRs
           fetch-depth: 0
 
-      # ── 2. Python setup with pip cache ────────────────────────────────────
       - name: Set up Python 3.12
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-          cache: "pip"           # caches ~/.cache/pip keyed on requirements files
+          cache: "pip"
 
-      # ── 2b. .venv cache — skips dep install entirely on cache hit ─────────
       - name: Cache .venv
         id: venv-cache
         uses: actions/cache@v5
@@ -66,10 +87,6 @@ jobs:
           restore-keys: |
             venv-${{ runner.os }}-py3.12-
 
-
-      # ── 3. pre-commit environment cache ───────────────────────────────────
-      # Cache key: OS + Python version + hash of .pre-commit-config.yaml
-      # The cache is invalidated automatically when hooks or their revs change.
       - name: Cache pre-commit environments
         uses: actions/cache@v5
         with:
@@ -78,14 +95,11 @@ jobs:
           restore-keys: |
             pre-commit-${{ runner.os }}-py3.12-
 
-      # ── 4. Install pre-commit ──────────────────────────────────────────────
-      - name: Install pre-commit
-        run: pip install pre-commit
+      - name: Install Requirements
+        run: |
+          pip install --require-hashes -r pip-requirements.txt
+          pip install --require-hashes -r requirements-dev.txt
 
-      # ── 4b. Create .venv and install dev dependencies ─────────────────────
-      # deptry's pre-commit hook looks for .venv/bin/deptry specifically,
-      # so we must install into a .venv at the repo root rather than the
-      # system Python.
       - name: Create .venv with dev dependencies
         if: steps.venv-cache.outputs.cache-hit != 'true'
         run: |
@@ -100,7 +114,6 @@ jobs:
             -r backend/requirements/tests.txt \
             -q
 
-      # ── 4c. Set up node for eslint ─────────────────────
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -111,9 +124,6 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
-      # ── 5a. PR run – changed files only ───────────────────────────────────
-      # Uses `--from-ref`/`--to-ref` to scope hooks to the PR diff only.
-      # This is significantly cheaper than --all-files on large repos.
       - name: Run pre-commit (changed files only)
         if: github.event_name == 'pull_request'
         run: |
@@ -121,7 +131,6 @@ jobs:
             --from-ref ${{ github.event.pull_request.base.sha }} \
             --to-ref   ${{ github.event.pull_request.head.sha }}
 
-      # ── 5b. Manual trigger – full or scoped run ────────────────────────────
       - name: Run pre-commit (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -131,4 +140,17 @@ jobs:
           else
             echo "Running on HEAD diff only..."
             pre-commit run --from-ref HEAD~1 --to-ref HEAD
+          fi
+
+  ci-success:
+    name: Passed pre-commit
+    needs: [ changes, pre-commit ]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify no failures
+        run: |
+          if [[ "${{ needs.changes.result }}" == "failure" ]] || \
+             [[ "${{ needs.pre-commit.result }}" == "failure" ]]; then
+            exit 1
           fi
