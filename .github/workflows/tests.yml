@@ -1,4 +1,4 @@
-name: docker-stack
+name: Run Tests
 
 on:
   pull_request:
