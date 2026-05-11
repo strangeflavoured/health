@@ -74,6 +74,13 @@ paths = [
     "vulture_allowlist.py",   # always include so suppressions are validated
 ]
 
+exclude = [
+    "**/tests.py",
+    "**/test_*.py",
+    "**/*_tests.py",
+    "**/conftest.py",
+]
+
 # ── Confidence threshold ──────────────────────────────────────────────────────
 # 80% filters out most false positives from dynamic attribute access while
 # still catching genuinely unused functions and variables.

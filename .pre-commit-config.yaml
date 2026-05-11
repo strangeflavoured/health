@@ -25,9 +25,6 @@ repos:
     rev: v2.16
     hooks:
       - id: vulture
-        args:
-          - "--exclude"
-          - "**/tests.py,**/test_*.py,**/*_tests.py,**/conftest.py"
 
   - repo: https://github.com/fpgmaas/deptry
     rev: 0.25.1
