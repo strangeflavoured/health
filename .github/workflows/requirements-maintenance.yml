@@ -6,7 +6,7 @@ on:
   workflow_dispatch:        # Manual trigger
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref  }}
+  group: ${{ github.workflow }}-${{ github.ref  }}
   cancel-in-progress: false  # Never cancel mid-flight; a partial recompile is worse than a queue
 
 # Default: read-only. The update-and-pr job overrides below.
@@ -326,8 +326,7 @@ jobs:
     needs: analyse
     if: |
       needs.analyse.outputs.has_files == 'true' &&
-      needs.analyse.outputs.has_changes == 'true' &&
-      github.event_name != 'pull_request'
+      needs.analyse.outputs.has_changes == 'true'
     permissions:
       contents: write
       pull-requests: write
