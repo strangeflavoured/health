@@ -488,7 +488,7 @@ jobs:
           deactivate
 
       - name: Download analysis reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dependency-analysis
           path: /tmp/reports/
