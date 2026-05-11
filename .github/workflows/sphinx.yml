@@ -21,6 +21,7 @@ permissions:
 jobs:
   build-docs:
     runs-on: ubuntu-latest
+    name: Build docs
     env:
       # Required by compose.yml
       REDIS_HOST: 127.0.0.1
