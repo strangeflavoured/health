@@ -86,7 +86,7 @@ jobs:
           driver: docker-container
 
       - name: Build Integration images via bake
-        uses: docker/bake-action@4a9a8d494466d37134e2bfca2d3a8de8fb2681ad # v5.13.0
+        uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         with:
           files: docker/docker-bake.hcl
           targets: |
@@ -95,7 +95,7 @@ jobs:
           load: true
 
       - name: Build Integration images via bake
-        uses: docker/bake-action@4a9a8d494466d37134e2bfca2d3a8de8fb2681ad # v5.13.0
+        uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         if: needs.changes.outputs.sandbox == 'true'
         with:
           files: docker/docker-bake.hcl
