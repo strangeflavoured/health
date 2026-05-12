@@ -235,7 +235,7 @@ jobs:
           rm -rf "${SECRETS_DIR:-}" || true
 
   ci-success:
-    name: Ran Stack
+    name: Ran Docker Stack Integration
     needs: [ changes, stack ]
     if: always()
     runs-on: ubuntu-latest
