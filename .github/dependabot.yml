@@ -132,3 +132,13 @@ updates:
           - "react"
           - "react-dom"
           - "@types/react*"
+      testing:
+        patterns:
+          - "@testing-library/*"
+          - "vitest"
+          - "@vitest/*"
+          - "jsdom"
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
