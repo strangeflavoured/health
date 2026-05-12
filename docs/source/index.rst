@@ -11,6 +11,7 @@ HealthAnalyser Documentation
    :hidden:
    :caption: Notes:
 
+   Getting Started <getting-started>
    Using Redis & Docker <docker-redis>
    Dev tools <dev-tools>
    Pass secrets <pass-secrets>
