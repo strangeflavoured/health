@@ -25,5 +25,9 @@ export default defineConfig({
         statements: 80,
       },
     },
+    reporters: ['default', 'junit'],
+    outputFile: {
+      junit: '/app/test-output/test-results-vitest.junit.xml',
+    },
   },
 })
