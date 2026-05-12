@@ -1,6 +1,10 @@
 name: pre-commit
 
 on:
+  push:
+    branches:
+      - main
+
   pull_request:
     # ── Negative filter: skip if ONLY these file types changed ──────────────
     # The workflow still runs if any non-listed file is touched alongside these.
