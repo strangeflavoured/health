@@ -146,6 +146,8 @@ jobs:
         run: |
           mkdir -p ./publish/${{ github.ref_name }}
           cp -r ./dist/. ./publish/${{ github.ref_name }}/
+          cp versions.json ./publish/versions.json
+
           cat > ./publish/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
