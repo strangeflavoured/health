@@ -153,3 +153,27 @@ jobs:
           publish_dir: ./dist
           destination_dir: ${{ github.ref_name }}
           keep_files: true
+
+      - name: Write root redirect
+        run: |
+          mkdir -p ./redirect
+          cat > ./redirect/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+           <meta http-equiv="refresh" content="0; url=${{ github.ref_name }}/">
+           <script>window.location.replace("${{ github.ref_name }}/");</script>
+           <title>Redirecting to ${{ github.ref_name }}...</title>
+          </head>
+          <body>
+           <a href="${{ github.ref_name }}/">Click here if not redirected</a>
+          </body>
+          </html>
+          EOF
+
+      - name: Deploy root redirect
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./redirect
+          keep_files: true
