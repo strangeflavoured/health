@@ -18,6 +18,7 @@ RUN pip install --user --require-hashes -r pip-requirements.txt
 RUN pip install --user --require-hashes -r requirements.txt -r importer_requirements.txt
 
 COPY --chown=health:health ./src ./src
+COPY --chown=health:health ./versions.json .
 COPY --chown=health:health ./scripts/import_to_redis.py .
 COPY --chown=health:health ./scripts/setup_logger.py .
 
