@@ -23,6 +23,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY ./backend .
 COPY ./src ./src
+COPY ./versions.json .
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=20s --start-interval=5s \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')"

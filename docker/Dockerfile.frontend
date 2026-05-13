@@ -3,6 +3,7 @@ FROM node:26.1.0-alpine@sha256:e71ac5e964b9201072425d59d2e876359efa25dc96bb1768c
 RUN mkdir -p /app && chown node:node /app
 WORKDIR /app
 COPY --chown=node:node ./frontend .
+COPY --chown=node:node ./versions.json .
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 USER node
 
