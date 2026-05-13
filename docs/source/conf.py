@@ -3,18 +3,14 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-import importlib.util
+import json
 import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parents[2]))
 
-spec = importlib.util.spec_from_file_location(
-    "_version", pathlib.Path(__file__).parents[2] / "src" / "_version.py"
-)
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
-__version__ = mod.__version__
+with open(pathlib.Path(__file__).parents[2] / "versions.json", "r") as f:
+    __version__ = json.load(f)["latest"]
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
