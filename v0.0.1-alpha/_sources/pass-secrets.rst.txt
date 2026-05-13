@@ -1,0 +1,1 @@
+.. mdinclude:: ../pass-secrets.md
