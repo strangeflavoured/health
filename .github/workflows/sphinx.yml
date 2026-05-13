@@ -142,6 +142,18 @@ jobs:
           name: docs-site
           path: ./dist
 
+      - name: Fetch badge snapshots
+        run: |
+          mkdir -p ./dist/badges
+          # Extract all workflow badge URLs from README.md
+          grep -oP 'https://github\.com/[^/]+/[^/]+/actions/workflows/[^/]+\.yml/badge\.svg[^)]*' README.md \
+            | while IFS= read -r url; do
+                # Derive filename from workflow name, e.g. codeql.yml -> codeql.svg
+                name=$(echo "$url" | grep -oP '(?<=/workflows/)[^/]+(?=\.yml)')
+                curl -sL "$url" -o "./dist/badges/${name}.svg"
+                echo "Fetched: ${name}.svg from ${url}"
+              done
+
       - name: Assemble publish tree
         run: |
           mkdir -p ./publish/${{ github.ref_name }}
