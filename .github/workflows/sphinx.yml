@@ -77,6 +77,15 @@ jobs:
           targets: docs
           load: true
 
+      - name: Rewrite badge URLs for docs
+        if: |
+          (github.event_name == 'release') ||
+          (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v') && inputs.deploy_to_pages == 'true')
+        run: |
+          sed -i -E \
+            's|https://github\.com/([^/]+)/([^/]+)/actions/workflows/([^/]+)\.yml/badge\.svg[^)]*|https://\1.github.io/\2/${{ github.ref_name }}/badges/\3.svg|g' \
+            README.md
+
       - name: Write compose override
         run: |
           cat > compose.ci.yml <<'EOF'
@@ -84,7 +93,8 @@ jobs:
             docs-compiler:
               image: health-docs
               build: !reset null
-              volumes: !reset []
+              volumes: !reset
+                - README.md:/home/health/README.md
           EOF
           echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
 
