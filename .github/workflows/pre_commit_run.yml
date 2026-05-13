@@ -6,18 +6,8 @@ on:
       - main
 
   pull_request:
-    # ── Negative filter: skip if ONLY these file types changed ──────────────
-    # The workflow still runs if any non-listed file is touched alongside these.
-    paths-ignore:
-      - "**/*.md"
-      - "**/*.rst"
-      - "**/*.txt"
-      - ".gitignore"
-      - ".gitattributes"
-      - "LICENSE"
-      - "CHANGELOG"
-      - "NOTICE"
-      - "docs/**"
+    branches:
+      - '**'
 
   workflow_dispatch:
     inputs:
