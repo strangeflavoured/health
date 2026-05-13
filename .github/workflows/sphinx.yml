@@ -142,19 +142,11 @@ jobs:
           name: docs-site
           path: ./dist
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          destination_dir: ${{ github.ref_name }}
-          keep_files: true
-
-      - name: Write root redirect
+      - name: Assemble publish tree
         run: |
-          mkdir -p ./redirect
-          cat > ./redirect/index.html << 'EOF'
+          mkdir -p ./publish/${{ github.ref_name }}
+          cp -r ./dist/. ./publish/${{ github.ref_name }}/
+          cat > ./publish/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
           <head>
@@ -168,9 +160,10 @@ jobs:
           </html>
           EOF
 
-      - name: Deploy root redirect
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./redirect
+          publish_dir: ./publish
           keep_files: true
