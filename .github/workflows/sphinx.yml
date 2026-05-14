@@ -8,6 +8,10 @@ on:
     branches:
       - main
   workflow_call:
+    outputs:
+      artifact-id:
+        description: "ID of the uploaded docs artifact"
+        value: ${{ jobs.build-docs.outputs.artifact-id }}
 
 concurrency:
   group: sphinx
@@ -42,6 +46,8 @@ jobs:
     name: Build docs
     needs: changes
     if: needs.changes.outputs.docs == 'true'
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
     env:
       # Required by compose.yml
       REDIS_HOST: 127.0.0.1
