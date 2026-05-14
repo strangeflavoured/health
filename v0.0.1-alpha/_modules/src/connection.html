@@ -34,9 +34,44 @@
       }
     }
   }
-</style></head>
+</style>
+  
+  <style>
+    #version-warning {
+      background: #fff3cd;
+      color: #664d03;
+      border-bottom: 1px solid #ffecb5;
+      padding: 0.6em 1em;
+      text-align: center;
+      font-size: 0.9em;
+    }
+    body.dark #version-warning {
+      background: #3a2f00;
+      color: #ffe69c;
+      border-bottom-color: #5a4a00;
+    }
+    #version-warning a {
+      color: inherit;
+      text-decoration: underline;
+    }
+    #version-switcher {
+      margin: 0.5em 0;
+      font-size: 0.9em;
+    }
+    #version-switcher select {
+      background: var(--color-background-secondary);
+      color: var(--color-foreground-primary);
+      border: 1px solid var(--color-background-border);
+      border-radius: 4px;
+      padding: 0.3em 0.5em;
+      width: 100%;
+    }
+  </style>
+</head>
   <body>
     
+  <div id="version-warning" hidden></div>
+  
     <script>
       document.body.dataset.theme = localStorage.getItem("theme") || "auto";
     </script>
@@ -180,6 +215,7 @@
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
       
+  
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
   <span class="sidebar-brand-text">HealthAnalyser v0.0.1-alpha documentation</span>
@@ -208,6 +244,18 @@
 
       </div>
       
+  <div id="version-switcher" class="sidebar-tree">
+    <label
+      for="version-select"
+      style="display: block; margin-bottom: 0.3em; font-weight: 600"
+    >
+      Version
+    </label>
+    <select id="version-select" disabled>
+      <option>Loading…</option>
+    </select>
+  </div>
+
     </div>
   </aside>
   <div class="main">
@@ -282,6 +330,7 @@
       </div>
       <footer>
         
+  
         <div class="related-pages">
           
           
@@ -308,6 +357,108 @@
           </div>
         </div>
         
+  <script>
+    (function () {
+      const CURRENT = "v0.0.1-alpha";
+      const VERSIONS_URL = "/health/versions.json";
+      const BASE = "/health/";
+
+      fetch(VERSIONS_URL, { cache: "no-cache" })
+        .then((r) => r.json())
+        .then((data) => {
+          renderSwitcher(data);
+          renderWarning(data);
+        })
+        .catch((err) => console.warn("version switcher: failed to load", err));
+
+      function renderSwitcher(data) {
+        const sel = document.getElementById("version-select");
+        sel.innerHTML = "";
+        sel.disabled = false;
+        for (const v of data.versions) {
+          const opt = document.createElement("option");
+          opt.value = BASE + v + "/";
+          let label = v;
+          if (v === data.latest) label += " (latest)";
+          if (v === data.stable) label += " (stable)";
+          opt.textContent = label;
+          if (v === CURRENT) opt.selected = true;
+          sel.appendChild(opt);
+        }
+        sel.addEventListener("change", () => {
+          const url = new URL(sel.value, window.location.origin);
+          if (url.origin === window.location.origin) {
+            window.location.href = url.pathname;
+          }
+        });
+      }
+
+      function renderWarning(data) {
+        const banner = document.getElementById("version-warning");
+        let msg = null;
+        let linkVersion = null;
+
+        if (
+          data.stable &&
+          CURRENT !== data.stable &&
+          data.versions.includes(CURRENT)
+        ) {
+          if (CURRENT === data.latest) {
+            msg = [
+              "You are viewing the latest development docs (",
+              CURRENT,
+              "). For the stable release, see ",
+            ];
+            linkVersion = data.stable;
+          } else {
+            msg = [
+              "You are viewing docs for ",
+              CURRENT,
+              ", which is not the stable release. The stable release is ",
+            ];
+            linkVersion = data.stable;
+          }
+        } else if (!data.stable && CURRENT === data.latest) {
+          msg = [
+            "You are viewing pre-release docs (",
+            CURRENT,
+            "). No stable release yet.",
+          ];
+        } else if (CURRENT !== data.latest && data.versions.includes(CURRENT)) {
+          msg = [
+            "You are viewing docs for ",
+            CURRENT,
+            ". The latest version is ",
+          ];
+          linkVersion = data.latest;
+        }
+
+        if (!msg) return;
+
+        const fragment = document.createDocumentFragment();
+
+        fragment.appendChild(document.createTextNode(msg[0]));
+
+        const strong = document.createElement("strong");
+        strong.textContent = msg[1];
+        fragment.appendChild(strong);
+
+        fragment.appendChild(document.createTextNode(msg[2]));
+
+        if (linkVersion) {
+          const a = document.createElement("a");
+          a.href = BASE + linkVersion + "/";
+          a.textContent = linkVersion;
+          fragment.appendChild(a);
+          fragment.appendChild(document.createTextNode("."));
+        }
+
+        banner.hidden = false;
+        banner.appendChild(fragment);
+      }
+    })();
+  </script>
+
       </footer>
     </div>
     <aside class="toc-drawer no-toc">
@@ -316,7 +467,8 @@
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=e98d74f8"></script>
+</div>
+<script src="../../_static/documentation_options.js?v=e98d74f8"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
