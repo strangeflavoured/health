@@ -1,4 +1,4 @@
-name: Deploy Sphinx Docs
+name: Build Sphinx Docs
 
 on:
   pull_request:
@@ -7,23 +7,15 @@ on:
   push:
     branches:
       - main
-  release:
-    types:
-      - published
-  workflow_dispatch:
-    inputs:
-      deploy_to_pages:
-        description: "Deploy to Pages?"
-        required: false
-        default: "false"
-        type: choice
-        options:
-          - "true"
-          - "false"
+  workflow_call:
+    outputs:
+      artifact-name:
+        description: "Name of the uploaded docs artifact"
+        value: ${{ jobs.build-docs.outputs.artifact-name }}
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: sphinx
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -61,6 +53,8 @@ jobs:
       REDIS_INSIGHT_PORT: "5540"
       REDIS_DB: "0"
       SECRETS_DIR: ""
+    outputs:
+      artifact-name: ${{ steps.upload.outputs.artifact-id }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -81,9 +75,7 @@ jobs:
           load: true
 
       - name: Rewrite badge URLs for docs
-        if: |
-          (github.event_name == 'release') ||
-          (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v') && inputs.deploy_to_pages == 'true')
+        if: (github.event_name == 'workflow_call')
         run: |
           sed -i -E \
             's|https://github\.com/([^/]+)/([^/]+)/actions/workflows/([^/]+)\.yml/badge\.svg[^)]*|https://\1.github.io/\2/${{ github.ref_name }}/badges/\3.svg|g' \
@@ -122,6 +114,7 @@ jobs:
         run: docker rm -f docs || true
 
       - name: Upload docs artifact
+        id: upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docs-site
@@ -130,7 +123,7 @@ jobs:
   ci-success:
     name: Built Docs
     needs: [ changes, build-docs ]
-    if: always()
+    if: always() && github.ref_name != 'workflow_call'
     runs-on: ubuntu-latest
     steps:
       - name: Verify no failures
@@ -139,58 +132,3 @@ jobs:
              [[ "${{ needs.build-docs.result }}" == "failure" ]]; then
             exit 1
           fi
-
-  deploy:
-    needs: [ changes, build-docs ]
-    if: |
-      (github.event_name == 'release') ||
-      (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v') && inputs.deploy_to_pages == 'true')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download built docs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: docs-site
-          path: ./dist
-
-      - name: Fetch badge snapshots
-        run: |
-          mkdir -p ./dist/badges
-          # Extract all workflow badge URLs from README.md
-          grep -oP 'https://github\.com/[^/]+/[^/]+/actions/workflows/[^/]+\.yml/badge\.svg[^)]*' README.md \
-            | while IFS= read -r url; do
-                # Derive filename from workflow name, e.g. codeql.yml -> codeql.svg
-                name=$(echo "$url" | grep -oP '(?<=/workflows/)[^/]+(?=\.yml)')
-                curl -sL "$url" -o "./dist/badges/${name}.svg"
-                echo "Fetched: ${name}.svg from ${url}"
-              done
-
-      - name: Assemble publish tree
-        run: |
-          mkdir -p ./publish/${{ github.ref_name }}
-          cp -r ./dist/. ./publish/${{ github.ref_name }}/
-          cp versions.json ./publish/versions.json
-
-          cat > ./publish/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-           <meta http-equiv="refresh" content="0; url=${{ github.ref_name }}/">
-           <script>window.location.replace("${{ github.ref_name }}/");</script>
-           <title>Redirecting to ${{ github.ref_name }}...</title>
-          </head>
-          <body>
-           <a href="${{ github.ref_name }}/">Click here if not redirected</a>
-          </body>
-          </html>
-          EOF
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./publish
-          keep_files: true
