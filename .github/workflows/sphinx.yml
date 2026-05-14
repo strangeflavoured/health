@@ -8,6 +8,10 @@ on:
     branches:
       - main
   workflow_call:
+    inputs:
+      upload-artifact:
+        type: boolean
+        default: false
     outputs:
       artifact-id:
         description: "ID of the uploaded docs artifact"
@@ -74,8 +78,19 @@ jobs:
           targets: docs
           load: true
 
+      - name: Fetch badge snapshots
+        if: inputs.upload-artifact == true
+        run: |
+          mkdir -p ./badges
+          grep -oP 'https://github\.com/[^/]+/[^/]+/actions/workflows/[^/]+\.yml/badge\.svg[^)]*' README.md \
+            | while IFS= read -r url; do
+                name=$(echo "$url" | grep -oP '(?<=/workflows/)[^/]+(?=\.yml)')
+                curl -sL "$url" -o "./badges/${name}.svg"
+                echo "Fetched: ${name}.svg from ${url}"
+              done
+
       - name: Rewrite badge URLs for docs
-        if: (github.event_name == 'workflow_call')
+        if: inputs.upload-artifact == true
         run: |
           sed -i -E \
             's|https://github\.com/([^/]+)/([^/]+)/actions/workflows/([^/]+)\.yml/badge\.svg[^)]*|https://\1.github.io/\2/${{ github.ref_name }}/badges/\3.svg|g' \
@@ -114,13 +129,14 @@ jobs:
         run: docker rm -f docs || true
 
       - name: Upload docs artifact
-        if: (github.event_name == 'workflow_call')
+        if: inputs.upload-artifact == true
         id: upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docs-site
           path: |
             _site
+            badges
             versions.json
 
   ci-success:
