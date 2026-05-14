@@ -48,7 +48,10 @@ jobs:
         run: |
           mkdir -p ./publish/${{ github.ref_name }}
           cp -r ./dist/_site/. ./publish/${{ github.ref_name }}/
-          cp -r ./dist/badges/. ./publish/${{ github.ref_name }}/badges/
+          mkdir -p ./publish/${{ github.ref_name }}/badges
+          if [ -d ./dist/badges ] && [ -n "$(ls -A ./dist/badges)" ]; then
+            cp -r ./dist/badges/. ./publish/${{ github.ref_name }}/badges/
+          fi
           mv ./dist/versions.json ./publish/versions.json
 
           cat > ./publish/index.html << 'EOF'
