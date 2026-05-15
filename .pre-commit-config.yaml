@@ -47,12 +47,15 @@ repos:
 
   - repo: local
     hooks:
-      - id: eslint
-        name: eslint
-        language: system
-        entry: bash -c 'cd frontend && npx eslint --no-warn-ignored --max-warnings=0 .'
+      - id: eslint-jsdoc
+        name: JSDoc enforcement (frontend)
+        language: node
+        entry: bash -c 'cd frontend && npx eslint --no-warn-ignored --max-warnings 0 .'
         files: ^frontend/.*\.(js|jsx)$
         pass_filenames: false
+        additional_dependencies:
+          - eslint
+          - eslint-plugin-jsdoc
 
       - id: prettier
         name: prettier
