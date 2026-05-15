@@ -5,6 +5,13 @@ import heroImg from './assets/hero.png'
 import './App.css'
 import { getHealth } from './services/api'
 
+/**
+ * Root application component.
+ *
+ * Fetches the backend health status on mount and displays it alongside
+ * the React and Vite logos.
+ * @returns {React.JSX.Element} The rendered app shell
+ */
 function App() {
   const [status, setStatus] = useState('checking...')
 
