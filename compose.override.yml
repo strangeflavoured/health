@@ -11,6 +11,7 @@ services:
   docs-compiler:
     image: health-docs
     volumes:
+      - ./docs/build:/home/health/docs/build
       - ./docs/source:/home/health/docs/source
 
   frontend:
