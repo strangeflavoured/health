@@ -15,6 +15,7 @@ help:
 clean:
 	@$(SPHINXBUILD) -M clean "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 	rm -rf $(SOURCEDIR)/src
+	rm -rf "$(SOURCEDIR)/react_autodoc"
 
 .PHONY: help Makefile
 
