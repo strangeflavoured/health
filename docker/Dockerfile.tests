@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.24@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
-FROM python:3.12-slim-bookworm@sha256:d193c6f51a7dbd10395d6328de3a7edb0516fb0608ca138036576f574c3e07d2
+FROM python:3.12-slim-bookworm@sha256:d193c6f51a7dbd10395d6328de3a7edb0516fb0608ca138036576f574c3e07d2 AS base
 
 # Install system dependencies
 RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
@@ -23,9 +23,17 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --user --require-hashes -r pip-requirements.txt && \
     pip install --user --require-hashes -r requirements.txt
 
+COPY --chown=health:health ./pyproject.toml .
+
+FROM base AS src-test
 COPY --chown=health:health ./src ./src
 COPY --chown=health:health ./versions.json .
 COPY --chown=health:health ./tests .
-COPY --chown=health:health ./pyproject.toml .
+
 
 ENTRYPOINT ["python3", "-m", "pytest", "--cov=src"]
+
+FROM base AS scripts-test
+COPY --chown=health:health ./scripts ./scripts
+
+ENTRYPOINT ["python3", "-m", "pytest"]
