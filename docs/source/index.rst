@@ -23,6 +23,8 @@ HealthAnalyser Documentation
    :caption: API References:
 
    src/modules
+   react_autodoc/index
+
 
 .. include:: ../../README.md
    :parser: myst_parser.sphinx_
