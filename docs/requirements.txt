@@ -314,7 +314,6 @@ docutils==0.22.4 \
     # via
     #   myst-parser
     #   sphinx
-    #   sphinx-mdinclude
 furo==2025.12.19 \
     --hash=sha256:188d1f942037d8b37cd3985b955839fea62baa1730087dc29d157677c857e2a7 \
     --hash=sha256:bb0ead5309f9500130665a26bee87693c41ce4dbdff864dbfb6b0dae4673d24f
@@ -446,10 +445,6 @@ mdurl==0.1.2 \
     --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8 \
     --hash=sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba
     # via markdown-it-py
-mistune==3.2.1 \
-    --hash=sha256:78cdb0ba5e938053ccf63651b352508d2efa9411dc8810bfb05f2dc5140c0048 \
-    --hash=sha256:7c8e5501d38bac1582e067e46c8343f17d57ea1aaa735823f3aba1fd59c88a28
-    # via sphinx-mdinclude
 myst-parser==5.0.0 \
     --hash=sha256:ab31e516024918296e169139072b81592336f2fef55b8986aa31c9f04b5f7211 \
     --hash=sha256:f6f231452c56e8baa662cc352c548158f6a16fcbd6e3800fc594978002b94f3a
@@ -649,7 +644,6 @@ pygments==2.20.0 \
     #   accessible-pygments
     #   furo
     #   sphinx
-    #   sphinx-mdinclude
 pyopenssl==26.2.0 \
     --hash=sha256:4f9d971bc5298b8bc1fab282803da04bf000c755d4ad9d99b52de2569ca19a70 \
     --hash=sha256:8c6fcecd1183a7fc897548dfe388b0cdb7f37e018200d8409cf33959dbe35387
@@ -892,7 +886,6 @@ sphinx==9.1.0 \
     #   sphinx-basic-ng
     #   sphinx-design
     #   sphinx-js
-    #   sphinx-mdinclude
     #   sphinx-tippy
 sphinx-autodoc-typehints==3.10.2 \
     --hash=sha256:2d1bcac8f62b8d0d210f6ca44b8e016e314d07cc8c30d0512cf6986a0b042b26 \
@@ -909,10 +902,6 @@ sphinx-design==0.7.0 \
 sphinx-js==5.0.3 \
     --hash=sha256:df4bc7813f9ec68b7e3af49089269c8e6e937444b6ea03ff2a97aa5b6e887217 \
     --hash=sha256:f432839c023eebbc28235916dfe5019a36f48ffb3a729c38ce689ef78a5d12c9
-    # via -r docs/requirements.in
-sphinx-mdinclude==0.6.2 \
-    --hash=sha256:447462e82cb8be61404a2204227f920769eb923d2f57608e3325f3bb88286b4c \
-    --hash=sha256:648e78edb067c0e4bffc22943278d49d54a0714494743592032fa3ad82a86984
     # via -r docs/requirements.in
 sphinx-tippy==0.4.3 \
     --hash=sha256:255abee0aed8085fdb9ab0cc595cd7a45748ae7f4662156e500a17a3f73ad63d \
