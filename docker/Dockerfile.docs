@@ -8,7 +8,7 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install --yes --no-install-recommends make && apt-get dist-upgrade --yes -V
+    apt-get update && apt-get install --yes --no-install-recommends make nodejs npm && apt-get dist-upgrade --yes -V
 
 # create user
 RUN useradd --create-home --uid 1000 health
@@ -23,9 +23,14 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --user --require-hashes -r pip-requirements.txt \
     && pip install --user --require-hashes -r requirements.txt
 
+COPY --chown=health:health ./frontend/package.json ./frontend/package-lock.json ./frontend/
+RUN --mount=type=cache,target=/root/.npm cd frontend && npm ci --ignore-scripts
+
 COPY --chown=health:health ./src ./src
 COPY --chown=health:health ./versions.json .
 COPY --chown=health:health ./docs ./docs
 COPY --chown=health:health ./README.md .
+COPY --chown=health:health ./frontend/src ./frontend/src
+COPY --chown=health:health ./backend/apps ./backend/apps
 
 ENTRYPOINT ["make", "-C", "docs", "clean", "html"]
