@@ -81,7 +81,7 @@ def recompile_one(in_path: Path) -> tuple[bool, str]:
             "--upgrade",
             "--quiet",
             "--no-header",
-            "--no-annotations",
+            "--no-annotate",
             "--output-file",
             str(out_path),
             str(in_path),

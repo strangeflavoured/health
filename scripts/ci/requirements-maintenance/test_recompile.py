@@ -124,7 +124,7 @@ class TestRecompileOne:
         assert "--upgrade" in cmd
         assert "--quiet" in cmd
         assert "--no-header" in cmd
-        assert "--no-annotations" in cmd
+        assert "--no-annotate" in cmd
 
     def test_output_file_path_passed_correctly(self, tmp_path: Path) -> None:
         in_file = tmp_path / "requirements.in"
