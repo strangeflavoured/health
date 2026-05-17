@@ -105,6 +105,7 @@ requirements_files = [
     "src/importer/requirements.txt",
     "backend/requirements/base.txt",
     "backend/requirements/tests.txt",
+    "docs/requirements.txt",
 ]
 requirements_files_dev = ["requirements-dev.txt"]
 extend_exclude = ["scripts"]
