@@ -1,4 +1,0 @@
-Connection
------------------
-
-.. automodule:: src.connection

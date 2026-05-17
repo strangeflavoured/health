@@ -24,6 +24,7 @@ release = __version__
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "sphinx.ext.apidoc",
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
@@ -45,6 +46,9 @@ myst_enable_extensions = [
 ]
 
 autoclass_content = "class"
+apidoc_modules = [
+    {"path": "../../src", "destination": "src", "separate_modules": True},
+]
 autodoc_default_options = {
     "members": True,
     "private-members": True,
