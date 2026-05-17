@@ -148,7 +148,7 @@ class TestCompileUpgraded:
             mock_run.return_value = type(
                 "R", (), {"returncode": 0, "stderr": "", "stdout": ""}
             )()
-            assert check_updates.compile_upgraded(in_file, out_file) is True
+            assert check_updates.compile_upgraded(in_file, out_file, []) is True
 
         # Verify pip-compile was called with the right flags
         call_args = mock_run.call_args[0][0]
@@ -168,7 +168,7 @@ class TestCompileUpgraded:
                 (),
                 {"returncode": 1, "stderr": "ERROR: could not find", "stdout": ""},
             )()
-            assert check_updates.compile_upgraded(in_file, out_file) is False
+            assert check_updates.compile_upgraded(in_file, out_file, []) is False
 
         assert "pip-compile failed" in capsys.readouterr().out
 
