@@ -21,13 +21,19 @@ from pathlib import Path
 def find_in_files(root: Path) -> list[Path]:
     """Find all requirements .in files under root, deduplicated and sorted.
 
-    Matches the dorny filter:
-      - '**/{requirements,*-requirements,requirements-*}.in'
-      - '**/requirements/*.in'
+    Mirrors the dorny/paths-filter patterns used in the workflow.
+    pathlib does not support brace expansion, so each alternative is its
+    own rglob call.
     """
-    matches = set(root.rglob("{requirements,*-requirements,requirements-*}.in")) | set(
-        root.rglob("requirements/*.in")
+    patterns = (
+        "requirements.in",
+        "*-requirements.in",
+        "requirements-*.in",
+        "requirements/*.in",
     )
+    matches: set[Path] = set()
+    for pattern in patterns:
+        matches.update(root.rglob(pattern))
     return sorted(matches)
 
 
