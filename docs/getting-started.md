@@ -32,7 +32,7 @@ Add `.env` file to repo root:
 touch .env && chmod 600 .env
 ```
 
-Add the necessary contents, see [.env-example](docs/.env-example). You can find the location of the CA certificate by running
+Add the necessary contents, see [.env-example](.env-example). You can find the location of the CA certificate by running
 
 ```bash
 mkcert -CAROOT
@@ -51,7 +51,7 @@ bash scripts/generate_certificate.sh $(mkcert -CAROOT) $REDIS_CERTS_DIR
 bash scripts/generate_certificate.sh --client app $(mkcert -CAROOT) $REDIS_CERTS_DIR
 ```
 
-[Set up pass](docs/pass-secrets-guide.md) and add certificates and keys:
+[Set up pass](pass-secrets.md) and add certificates and keys:
 
 ```bash
 pass insert --multiline health/redis/certs/ca.pem < "$(mkcert -CAROOT)/rootCA.pem"
@@ -90,7 +90,7 @@ so `pass` secrets are injected. Similarly, to stop the services run
 ./scripts/stop.sh down [service...]
 ```
 
-This will remove the tmpfs. See also [docker cheatsheet](docs/CHEATSHEET.md).
+This will remove the tmpfs. See also [docker cheatsheet](CHEATSHEET.md).
 
 ---
 
