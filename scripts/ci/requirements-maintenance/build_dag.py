@@ -49,7 +49,7 @@ def get_includes(in_file: Path) -> list[str]:
         line = raw.strip()
         if not line.startswith("-r "):
             continue
-        ref = line[3:].strip()
+        ref = line[3:].split("#", 1)[0].strip()
         resolved = (in_file.parent / ref).resolve()
         # We only track .in -> .in includes; if the referenced file
         # is a .txt (a compiled lockfile), we look at its .in equivalent.
