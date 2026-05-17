@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -26,6 +26,8 @@ jobs:
       requirements: ${{ steps.filter.outputs.requirements }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
 
       - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
         id: filter
@@ -40,7 +42,10 @@ jobs:
   analyse:
     name: Analyse dependencies
     needs: changes
-    if: needs.changes.outputs.requirements == 'true'
+    if: |
+      needs.changes.outputs.requirements == 'true' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     outputs:
@@ -49,8 +54,6 @@ jobs:
       has_files: ${{ steps.dag.outputs.has_files }}
       has_updates: ${{ steps.summary.outputs.has_updates }}
       has_conflicts: ${{ steps.summary.outputs.has_conflicts }}
-      has_unused: ${{ steps.summary.outputs.has_unused }}
-      has_changes: ${{ steps.summary.outputs.has_changes }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -115,17 +118,28 @@ jobs:
     if: |
       always() &&
       needs.analyse.result == 'success' &&
-      (needs.analyse.outputs.has_updates == 'true' || needs.analyse.outputs.has_conflicts == 'true')
+      (needs.analyse.outputs.has_updates == 'true' || needs.analyse.outputs.has_conflicts == 'true') &&
+      github.actor != 'deps-bot[bot]' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
 
     steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.2.0
+        with:
+          app-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -143,6 +157,19 @@ jobs:
           ORDERED_GROUPS: ${{ needs.analyse.outputs.ordered_groups }}
         run: python3 scripts/ci/requirements-maintenance/recompile.py
 
+      - name: Verify --hash= entries on recompiled files
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            if ! grep -q -- '--hash=' "$f"; then
+              echo "::error file=$f::recompiled file is missing --hash= entries"
+              fail=1
+            fi
+          done < <(git diff --name-only -- '*.txt')
+          exit "$fail"
+
       - name: Check for changes
         id: diff
         run: |
@@ -155,8 +182,8 @@ jobs:
       - name: Commit to PR branch
         if: steps.diff.outputs.changed == 'true' && github.event_name == 'pull_request'
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name  "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
           git add -A
           git commit -m "chore(deps): recompile requirements"
           git push
@@ -165,7 +192,9 @@ jobs:
         if: steps.diff.outputs.changed == 'true' && github.event_name != 'pull_request'
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
+          committer: "${{ steps.app-token.outputs.app-slug }}[bot] <${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>"
+          author: "${{ steps.app-token.outputs.app-slug }}[bot] <${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>"
           branch: deps/recompile-requirements
           commit-message: "chore(deps): recompile requirements"
           title: "chore(deps): recompile requirements"
@@ -200,7 +229,7 @@ jobs:
           fi
 
       - name: Verify analysis is clean
-        if: needs.analyse.result == 'success'
+        if: needs.analyse.result == 'success' && needs.apply-fixes.result == 'skipped'
         run: |
           HAS_UPDATES="${{ needs.analyse.outputs.has_updates }}"
           HAS_CONFLICTS="${{ needs.analyse.outputs.has_conflicts }}"
