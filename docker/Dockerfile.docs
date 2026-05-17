@@ -28,4 +28,4 @@ COPY --chown=health:health ./versions.json .
 COPY --chown=health:health ./docs ./docs
 COPY --chown=health:health ./README.md .
 
-ENTRYPOINT ["make", "-C", "docs", "clean", "html", "latex"]
+ENTRYPOINT ["make", "-C", "docs", "clean", "html"]
