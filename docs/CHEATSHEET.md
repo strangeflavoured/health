@@ -1,12 +1,12 @@
-## Docker/Redis Stack Cheatsheet
+# Docker/Redis Stack Cheatsheet
 
-### Build Container
+## Build Container
 
 ```bash
 docker compose build [--no-cache] redis redisinsight
 ```
 
-### Start Container
+## Start Container
 
 Instead of using `docker compose up` use the `compose-wrapper`:
 
@@ -21,14 +21,14 @@ To remove all secrets from the tmpfs run
 ./scripts/compose-wrapper.sh down
 ```
 
-### Container status/logs
+## Container status/logs
 
 ```bash
 docker compose ps
 docker compose logs -f redis
 ```
 
-### Connect to Redis-CLI
+## Connect to Redis-CLI
 
 With `redis` container running and healthy:
 
@@ -44,19 +44,19 @@ docker compose exec redis sh -c 'redis-cli \
   -p 6380'
 ```
 
-### Check resource usage
+## Check resource usage
 
 ```bash
 docker stats health-redis
 ```
 
-### Check health
+## Check health
 
 ```bash
 docker inspect --format='{{json .State.Health}}' $(docker compose ps -q redis) | jq
 ```
 
-### Container stoppen / entfernen
+## Container stoppen / entfernen
 
 ```bash
 ./scripts/compose-wrapper.sh down redis redisinsight          # stoppt Container, Volume bleibt erhalten
@@ -65,7 +65,7 @@ docker inspect --format='{{json .State.Health}}' $(docker compose ps -q redis) |
 
 ---
 
-### Backup
+## Backup
 
 Create a `dump.rdb` via the redis-cli:
 
