@@ -89,6 +89,24 @@ jobs:
           REPORTS_DIR: ${{ runner.temp }}/reports
         run: python3 scripts/ci/requirements-maintenance/check_updates.py
 
+      - name: Fail on pip-compile errors
+        if: steps.dag.outputs.has_files == 'true'
+        env:
+          REPORTS_DIR: ${{ runner.temp }}/reports
+        run: |
+          set -euo pipefail
+          errors_file="$REPORTS_DIR/pip_compile_errors.json"
+          if [ ! -f "$errors_file" ]; then
+            echo "::error::pip_compile_errors.json missing — a script crashed before writing it"
+            exit 1
+          fi
+          count=$(jq 'length' "$errors_file")
+          if [ "$count" -gt 0 ]; then
+            echo "::error::pip-compile failed for $count file(s)"
+            jq -r '.[] | "  - \(.file) (exit \(.returncode))"' "$errors_file"
+            exit 1
+          fi
+
       - name: Check per-environment conflicts
         if: steps.dag.outputs.has_files == 'true'
         env:
