@@ -1,6 +1,8 @@
 # src requirements
--r ../src/requirements.txt
--r ../backend/requirements/base.txt
+-r ../src/requirements.in
+-c ../src/requirements.txt
+-r ../backend/requirements/base.in
+-c ../backend/requirements/base.txt
 
 # docs-specific
 pyopenssl>=26.2.0
