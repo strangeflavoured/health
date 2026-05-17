@@ -73,6 +73,20 @@ jobs:
         id: dag
         run: python3 scripts/ci/requirements-maintenance/build_dag.py
 
+      - name: Assert DAG covers all .in files
+        if: steps.dag.outputs.has_files == 'true'
+        env:
+          ALL_FILES: ${{ steps.dag.outputs.all_files }}
+        run: |
+          set -euo pipefail
+          discovered=$(find . -name '*.in' -path '*requirement*' -not -path './.git/*' | wc -l)
+          in_dag=$(echo "$ALL_FILES" | jq 'length')
+          echo "discovered=$discovered in_dag=$in_dag"
+          if [ "$discovered" -ne "$in_dag" ]; then
+            echo "::error::DAG covers $in_dag files but $discovered exist on disk"
+            exit 1
+          fi
+
       - name: Detect unused packages
         if: steps.dag.outputs.has_files == 'true'
         continue-on-error: true
