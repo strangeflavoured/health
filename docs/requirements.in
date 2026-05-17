@@ -1,6 +1,5 @@
 # src requirements
--r ../src/requirements.in
--r ../src/importer/requirements.in
+-r ../src/requirements.txt
 -r ../backend/requirements/base.txt
 
 # docs-specific
