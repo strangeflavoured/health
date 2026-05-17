@@ -23,8 +23,15 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import venv
 from pathlib import Path
+
+_UV = shutil.which("uv")
+if _UV is None:
+    raise FileNotFoundError(
+        "uv not found on PATH — ensure the workflow runs astral-sh/setup-uv "
+        "before this script."
+    )
+UV: str = _UV
 
 REPORTS = Path(os.environ.get("REPORTS_DIR", "build/reports"))
 
@@ -52,8 +59,16 @@ def run_capture(cmd: list[str]) -> tuple[int, str]:
 
 def check_stack(stack: list[str], venv_dir: Path) -> dict:
     """Install every .txt in the stack into a fresh venv, then run pip check."""
-    venv.create(venv_dir, with_pip=True, clear=True)
-    pip = venv_dir / "bin" / "pip"
+    code, log = run_capture([UV, "venv", "--quiet", str(venv_dir)])
+    if code != 0:
+        return {
+            "stack": stack,
+            "install_ok": False,
+            "check_ok": False,
+            "install_log": f"uv venv failed: {log}",
+            "check_log": "",
+        }
+    python = venv_dir / "bin" / "python"
 
     install_logs: list[str] = []
     install_ok = True
@@ -64,7 +79,17 @@ def check_stack(stack: list[str], venv_dir: Path) -> dict:
             install_ok = False
             break
         code, log = run_capture(
-            [str(pip), "install", "--require-hashes", "-r", txt_path, "--quiet"]
+            [
+                UV,
+                "pip",
+                "install",
+                "--python",
+                str(python),
+                "--require-hashes",
+                "-r",
+                txt_path,
+                "--quiet",
+            ]
         )
         install_logs.append(f"--- {txt_path} ---\n{log}")
 
@@ -72,7 +97,7 @@ def check_stack(stack: list[str], venv_dir: Path) -> dict:
             install_ok = False
             break
 
-    check_code, check_log = run_capture([str(pip), "check"])
+    check_code, check_log = run_capture([UV, "pip", "check", "--python", str(python)])
 
     label = stack_label(stack)
     install_log = "\n".join(install_logs)
