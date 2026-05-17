@@ -52,7 +52,7 @@ def compile_upgraded(in_file: Path, out_file: Path) -> bool:
             "--upgrade",
             "--quiet",
             "--no-header",
-            "--no-annotations",
+            "--no-annotate",
             "--output-file",
             str(out_file),
             str(in_file),
