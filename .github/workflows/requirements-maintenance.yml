@@ -65,6 +65,11 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        with:
+          enable-cache: true
+
       - name: Install analysis tools
         run: |
           pip install --require-hashes -r pip-requirements.txt
@@ -193,6 +198,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        with:
+          enable-cache: true
 
       - name: Install maintenance tools
         run: |
