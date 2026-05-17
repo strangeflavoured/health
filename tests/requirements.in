@@ -1,4 +1,5 @@
 -r ../src/requirements.in
+-c ../src/requirements.txt
 
 pytest>=9.0.3
 pytest-cov>=7.1.0
