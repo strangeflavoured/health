@@ -8,6 +8,11 @@ services:
   backend-test:
     image: health-backend:test
 
+  docs-compiler:
+    image: health-docs
+    volumes:
+      - ./docs/source:/home/health/docs/source
+
   frontend:
     image: health-frontend:dev
 
