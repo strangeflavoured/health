@@ -17,31 +17,16 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
-
-def _resolve_pip_compile() -> Path:
-    """Return the pip-compile binary co-located with the current interpreter."""
-    candidate = Path(sys.executable).parent / "pip-compile"
-    if candidate.is_file():
-        return candidate
-    # Fall back to PATH resolution for editable / non-standard installs
-    found = shutil.which("pip-compile")
-    if found:
-        return Path(found)
+_UV_PATH = Path(sys.executable).parent / "uv"
+if not _UV_PATH.is_file():
     raise FileNotFoundError(
-        "pip-compile not found — is pip-tools installed in this environment?"
+        f"uv not found at {_UV_PATH} — is uv installed in this environment?"
     )
-
-
-PIP_COMPILE = _resolve_pip_compile()
+UV: str = str(_UV_PATH)
 
 
 # ---------------------------------------------------------------------------
@@ -57,7 +42,7 @@ def pip_check() -> tuple[bool, str]:
     recompiled .txt files would produce a broken environment.
     """
     result = subprocess.run(  # noqa: S603
-        [str(Path(sys.executable).parent / "pip"), "check"],
+        [str(UV), "pip", "check"],
         capture_output=True,
         text=True,
     )
@@ -77,7 +62,9 @@ def recompile_one(in_path: Path) -> tuple[bool, str]:
     out_path = output_file(in_path)
     result = subprocess.run(  # noqa: S603
         [
-            str(PIP_COMPILE),
+            UV,
+            "pip",
+            "compile",
             "--upgrade",
             "--generate-hashes",
             "--quiet",

@@ -24,6 +24,13 @@ from pathlib import Path
 REPORTS = Path(os.environ.get("REPORTS_DIR", "build/reports"))
 PIN_RE = re.compile(r"^([A-Za-z0-9_.\-]+)==([^\s;]+)")
 
+_UV_PATH = Path(sys.executable).parent / "uv"
+if not _UV_PATH.is_file():
+    raise FileNotFoundError(
+        f"uv not found at {_UV_PATH} — is uv installed in this environment?"
+    )
+UV: str = str(_UV_PATH)
+
 
 def parse_pins(text: str) -> dict[str, str]:
     """Extract package==version pins from a compiled requirements file."""
@@ -43,12 +50,11 @@ def parse_pins(text: str) -> dict[str, str]:
 
 def compile_upgraded(in_file: Path, out_file: Path, errors: list[dict]) -> bool:
     """Run pip-compile --upgrade --dry-run; write result to out_file."""
-    exe = Path(sys.executable).parent / "pip-compile"
-    if not exe.is_file():
-        raise FileNotFoundError(f"pip-compile not found at {exe}")
     result = subprocess.run(  # noqa: S603
         [
-            exe,
+            UV,
+            "pip",
+            "compile",
             "--upgrade",
             "--generate-hashes",
             "--quiet",

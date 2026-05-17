@@ -4,12 +4,17 @@ set -euo pipefail
 
 source .venv/bin/activate
 
-IN_FILES=("pip-requirements" "requirements-dev" "src/importer/requirements" "src/requirements" "backend/requirements/base" "backend/requirements/tests" "docs/requirements" "tests/requirements")
+if ! command -v uv &>/dev/null; then
+  echo "error: uv is required but not found." >&2
+  echo "Install: pip install --require-hashes -r requirements-dev.txt" >&2
+  exit 1
+fi
+
+IN_FILES=("pip-requirements.in" "requirements-dev.in" "src/importer/requirements.in" "src/requirements.in" "backend/requirements/base.in" "backend/requirements/tests.in" "docs/requirements.in" "tests/requirements.in")
 
 _discover_in_files() {
   git ls-files -- '*.in' \
     | grep -E '(^|/)(requirements|[^/]+-requirements|requirements-[^/]+)\.in$|/requirements/[^/]+\.in$' \
-    | sed 's/\.in$//' \
     | sort -u
 }
 
@@ -31,10 +36,34 @@ _verify_file_list() {
   fi
 }
 
+compile_one() {
+  local in_file="$1"
+  local out_file="${in_file%.in}.txt"
+  local log
+
+  echo -n "  compiling $in_file... "
+  if ! log=$(uv pip compile "$in_file" \
+      --allow-unsafe \
+      --upgrade \
+      --generate-hashes \
+      --strip-extras \
+      --output-file="$out_file" \
+      --quiet \
+      2>&1); then
+    echo "FAILED: ${in_file}" >&2
+    echo "$log" >&2
+    return 1
+  fi
+  echo "ok"
+}
+
 _verify_file_list || exit 1
 
+failed=0
 for in_file in "${IN_FILES[@]}"; do
-  pip-compile --allow-unsafe --generate-hashes --strip-extras --output-file="${in_file}".txt "${in_file}".in
+  compile_one "$in_file" || failed=1
 done
 
 deactivate
+
+exit "$failed"
