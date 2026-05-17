@@ -6,6 +6,8 @@ import json
 import pathlib
 import sys
 
+import django
+from django.conf import settings
 from sphinx.application import Sphinx
 from sphinx.ext.autodoc import Options
 
@@ -13,19 +15,39 @@ from sphinx.ext.autodoc import Options
 _ROOT = pathlib.Path(__file__).parents[2]
 sys.path.insert(0, str(_ROOT))
 
+# Backend/apps source
+sys.path.insert(0, str(_ROOT / "backend"))
+
 # Local Sphinx extensions live in docs/source/_ext/
 sys.path.insert(0, str(pathlib.Path(__file__).parent / "_ext"))
-
 with open(_ROOT / "versions.json") as f:
     __version__ = json.load(f)["latest"]
 
 # – Project information —————————————————–
-
 project = "HealthAnalyser"
 copyright = "2026, Jonathan Grill"  # noqa: A001
 author = "Jonathan Grill"
 release = __version__
 
+# – Django configuration —————————————————
+# Minimal Django setup so models can be imported without a full stack
+if not settings.configured:
+    settings.configure(
+        INSTALLED_APPS=[
+            "django.contrib.contenttypes",
+            "django.contrib.auth",
+            "apps.api",
+            "apps.workers",
+        ],
+        DATABASES={
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": ":memory:",
+            }
+        },
+        DEFAULT_AUTO_FIELD="django.db.models.BigAutoField",
+    )
+    django.setup()
 # – General configuration —————————————————
 
 extensions = [
@@ -63,6 +85,12 @@ autodoc_default_options = {
 }
 apidoc_modules = [
     {"path": "../../src", "destination": "src", "separate_modules": True},
+    {
+        "path": "../../backend/apps",
+        "destination": "backend",
+        "separate_modules": True,
+        "exclude_patterns": ["**/test*"],
+    },
 ]
 
 # – Napoleon ––––––––––––––––––––––––––––––––
@@ -75,6 +103,10 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "redis": ("https://redis.readthedocs.io/en/stable/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
+    "django": (
+        "https://docs.djangoproject.com/en/stable/",
+        "https://docs.djangoproject.com/en/stable/_objects/",
+    ),
 }
 
 # – React/JSX autodoc —————————————————––
