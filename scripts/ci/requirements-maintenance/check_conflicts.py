@@ -29,9 +29,14 @@ from pathlib import Path
 REPORTS = Path(os.environ.get("REPORTS_DIR", "build/reports"))
 
 
-def slug(path: str) -> str:
-    """Convert path to filename."""
-    return path.replace("/", "-").replace(".", "-")
+def slug(name: str) -> str:
+    """Sanitise a label for use as a filename."""
+    return name.replace("/", "-").replace(".", "-").replace("+", "_")
+
+
+def stack_label(stack: list[str]) -> str:
+    """Human-readable, stable identifier for a stack."""
+    return "+".join(Path(f).stem for f in stack)
 
 
 def run_capture(cmd: list[str]) -> tuple[int, str]:
@@ -45,22 +50,38 @@ def run_capture(cmd: list[str]) -> tuple[int, str]:
     return result.returncode, (result.stdout + result.stderr)
 
 
-def check_one(in_path: str, txt_path: Path, venv_dir: Path) -> dict:
-    """Install one dependency and run `pip check`."""
+def check_stack(stack: list[str], venv_dir: Path) -> dict:
+    """Install every .txt in the stack into a fresh venv, then run pip check."""
     venv.create(venv_dir, with_pip=True, clear=True)
     pip = venv_dir / "bin" / "pip"
 
-    install_code, install_log = run_capture(
-        [str(pip), "install", "--require-hashes", "-r", str(txt_path), "--quiet"]
-    )
+    install_logs: list[str] = []
+    install_ok = True
+
+    for txt_path in stack:
+        if not Path(txt_path).exists():
+            install_logs.append(f"--- {txt_path} ---\nMISSING")
+            install_ok = False
+            break
+        code, log = run_capture(
+            [str(pip), "install", "--require-hashes", "-r", txt_path, "--quiet"]
+        )
+        install_logs.append(f"--- {txt_path} ---\n{log}")
+
+        if code != 0:
+            install_ok = False
+            break
 
     check_code, check_log = run_capture([str(pip), "check"])
 
-    (REPORTS / f"install-{slug(in_path)}.log").write_text(install_log)
-    (REPORTS / f"check-{slug(in_path)}.log").write_text(check_log)
+    label = stack_label(stack)
+    install_log = "\n".join(install_logs)
+    (REPORTS / f"install-{slug(label)}.log").write_text(install_log)
+    (REPORTS / f"check-{slug(label)}.log").write_text(check_log)
 
     return {
-        "install_ok": install_code == 0,
+        "stack": stack,
+        "install_ok": install_ok,
         "check_ok": check_code == 0,
         "install_log": install_log,
         "check_log": check_log,
@@ -70,39 +91,33 @@ def check_one(in_path: str, txt_path: Path, venv_dir: Path) -> dict:
 def main() -> int:
     """Install dependency files one by one and check for conflicts."""
     REPORTS.mkdir(parents=True, exist_ok=True)
-    all_files = json.loads(os.environ.get("ALL_FILES", "[]"))
+    stacks = json.loads(os.environ.get("STACKS", "[]"))
 
     results: dict[str, dict] = {}
     failed = False
 
-    for in_path in all_files:
-        in_file = Path(in_path)
-        txt_file = in_file.with_suffix(".txt")
-        if not txt_file.exists():
-            continue
-
-        print(f"=== Checking {txt_file} ===")
+    for stack in stacks:
+        label = stack_label(stack)
+        print(f"=== Checking stack: {label} ===")
         try:
-            with tempfile.TemporaryDirectory(
-                prefix=f"venv-{slug(in_path)}-"
-            ) as venv_dir_str:
-                result = check_one(in_path, txt_file, Path(venv_dir_str))
+            with tempfile.TemporaryDirectory(prefix=f"venv-{slug(label)}-") as tmp:
+                result = check_stack(stack, Path(tmp))
         except Exception as exc:  # noqa: BLE001
             result = {
+                "stack": stack,
                 "install_ok": False,
                 "check_ok": False,
                 "install_log": f"exception during check: {exc!r}",
                 "check_log": "",
             }
-
-        results[in_path] = result
+        results[label] = result
 
         if not result["install_ok"]:
-            print(f"::error file={txt_file}::Install failed")
+            print(f"::error::Install failed for stack: {label}")
             print(result["install_log"])
             failed = True
         if not result["check_ok"]:
-            print(f"::error file={txt_file}::pip check found conflicts")
+            print(f"::error::pip check found conflicts in stack: {label}")
             print(result["check_log"])
             failed = True
         if result["install_ok"] and result["check_ok"]:

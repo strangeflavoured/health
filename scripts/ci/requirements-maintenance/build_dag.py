@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 
@@ -84,6 +85,47 @@ def topo_groups(all_keys: list[str], deps_map: dict[str, list[str]]) -> list[lis
     return groups
 
 
+def build_stacks(
+    all_keys: list[str], deps_map: dict[str, list[str]]
+) -> list[list[str]]:
+    """Return install-stacks: for each terminal node [upstreams..., self] as .txt paths.
+
+    A terminal node is a .in file that no other .in file `-r`s. Each terminal
+    defines one complete install environment; the stack lists every .txt that
+    must be installed together to realise it. Topological order ensures
+    upstreams are present when their dependants install.
+    """
+    dependents: dict[str, set[str]] = {k: set() for k in all_keys}
+    for key, deps in deps_map.items():
+        for dep in deps:
+            if dep in dependents:
+                dependents[dep].add(key)
+
+    terminals = sorted(k for k in all_keys if not dependents[k])
+    stacks: list[list[str]] = []
+
+    for terminal in terminals:
+        ordered: list[str] = []
+        visited: set[str] = set()
+        # Each frame: (node, iter of remaining deps). Emit node when iter exhausted.
+        frames: list[tuple[str, Iterator[str]]] = [
+            (terminal, iter(deps_map.get(terminal, [])))
+        ]
+        visited.add(terminal)
+        while frames:
+            node, deps_iter = frames[-1]
+            dep = next(deps_iter, None)
+            if dep is None:
+                ordered.append(node)
+                frames.pop()
+            elif dep not in visited and dep in deps_map:
+                visited.add(dep)
+                frames.append((dep, iter(deps_map.get(dep, []))))
+        stacks.append([str(Path(p).with_suffix(".txt")) for p in ordered])
+
+    return stacks
+
+
 def write_output(key: str, value: str) -> None:
     """Write to $GITHUB_OUTPUT or fall back to stdout for local runs."""
     out = os.environ.get("GITHUB_OUTPUT")
@@ -136,8 +178,14 @@ def main() -> int:
     for i, group in enumerate(groups):
         print(f"  Group {i}: {group}")
 
+    stacks = build_stacks(all_keys, deps_map) if not failed else []
+    print(f"Install stacks ({len(stacks)}):")
+    for i, stack in enumerate(stacks):
+        print(f"  Stack {i}: {stack}")
+
     write_output("ordered_groups", json.dumps(groups))
     write_output("all_files", json.dumps(all_keys))
+    write_output("stacks", json.dumps(stacks))
     write_output("has_files", "true")
 
     return 1 if failed else 0
