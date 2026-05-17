@@ -40,7 +40,7 @@ def run_capture(cmd: list[str]) -> tuple[int, str]:
     if exe is None:
         raise FileNotFoundError(f"executable not found: {cmd[0]}")
     result = subprocess.run(  # noqa: S603
-        [exe, *cmd[1:]], capture_output=True, text=True, check=True
+        [exe, *cmd[1:]], capture_output=True, text=True, check=False
     )
     return result.returncode, (result.stdout + result.stderr)
 
@@ -82,14 +82,18 @@ def main() -> int:
             continue
 
         print(f"=== Checking {txt_file} ===")
-        with tempfile.TemporaryDirectory(
-            prefix=f"venv-{slug(in_path)}-"
-        ) as venv_dir_str:
-            venv_dir = Path(venv_dir_str)
-            try:
-                result = check_one(in_path, txt_file, venv_dir)
-            finally:
-                shutil.rmtree(venv_dir, ignore_errors=True)
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix=f"venv-{slug(in_path)}-"
+            ) as venv_dir_str:
+                result = check_one(in_path, txt_file, Path(venv_dir_str))
+        except Exception as exc:  # noqa: BLE001
+            result = {
+                "install_ok": False,
+                "check_ok": False,
+                "install_log": f"exception during check: {exc!r}",
+                "check_log": "",
+            }
 
         results[in_path] = result
 
@@ -103,6 +107,13 @@ def main() -> int:
             failed = True
         if result["install_ok"] and result["check_ok"]:
             print("  OK")
+
+    total = len(results)
+    install_failed = sum(1 for r in results.values() if not r["install_ok"])
+    check_failed = sum(1 for r in results.values() if not r["check_ok"])
+    print(
+        f"\n=== {total} stacks: {install_failed} install fail, {check_failed} check fail ==="  # noqa: E501
+    )
 
     (REPORTS / "conflicts.json").write_text(json.dumps(results, indent=2))
     return 1 if failed else 0
