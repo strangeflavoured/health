@@ -41,10 +41,6 @@ select = [
     "W",
 ]
 ignore = [
-    # missing type annotation for `self`
-    "ANN101",
-    # missing type annotation for `cls`
-    "ANN102",
     # missing docstring for __init__
     "D107",
 ]
