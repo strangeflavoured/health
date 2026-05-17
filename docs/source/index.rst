@@ -23,6 +23,7 @@ HealthAnalyser Documentation
    :caption: API References:
 
    src/modules
+   backend/modules
    react_autodoc/index
 
 

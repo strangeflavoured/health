@@ -7,6 +7,7 @@
 
 docs/build
 docs/source/src
+docs/source/backend
 docs/source/react_autodoc
 
 data/
