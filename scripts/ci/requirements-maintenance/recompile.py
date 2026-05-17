@@ -68,8 +68,6 @@ def recompile_one(in_path: Path) -> tuple[bool, str]:
             "--upgrade",
             "--generate-hashes",
             "--quiet",
-            "--no-header",
-            "--no-annotate",
             "--allow-unsafe",
             "--output-file",
             str(out_path),
