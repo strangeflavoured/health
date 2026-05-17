@@ -6,6 +6,9 @@ import json
 import pathlib
 import sys
 
+from sphinx.application import Sphinx
+from sphinx.ext.autodoc import Options
+
 # Project source root (two levels above docs/source/)
 _ROOT = pathlib.Path(__file__).parents[2]
 sys.path.insert(0, str(_ROOT))
@@ -13,13 +16,13 @@ sys.path.insert(0, str(_ROOT))
 # Local Sphinx extensions live in docs/source/_ext/
 sys.path.insert(0, str(pathlib.Path(__file__).parent / "_ext"))
 
-with open(_ROOT / "versions.json", "r") as f:
+with open(_ROOT / "versions.json") as f:
     __version__ = json.load(f)["latest"]
 
 # – Project information —————————————————–
 
 project = "HealthAnalyser"
-copyright = "2026, Jonathan Grill"
+copyright = "2026, Jonathan Grill"  # noqa: A001
 author = "Jonathan Grill"
 release = __version__
 
@@ -99,23 +102,50 @@ html_theme_options = {
         {
             "name": "GitHub",
             "url": "https://github.com/strangeflavoured/health",
-            "html": """
-<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
-<path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
-</svg>
-""",
+            "html": (
+                '<svg stroke="currentColor" fill="currentColor" '
+                'stroke-width="0" viewBox="0 0 16 16">'
+                '<path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47'  # noqa: E501
+                " 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94"  # noqa: E501
+                "-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72"  # noqa: E501
+                " 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95"  # noqa: E501
+                " 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18"  # noqa: E501
+                " 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16"  # noqa: E501
+                " 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54"  # noqa: E501
+                ".73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0"  # noqa: E501
+                ' 16 8c0-4.42-3.58-8-8-8z"></path></svg>'
+            ),
             "class": "",
         },
     ],
 }
 
 
-def _skip_imported_members(app, what, name, obj, skip, options):
+def _skip_imported_members(
+    _app: Sphinx,
+    what: str,
+    name: str,
+    obj: object,
+    skip: bool,  # noqa: FBT001
+    _options: Options,
+) -> bool:
     """Skip members imported from a different module.
 
     Prevents dataclasses and other classes imported into a module from
     being documented twice — once in their definition module and again
     in every module that imports them.
+
+    Args:
+        _app: Sphinx application instance (unused).
+        what: Type of object being documented (e.g. ``"module"``).
+        name: Fully qualified name of the member.
+        obj: The member object itself.
+        skip: Whether autodoc would skip this member by default.
+        _options: Autodoc options for the current directive (unused).
+
+    Returns:
+        ``True`` if the member should be skipped, ``False`` otherwise.
+
     """
     if skip:
         return skip
@@ -134,5 +164,11 @@ def _skip_imported_members(app, what, name, obj, skip, options):
     return skip
 
 
-def setup(app):
+def setup(app: Sphinx) -> None:
+    """Register Sphinx event handlers for this project.
+
+    Args:
+        app: Sphinx application instance.
+
+    """
     app.connect("autodoc-skip-member", _skip_imported_members)
