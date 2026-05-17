@@ -90,7 +90,7 @@ so `pass` secrets are injected. Similarly, to stop the services run
 ./scripts/stop.sh down [service...]
 ```
 
-This will remove the tmpfs. See also [docker cheatsheet](CHEATSHEET.md).
+This will remove the tmpfs. See also [docker cheatsheet](docker-redis.md).
 
 ---
 

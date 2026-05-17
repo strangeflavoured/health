@@ -34,7 +34,7 @@ frontend/.vite/
 # ===== ENVIRONMENT & SECRETS =====
 .env
 .env.*
-!.env.example     # keep the example template
+!docs/source/.env.example     # keep the example template
 secrets/          # your Docker secrets directory
 
 # ===== CERTS =====
