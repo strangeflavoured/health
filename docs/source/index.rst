@@ -14,6 +14,7 @@ HealthAnalyser Documentation
    Getting Started <getting-started>
    Using Redis & Docker <docker-redis>
    Dev tools <dev-tools>
+   Dev workflow <dev-workflow>
    Pass secrets <pass-secrets>
 
 .. toctree::
