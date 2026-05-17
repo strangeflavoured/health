@@ -19,8 +19,9 @@ WORKDIR /home/health/
 COPY --chown=health:health ./pip-requirements.txt .
 COPY --chown=health:health ./docs/requirements.txt .
 ENV PATH="/home/health/.local/bin:$PATH"
-RUN pip install --user --require-hashes -r pip-requirements.txt
-RUN pip install --user --require-hashes -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --user --require-hashes -r pip-requirements.txt \
+    && pip install --user --require-hashes -r requirements.txt
 
 COPY --chown=health:health ./src ./src
 COPY --chown=health:health ./versions.json .
