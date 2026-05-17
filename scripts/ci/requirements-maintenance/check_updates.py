@@ -41,7 +41,7 @@ def parse_pins(text: str) -> dict[str, str]:
     return pins
 
 
-def compile_upgraded(in_file: Path, out_file: Path) -> bool:
+def compile_upgraded(in_file: Path, out_file: Path, errors: list[dict]) -> bool:
     """Run pip-compile --upgrade --dry-run; write result to out_file."""
     exe = Path(sys.executable).parent / "pip-compile"
     if not exe.is_file():
@@ -62,6 +62,13 @@ def compile_upgraded(in_file: Path, out_file: Path) -> bool:
         text=True,
     )
     if result.returncode != 0:
+        errors.append(
+            {
+                "file": str(in_file),
+                "returncode": result.returncode,
+                "stderr": result.stderr.strip().splitlines()[-20:],  # tail
+            }
+        )
         print(f"  pip-compile failed for {in_file}:")
         print(result.stderr)
         return False
@@ -96,6 +103,7 @@ def main() -> int:
 
     updates: dict[str, list[dict[str, str]]] = {}
     total = 0
+    errors: list[dict] = []
 
     for in_path in all_files:
         in_file = Path(in_path)
@@ -107,7 +115,7 @@ def main() -> int:
 
         with tempfile.TemporaryDirectory(prefix="upgraded-") as dir_str:
             upgraded_path = Path(f"{dir_str}/{in_file.name}.txt")
-            if not compile_upgraded(in_file, upgraded_path):
+            if not compile_upgraded(in_file, upgraded_path, errors):
                 continue
             upgraded_pins = parse_pins(upgraded_path.read_text())
 
@@ -123,7 +131,12 @@ def main() -> int:
                 )
 
     (REPORTS / "updates.json").write_text(json.dumps(updates, indent=2))
+    (REPORTS / "pip_compile_errors.json").write_text(json.dumps(errors, indent=2))
     print(f"\nTotal: {total} updates across {len(updates)} files")
+
+    if errors:
+        return 1
+
     return 0
 
 
