@@ -108,3 +108,31 @@ html_theme_options = {
         },
     ],
 }
+
+
+def _skip_imported_members(app, what, name, obj, skip, options):
+    """Skip members imported from a different module.
+
+    Prevents dataclasses and other classes imported into a module from
+    being documented twice — once in their definition module and again
+    in every module that imports them.
+    """
+    if skip:
+        return skip
+    if what != "module":
+        return skip
+    obj_module = getattr(obj, "__module__", None)
+    if obj_module is None:
+        return skip
+    qualname = getattr(obj, "__qualname__", "")
+    if "." in qualname:
+        documented_module = name.rsplit("." + qualname.split(".")[0], 1)[0]
+    else:
+        documented_module = name.rsplit("." + qualname, 1)[0]
+    if obj_module != documented_module:
+        return True
+    return skip
+
+
+def setup(app):
+    app.connect("autodoc-skip-member", _skip_imported_members)
