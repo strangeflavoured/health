@@ -20,8 +20,9 @@ COPY --chown=health:health ./pip-requirements.txt .
 COPY --chown=health:health ./src/requirements.txt .
 COPY --chown=health:health ./src/importer/requirements.txt ./importer_requirements.txt
 ENV PATH="/home/health/.local/bin:$PATH"
-RUN pip install --user --require-hashes -r pip-requirements.txt
-RUN pip install --user --require-hashes -r requirements.txt -r importer_requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --user --require-hashes -r pip-requirements.txt \
+    && pip install --user --require-hashes -r requirements.txt -r importer_requirements.txt
 
 COPY --chown=health:health ./src ./src
 COPY --chown=health:health ./versions.json .
