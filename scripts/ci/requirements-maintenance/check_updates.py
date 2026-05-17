@@ -50,6 +50,7 @@ def compile_upgraded(in_file: Path, out_file: Path) -> bool:
         [
             exe,
             "--upgrade",
+            "--generate-hashes",
             "--quiet",
             "--no-header",
             "--no-annotate",

@@ -79,6 +79,7 @@ def recompile_one(in_path: Path) -> tuple[bool, str]:
         [
             str(PIP_COMPILE),
             "--upgrade",
+            "--generate-hashes",
             "--quiet",
             "--no-header",
             "--no-annotate",
