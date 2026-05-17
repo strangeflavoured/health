@@ -66,3 +66,10 @@ repos:
         types: [ file ]
         additional_dependencies:
           - prettier
+
+      - id: npm-audit
+        name: npm audit (frontend)
+        language: node
+        entry: bash -c 'cd frontend && npm audit --audit-level=moderate'
+        files: ^frontend/package.*\.json$
+        pass_filenames: false
