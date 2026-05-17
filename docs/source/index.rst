@@ -22,9 +22,7 @@ HealthAnalyser Documentation
    :maxdepth: 2
    :caption: API References:
 
-   Connection <connection>
-   Importer <importer>
-   Model <model>
+   src/modules
 
 .. include:: ../../README.md
    :parser: myst_parser.sphinx_

@@ -6,6 +6,7 @@
 *.zip
 
 docs/build
+docs/source/src
 
 data/
 output/
