@@ -1,5 +1,5 @@
-"""
-react_autodoc — Sphinx extension for React/JSX component documentation
+"""react_autodoc — Sphinx extension for React/JSX component documentation.
+
 =======================================================================
 
 Mirrors ``sphinx.ext.autosummary`` output conventions for a frontend JSX/TSX
@@ -90,11 +90,12 @@ _DEFAULT_OPTIONS: dict[str, bool] = {
 def _parse_components(
     fpath: pathlib.Path,
     frontend_root: pathlib.Path,
+    *,
     verbose: bool = False,
 ) -> list[dict]:
-    """
-    Run ``npx @react-docgen/cli`` on *fpath* and return a list of component
-    dicts.  Returns ``[]`` on any error so callers can safely skip the file.
+    """Run ``npx @react-docgen/cli`` on *fpath* and return a list of component dicts.
+
+    Returns ``[]`` on any error so callers can safely skip the file.
 
     Handles both response shapes:
 
@@ -102,8 +103,8 @@ def _parse_components(
     - react-docgen v5 / CLI fallback: ``[component, ...]``
     """
     try:
-        result = subprocess.run(
-            ["npx", "--yes", "@react-docgen/cli", str(fpath)],
+        result = subprocess.run(  # noqa: S603 # npx is trusted tool not unstrusted input
+            ["npx", "--yes", "@react-docgen/cli", str(fpath)],  # noqa: S607
             capture_output=True,
             text=True,
             cwd=frontend_root,
@@ -151,17 +152,14 @@ def _parse_components(
 
 
 def _should_skip(name: str, description: str, opts: dict) -> bool:
-    """
-    Return ``True`` if this component should be excluded.
+    """Return ``True`` if this component should be excluded.
 
     - Names starting with ``_`` are skipped unless ``private-members`` is set.
     - Components with no description are skipped unless ``undoc-members`` is set.
     """
     if not opts.get("private-members") and name.startswith("_"):
         return True
-    if not opts.get("undoc-members") and not description.strip():
-        return True
-    return False
+    return bool(not opts.get("undoc-members") and not description.strip())
 
 
 # ---------------------------------------------------------------------------
@@ -258,8 +256,7 @@ def _rst_for_module(
 
 
 def _write_if_changed(path: pathlib.Path, content: str) -> bool:
-    """
-    Write *content* to *path* only if it differs from what is already there.
+    """Write *content* to *path* only if it differs from what is already there.
 
     Returns ``True`` if the file was written.  This mirrors autosummary's
     behaviour of not touching files that haven't changed, which lets Sphinx's
@@ -277,8 +274,7 @@ def _write_if_changed(path: pathlib.Path, content: str) -> bool:
 
 
 def _generate_react_docs(app: Sphinx) -> None:
-    """
-    ``builder-inited`` event handler — the same phase autosummary uses.
+    """``builder-inited`` event handler — the same phase autosummary uses.
 
     Walks ``js_source_path``, runs react-docgen on every JSX/TSX file, and
     writes RST files into ``<srcdir>/<react_autodoc_output_dir>/``.
