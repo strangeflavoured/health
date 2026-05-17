@@ -77,9 +77,7 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .venv
-          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('pip-requirements.txt', 'requirements-dev.txt', 'src/requirements.txt', 'backend/requirements/base.txt', 'backend/requirements/tests.txt') }}
-          restore-keys: |
-            venv-${{ runner.os }}-py3.12-
+          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('pip-requirements.txt', 'requirements-dev.txt', 'src/requirements.txt', 'backend/requirements/base.txt', 'backend/requirements/tests.txt', 'docs/requirements.txt') }}
 
       - name: Cache pre-commit environments
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -102,7 +100,6 @@ jobs:
           .venv/bin/pip install \
             --require-hashes \
             -r src/requirements.txt \
-            -r src/importer/requirements.txt \
             -r requirements-dev.txt \
             -r backend/requirements/base.txt \
             -r backend/requirements/tests.txt \
