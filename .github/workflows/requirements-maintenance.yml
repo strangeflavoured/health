@@ -129,6 +129,20 @@ jobs:
         continue-on-error: true
         run: python3 scripts/ci/requirements-maintenance/check_conflicts.py
 
+      - name: Fail on install / check errors
+        if: steps.dag.outputs.has_files == 'true'
+        env:
+          REPORTS_DIR: ${{ runner.temp }}/reports
+        run: |
+          set -euo pipefail
+          if [ ! -f "$REPORTS_DIR/conflicts.json" ]; then
+            echo "::error::conflicts.json missing — check_conflicts.py crashed"
+            exit 1
+          fi
+          bad=$(jq '[to_entries[] | select(.value.install_ok == false or .value.check_ok == false)] | length' \
+                  "$REPORTS_DIR/conflicts.json")
+          [ "$bad" -eq 0 ]
+
       - name: Summarise findings
         id: summary
         if: steps.dag.outputs.has_files == 'true'
