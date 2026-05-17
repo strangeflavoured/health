@@ -83,6 +83,7 @@ def recompile_one(in_path: Path) -> tuple[bool, str]:
             "--quiet",
             "--no-header",
             "--no-annotate",
+            "--allow-unsafe",
             "--output-file",
             str(out_path),
             str(in_path),

@@ -54,6 +54,7 @@ def compile_upgraded(in_file: Path, out_file: Path, errors: list[dict]) -> bool:
             "--quiet",
             "--no-header",
             "--no-annotate",
+            "--allow-unsafe",
             "--output-file",
             str(out_file),
             str(in_file),
