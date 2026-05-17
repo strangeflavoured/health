@@ -72,3 +72,12 @@ repos:
         entry: bash -c 'cd frontend && npm audit --audit-level=moderate'
         files: ^frontend/package.*\.json$
         pass_filenames: false
+
+      - id: compile-requirements
+        name: Recompile requirements (.in → .txt)
+        entry: scripts/compile-requirements.sh
+        language: script
+        files: \.in$
+        pass_filenames: false
+        require_serial: true
+        stages: [pre-commit]
