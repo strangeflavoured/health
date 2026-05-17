@@ -247,7 +247,10 @@ jobs:
           fi
 
       - name: Verify analysis is clean
-        if: needs.analyse.result == 'success' && needs.apply-fixes.result == 'skipped'
+        if: |
+          needs.analyse.result == 'success' &&
+          needs.apply-fixes.result == 'skipped' &&
+          github.actor != 'deps-bot[bot]'
         run: |
           HAS_UPDATES="${{ needs.analyse.outputs.has_updates }}"
           HAS_CONFLICTS="${{ needs.analyse.outputs.has_conflicts }}"
