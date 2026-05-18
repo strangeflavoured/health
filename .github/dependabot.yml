@@ -1,106 +1,38 @@
 version: 2
 
 updates:
-
-  # ── GitHub Actions ───────────────────────────────────────────────────────────
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "03:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 2
-    labels:
-      - "automated"
-      - "dependencies"
-      - "gh-actions"
-    commit-message:
-      prefix: "Actions"
-      include: "scope"
-    groups:
-      github-actions-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+    open-pull-requests-limit: 0
 
-  # ── Python / pip ─────────────────────────────────────────────────────────────
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "03:00"
-      timezone: "Etc/UTC"
     open-pull-requests-limit: 0
 
   - package-ecosystem: "pip"
     directory: "/backend"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "03:00"
-      timezone: "Etc/UTC"
     open-pull-requests-limit: 0
 
   - package-ecosystem: "pip"
     directory: "/docs"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "03:00"
-      timezone: "Etc/UTC"
     open-pull-requests-limit: 0
 
-  # ── Docker ───────────────────────────────────────────────────────────────────────
   - package-ecosystem: "docker"
     directory: "/docker"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "03:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 2
-    labels:
-      - "automated"
-      - "dependencies"
-      - "docker"
-    commit-message:
-      prefix: "Docker"
-      include: "scope"
-    groups:
-      docker-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-    ignore:
-      - dependency-name: "python"  # stay on python version
-        update-types: [ "version-update:semver-major", "version-update:semver-minor" ]
+    open-pull-requests-limit: 0
 
-    # ── pre-commit hooks (.pre-commit-config.yaml) ───────────────────────────────
-  - package-ecosystem: "pre-commit"
-    directory: "/"
+  - package-ecosystem: "npm"
+    directory: "/frontend"
     schedule:
-      interval: "monthly"   # monthly is sufficient
-      day: "monday"         # first Monday of the month
-      time: "03:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 1
-    labels:
-      - "automated"
-      - "dependencies"
-      - "pre-commit hooks"
-    commit-message:
-      prefix: "Chore: pre-commit"
-      include: "scope"
-    groups:
-      pre-commit-hooks:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+      interval: "weekly"
+    open-pull-requests-limit: 0
