@@ -18,8 +18,8 @@ on:
         value: ${{ jobs.build-docs.outputs.artifact-id }}
 
 concurrency:
-  group: sphinx
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
