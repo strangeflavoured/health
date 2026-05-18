@@ -1,12 +1,35 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "enabledManagers": ["npm"],
+  "timezone": "Etc/UTC",
+  "schedule": ["before 8am on monday"],
+  "enabledManagers": [
+    "npm",
+    "github-actions",
+    "pip_requirements",
+    "dockerfile",
+    "pre-commit"
+  ],
+  "ignoreUnstable": true,
+  "labels": ["automated", "dependencies"],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["automated", "dependencies", "security"]
+  },
   "packageRules": [
     {
       "matchManagers": ["npm"],
-      "ignoreUnstable": true,
-      "respectLatest": false
+      "respectLatest": false,
+      "addLabels": ["javascript"]
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm dependencies"
+    },
+    {
+      "matchPackageNames": ["typescript", "ts-node", "@types/*"],
+      "groupName": "typescript"
     },
     {
       "matchPackageNames": ["eslint*", "@eslint/*"],
@@ -28,6 +51,94 @@
     {
       "matchPackageNames": ["vite", "@vitejs/*"],
       "groupName": "vite"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "addLabels": ["gh-actions"],
+      "commitMessagePrefix": "Actions:",
+      "prConcurrentLimit": 2
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "github-actions dependencies"
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "addLabels": ["python"]
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "python dependencies"
+    },
+    {
+      "matchPackageNames": ["numpy", "pandas", "pyarrow", "python-dateutil"],
+      "groupName": "data stack"
+    },
+    {
+      "matchPackageNames": ["pytest", "pytest-*", "coverage", "coverage-*"],
+      "groupName": "pytest"
+    },
+    {
+      "matchPackageNames": [
+        "django",
+        "django-*",
+        "djangorestframework",
+        "dj-database-url"
+      ],
+      "groupName": "django"
+    },
+    {
+      "matchPackageNames": [
+        "sphinx*",
+        "sphinxcontrib-*",
+        "furo",
+        "alabaster",
+        "accessible-pygments",
+        "myst-parser",
+        "markdown-it-py",
+        "mdit-py-plugins",
+        "mdurl",
+        "linkify-it-py",
+        "uc-micro-py"
+      ],
+      "groupName": "docs"
+    },
+    {
+      "matchPackageNames": ["ruff", "pip-tools", "uv", "deptry", "vulture"],
+      "groupName": "dev tools"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": ["docker/**"],
+      "addLabels": ["docker"],
+      "commitMessagePrefix": "Docker:",
+      "prConcurrentLimit": 2
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": ["docker/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "docker dependencies"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["python"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["pre-commit"],
+      "schedule": ["before 8am on the first tuesday of the month"],
+      "addLabels": ["pre-commit hooks"],
+      "commitMessagePrefix": "Chore: pre-commit:",
+      "prConcurrentLimit": 1
+    },
+    {
+      "matchManagers": ["pre-commit"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "pre-commit hooks"
     }
   ]
 }
