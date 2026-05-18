@@ -14,7 +14,7 @@ IN_FILES=("pip-requirements.in" "requirements-dev.in" "src/importer/requirements
 
 _discover_in_files() {
   git ls-files -- '*.in' \
-    | grep -E '(^|/)(requirements|[^/]+-requirements|requirements-[^/]+)\.in$|/requirements/[^/]+\.in$' \
+    | grep -E '(^|/)(requirements|[^/]+-requirements|requirements-[^/]+)\.in$|(^|/)requirements/[^/]+\.in$' \
     | sort -u
 }
 
