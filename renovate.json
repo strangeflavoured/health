@@ -6,6 +6,27 @@
       "matchManagers": ["npm"],
       "ignoreUnstable": true,
       "respectLatest": false
+    },
+    {
+      "matchPackageNames": ["eslint*", "@eslint/*"],
+      "groupName": "eslint"
+    },
+    {
+      "matchPackageNames": ["react", "react-dom", "@types/react*"],
+      "groupName": "react"
+    },
+    {
+      "matchPackageNames": [
+        "@testing-library/*",
+        "vitest",
+        "@vitest/*",
+        "jsdom"
+      ],
+      "groupName": "testing"
+    },
+    {
+      "matchPackageNames": ["vite", "@vitejs/*"],
+      "groupName": "vite"
     }
   ]
 }
