@@ -30,7 +30,6 @@ COPY --chown=health:health ./src ./src
 COPY --chown=health:health ./versions.json .
 COPY --chown=health:health ./tests .
 
-
 ENTRYPOINT ["python3", "-m", "pytest", "--cov=src"]
 
 FROM base AS scripts-test

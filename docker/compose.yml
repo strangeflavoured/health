@@ -204,7 +204,16 @@ services:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.tests
+      target: src-test
     container_name: health-test-suite
+    restart: no
+
+  scripts-tests:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.tests
+      target: scripts-test
+    container_name: health-scripts-tests
     restart: no
 
 secrets:
