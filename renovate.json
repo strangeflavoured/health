@@ -3,13 +3,7 @@
   "extends": ["config:best-practices", ":enablePreCommit"],
   "timezone": "Etc/UTC",
   "schedule": ["before 8am on monday"],
-  "enabledManagers": [
-    "npm",
-    "github-actions",
-    "pip_requirements",
-    "dockerfile",
-    "pre-commit"
-  ],
+  "enabledManagers": ["npm", "github-actions", "dockerfile", "pre-commit"],
   "ignoreUnstable": true,
   "labels": ["automated", "dependencies"],
   "vulnerabilityAlerts": {
@@ -62,52 +56,6 @@
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "github-actions dependencies"
-    },
-    {
-      "matchManagers": ["pip_requirements"],
-      "addLabels": ["python"]
-    },
-    {
-      "matchManagers": ["pip_requirements"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "python dependencies"
-    },
-    {
-      "matchPackageNames": ["numpy", "pandas", "pyarrow", "python-dateutil"],
-      "groupName": "data stack"
-    },
-    {
-      "matchPackageNames": ["pytest", "pytest-*", "coverage", "coverage-*"],
-      "groupName": "pytest"
-    },
-    {
-      "matchPackageNames": [
-        "django",
-        "django-*",
-        "djangorestframework",
-        "dj-database-url"
-      ],
-      "groupName": "django"
-    },
-    {
-      "matchPackageNames": [
-        "sphinx*",
-        "sphinxcontrib-*",
-        "furo",
-        "alabaster",
-        "accessible-pygments",
-        "myst-parser",
-        "markdown-it-py",
-        "mdit-py-plugins",
-        "mdurl",
-        "linkify-it-py",
-        "uc-micro-py"
-      ],
-      "groupName": "docs"
-    },
-    {
-      "matchPackageNames": ["ruff", "pip-tools", "uv", "deptry", "vulture"],
-      "groupName": "dev tools"
     },
     {
       "matchManagers": ["dockerfile"],
