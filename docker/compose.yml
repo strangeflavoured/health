@@ -40,7 +40,7 @@ services:
   docs-compiler:
     build:
       context: .
-      dockerfile: docker/Dockerfile.docs
+      dockerfile: ./docker/Dockerfile.docs
     container_name: health-docs
     restart: no
     volumes:
@@ -75,7 +75,7 @@ services:
   redis-init:
     build:
       context: .
-      dockerfile: docker/Dockerfile.redis-init
+      dockerfile: ./docker/Dockerfile.redis-init
     restart: no
     user: root
     volumes:
@@ -84,7 +84,7 @@ services:
   redis:
     build:
       context: .
-      dockerfile: docker/Dockerfile.redis
+      dockerfile: ./docker/Dockerfile.redis
     cap_drop:
       - ALL
     container_name: health-redis
@@ -139,7 +139,7 @@ services:
   redisinsight:
     build:
       context: .
-      dockerfile: docker/Dockerfile.redisinsight
+      dockerfile: ./docker/Dockerfile.redisinsight
     cap_drop:
       - ALL
     depends_on:
@@ -170,7 +170,7 @@ services:
   sandbox:
     build:
       context: .
-      dockerfile: docker/Dockerfile.sandbox
+      dockerfile: ./docker/Dockerfile.sandbox
     container_name: health-sandbox
     depends_on:
       redis:
@@ -203,7 +203,7 @@ services:
   test-runner:
     build:
       context: .
-      dockerfile: docker/Dockerfile.tests
+      dockerfile: ./docker/Dockerfile.tests
     container_name: health-test-suite
     restart: no
 
