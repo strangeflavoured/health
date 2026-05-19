@@ -128,7 +128,7 @@ no restart needed.
 To add a new API call, add it to `frontend/src/services/api.js`:
 
 ```javascript
-export const getMyData = (params) => api.get("/api/my-endpoint/", { params });
+export const getMyData = (params) => api.get('/api/my-endpoint/', { params })
 ```
 
 The Vite proxy in `vite.config.js` forwards all `/api/*` requests to
@@ -160,7 +160,7 @@ urlpatterns = [
 ```
 
 ```javascript
-export const getMyData = (params) => api.get("/api/my-endpoint/", { params });
+export const getMyData = (params) => api.get('/api/my-endpoint/', { params })
 ```
 
 ---
