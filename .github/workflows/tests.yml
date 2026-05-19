@@ -34,7 +34,7 @@ jobs:
         with:
           filters: |
             all:
-              - 'compose.yml'
+              - 'docker/compose.yml'
             src:
               - 'docker/Dockerfile.tests'
               - 'src/**'
@@ -58,6 +58,8 @@ jobs:
       REDIS_PORT: "6380"
       REDIS_INSIGHT_PORT: "5540"
       REDIS_DB: "0"
+
+      COMPOSE_FILE: docker/compose.yml
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -140,7 +142,7 @@ jobs:
               volumes:
                 - ./test-output:/app/test-output
           EOF
-          echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
+          echo "COMPOSE_FILE=docker/compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
 
       - name: Prepare test output directory
         run: |
@@ -150,17 +152,17 @@ jobs:
       - name: Run src tests
         id: test_runner
         if: always() && needs.changes.outputs.src == 'true'
-        run: docker compose run test-runner
+        run: docker compose --project-directory . run test-runner
 
       - name: Run backend tests
         id: backend_tests
         if: always() && needs.changes.outputs.backend == 'true'
-        run: docker compose run backend-test
+        run: docker compose --project-directory . run backend-test
 
       - name: Run frontend tests
         id: frontend_tests
         if: always() && needs.changes.outputs.frontend == 'true'
-        run: docker compose run frontend-test
+        run: docker compose --project-directory . run frontend-test
 
       - name: Upload JUnit test results
         if: always() && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
@@ -195,22 +197,22 @@ jobs:
         if: failure()
         run: |
           echo "::group::src-test logs"
-          docker compose logs test-runner || true
+          docker compose --project-directory . logs test-runner || true
           echo "::endgroup::"
           echo "::group::backend-test logs"
-          docker compose logs backend-test || true
+          docker compose --project-directory . logs backend-test || true
           echo "::endgroup::"
           echo "::group::frontend-test logs"
-          docker compose logs frontend-test || true
+          docker compose --project-directory . logs frontend-test || true
           echo "::endgroup::"
           echo "::group::compose ps"
-          docker compose ps -a || true
+          docker compose --project-directory . ps -a || true
           echo "::endgroup::"
 
       - name: Tear down stack
         if: always()
         run: |
-          docker compose down -v --remove-orphans || true
+          docker compose --project-directory . down -v --remove-orphans || true
 
       - name: Clean up test output
         if: always()

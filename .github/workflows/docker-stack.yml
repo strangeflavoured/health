@@ -32,12 +32,11 @@ jobs:
           filters: |
             integration:
               - 'backend/**'
-              - 'compose.yml'
               - 'docker/**'
               - 'frontend/**'
               - 'src/**'
             sandbox:
-              - 'compose.yml'
+              - 'docker/compose.yml'
               - 'docker/Dockerfile.sandbox'
               - 'scripts/**'
 
@@ -76,6 +75,8 @@ jobs:
       REDIS_HASH_APP:          ${{ secrets.REDIS_HASH_APP }}
       REDIS_HASH_HEALTHCHECK:  ${{ secrets.REDIS_HASH_HEALTHCHECK }}
       REDIS_HASH_INSIGHT:      ${{ secrets.REDIS_HASH_INSIGHT }}
+
+      COMPOSE_FILE: docker/compose.yml
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -148,10 +149,10 @@ jobs:
               restart: on-failure
               user: root
           EOF
-          echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
+          echo "COMPOSE_FILE=docker/compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
 
       - name: Start persistent containers
-        run: docker compose up -d redis redisinsight backend frontend
+        run: docker compose --project-directory . up -d redis redisinsight backend frontend
 
       - name: Wait for containers to be healthy
         run: |
@@ -190,19 +191,19 @@ jobs:
 
           if ! $redis_healthy; then
             echo "redis did not become healthy in time"
-            docker compose logs redis
+            docker compose --project-directory . logs redis
             docker inspect --format='{{json .State.Health}}' health-redis | jq
           fi
 
           if ! $backend_healthy; then
             echo "backend did not become healthy in time"
-            docker compose logs backend
+            docker compose --project-directory . logs backend
             docker inspect --format='{{json .State.Health}}' health-backend | jq
           fi
 
           if ! $frontend_healthy; then
             echo "frontend did not become healthy in time"
-            docker compose logs frontend
+            docker compose --project-directory . logs frontend
             docker inspect --format='{{json .State.Health}}' health-frontend | jq
           fi
 
@@ -210,34 +211,34 @@ jobs:
 
       - name: Run sandbox
         if: needs.changes.outputs.sandbox == 'true'
-        run: docker compose run sandbox
+        run: docker compose --project-directory . run sandbox
 
       - name: Dump container logs on failure
         if: failure()
         run: |
           echo "::group::redis logs"
-          docker compose logs redis || true
+          docker compose --project-directory . logs redis || true
           echo "::endgroup::"
           echo "::group::redisinsight logs"
-          docker compose logs redisinsight || true
+          docker compose --project-directory . logs redisinsight || true
           echo "::endgroup::"
           echo "::group::backend logs"
-          docker compose logs backend || true
+          docker compose --project-directory . logs backend || true
           echo "::endgroup::"
           echo "::group::frontend logs"
-          docker compose logs frontend || true
+          docker compose --project-directory . logs frontend || true
           echo "::endgroup::"
           echo "::group::sandbox logs"
-          docker compose logs sandbox || true
+          docker compose --project-directory . logs sandbox || true
           echo "::endgroup::"
           echo "::group::compose ps"
-          docker compose ps -a || true
+          docker compose --project-directory . ps -a || true
           echo "::endgroup::"
 
       - name: Tear down stack
         if: always()
         run: |
-          docker compose down -v --remove-orphans || true
+          docker compose --project-directory . down -v --remove-orphans || true
           rm -rf "${SECRETS_DIR:-}" || true
 
   ci-success:
