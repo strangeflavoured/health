@@ -28,10 +28,11 @@ def find_in_files(root: Path) -> list[Path]:
     """
     patterns = (
         "requirements.in",
-        "*-requirements.in",
-        "requirements-*.in",
-        "requirements/*.in",
+        "?*-requirements.in",
+        "requirements-?*.in",
+        "requirements/?*.in",
     )
+
     matches: set[Path] = set()
     for pattern in patterns:
         matches.update(root.rglob(pattern))
