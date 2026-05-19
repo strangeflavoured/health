@@ -44,7 +44,6 @@ compile_one() {
   echo -n "  compiling $in_file... "
   if ! log=$(uv pip compile "$in_file" \
       --allow-unsafe \
-      --upgrade \
       --generate-hashes \
       --strip-extras \
       --output-file="$out_file" \
