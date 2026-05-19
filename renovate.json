@@ -19,7 +19,7 @@
   "packageRules": [
     {
       "matchManagers": ["npm"],
-      "respectLatest": false,
+      "respectLatest": true,
       "addLabels": ["javascript"]
     },
     {
