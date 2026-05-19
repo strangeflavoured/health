@@ -58,6 +58,12 @@
       "groupName": "github-actions dependencies"
     },
     {
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["python"],
+      "separateMultipleMinor": true,
+      "dependencyDashboardApproval": true
+    },
+    {
       "matchManagers": ["dockerfile"],
       "matchFileNames": ["docker/**"],
       "addLabels": ["docker"],
