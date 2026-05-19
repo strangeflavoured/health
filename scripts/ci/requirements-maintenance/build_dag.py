@@ -47,17 +47,23 @@ def get_includes(in_file: Path) -> list[str]:
     except OSError:
         return deps
 
+    root = Path.cwd().resolve()
     for raw in lines:
         line = raw.strip()
         if not line.startswith("-r "):
             continue
         ref = line[3:].split("#", 1)[0].strip()
         resolved = (in_file.parent / ref).resolve()
+        try:
+            resolved.relative_to(root)
+        except ValueError:
+            continue  # path traversal — discard silently
+
         # We only track .in -> .in includes; if the referenced file
         # is a .txt (a compiled lockfile), we look at its .in equivalent.
         in_equiv = resolved.with_suffix(".in")
         if in_equiv.exists():
-            deps.append(str(in_equiv.relative_to(Path.cwd())))
+            deps.append(str(in_equiv.relative_to(root)))
     return deps
 
 

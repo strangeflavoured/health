@@ -21,13 +21,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-_UV_PATH = Path(sys.executable).parent / "uv"
-if not _UV_PATH.is_file():
-    raise FileNotFoundError(
-        f"uv not found at {_UV_PATH} — is uv installed in this environment?"
-    )
-UV: str = str(_UV_PATH)
-
+from .utils import get_uv
 
 # ---------------------------------------------------------------------------
 # Core helpers
@@ -42,7 +36,7 @@ def pip_check() -> tuple[bool, str]:
     recompiled .txt files would produce a broken environment.
     """
     result = subprocess.run(  # noqa: S603
-        [str(UV), "pip", "check"],
+        [get_uv(), "pip", "check"],
         capture_output=True,
         text=True,
     )
@@ -62,7 +56,7 @@ def recompile_one(in_path: Path) -> tuple[bool, str]:
     out_path = output_file(in_path)
     result = subprocess.run(  # noqa: S603
         [
-            UV,
+            get_uv(),
             "pip",
             "compile",
             "--upgrade",
