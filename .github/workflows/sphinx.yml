@@ -39,7 +39,7 @@ jobs:
           filters: |
             docs:
               - 'backend/**'
-              - 'compose.yml'
+              - 'docker/compose.yml'
               - 'docker/Dockerfile.docs'
               - 'docs/**'
               - 'frontend/**'
@@ -59,6 +59,8 @@ jobs:
       REDIS_INSIGHT_PORT: "5540"
       REDIS_DB: "0"
       SECRETS_DIR: ""
+
+      COMPOSE_FILE: docker/compose.yml
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -106,7 +108,7 @@ jobs:
               volumes: !reset
                 - README.md:/home/health/README.md
           EOF
-          echo "COMPOSE_FILE=compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
+          echo "COMPOSE_FILE=docker/compose.yml:compose.ci.yml" >> "$GITHUB_ENV"
 
       - name: Create backend .env
         run: |
@@ -120,7 +122,7 @@ jobs:
 
       - name: Build docs
         run: |
-          docker compose run --name docs docs-compiler
+          docker compose --project-directory . run --name docs docs-compiler
           docker cp docs:/home/health/docs/build/html ./_site
           docker rm docs
 
