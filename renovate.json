@@ -130,7 +130,7 @@
     },
     {
       "matchManagers": ["pre-commit"],
-      "schedule": ["before 8am on the first tuesday of the month"],
+      "schedule": ["* 0-7 1-7 * 2"],
       "addLabels": ["pre-commit hooks"],
       "commitMessagePrefix": "Chore: pre-commit:",
       "prConcurrentLimit": 1
