@@ -1,6 +1,7 @@
 .*
 !/.gitignore
 !/.github
+!.prettierrc
 
 *__pycache__/
 *.zip
