@@ -13,6 +13,9 @@ fi
 SECRETS_DIR=/dev/shm/health-secrets-$(id -u)
 export SECRETS_DIR
 
+COMPOSE_FILE="docker/compose.yml"
+COMPOSE_OVERRIDE_FILE="docker/compose.override.yml"
+
 # Detect if running detached (look for -d or --detach in args)
 is_detached() {
   for arg in "$@"; do
@@ -78,7 +81,7 @@ case "$compose_mode" in
 
     if is_detached "$@"; then
       # Detached: don't clean up on exit, container needs the files
-      docker compose up "$@"
+      docker compose --project-directory . -f "$COMPOSE_FILE" -f "$COMPOSE_OVERRIDE_FILE" up "$@"
       cat <<EOF
 
 ================================================================
@@ -92,12 +95,12 @@ EOF
     else
       # Foreground: trap cleanup so Ctrl+C / exit removes secrets
       trap cleanup_secrets EXIT INT TERM
-      docker compose up "$@"
+      docker compose --project-directory . -f "$COMPOSE_FILE" -f "$COMPOSE_OVERRIDE_FILE" up "$@"
     fi
     ;;
 
   down)
-    docker compose down "$@"
+    docker compose --project-directory . -f "$COMPOSE_FILE" -f "$COMPOSE_OVERRIDE_FILE" down "$@"
     cleanup_secrets
     echo "Secrets cleaned up from $SECRETS_DIR"
     ;;
@@ -108,6 +111,6 @@ EOF
 
   *)
     # Pass through any other compose command unchanged (logs, ps, exec, etc.)
-    docker compose "$compose_mode" "$@"
+    docker compose --project-directory . -f "$COMPOSE_FILE" -f "$COMPOSE_OVERRIDE_FILE" "$compose_mode" "$@"
     ;;
 esac
