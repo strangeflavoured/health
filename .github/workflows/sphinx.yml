@@ -38,9 +38,11 @@ jobs:
         with:
           filters: |
             docs:
+              - '.github/workflows/sphinx.yml'
               - 'backend/**'
               - 'docker/compose.yml'
-              - 'docker/Dockerfile.docs'
+              - 'docker/docker-bake.hcl'
+              - 'docker/Dockerfile.docs*'
               - 'docs/**'
               - 'frontend/**'
               - 'src/**'
