@@ -38,6 +38,7 @@ jobs:
         with:
           filters: |
             docs:
+              - '.github/workflows/${{ github.workflow_ref }}'
               - 'backend/**'
               - 'docker/compose.yml'
               - 'docker/Dockerfile.docs*'
