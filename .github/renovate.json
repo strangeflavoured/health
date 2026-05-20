@@ -6,16 +6,14 @@
   "enabledManagers": ["npm", "github-actions", "dockerfile", "pre-commit"],
   "ignoreUnstable": true,
   "labels": ["automated", "dependencies"],
+  "automerge": true,
+  "automergeType": "pr",
+  "platformAutomerge": true,
   "vulnerabilityAlerts": {
     "enabled": true,
     "labels": ["automated", "dependencies", "security"]
   },
   "packageRules": [
-    {
-      "automerge": true,
-      "automergeType": "pr",
-      "platformAutomerge": true
-    },
     {
       "matchManagers": ["npm"],
       "respectLatest": true,
