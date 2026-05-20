@@ -1,12 +1,11 @@
 # Health Analyser
 
-[![CodeQL Advanced](https://github.com/strangeflavoured/health/actions/workflows/codeql.yml/badge.svg?branch=main&event=push)](https://github.com/strangeflavoured/health/actions/workflows/codeql.yml)
-[![pre-commit](https://github.com/strangeflavoured/health/actions/workflows/pre_commit_run.yml/badge.svg?branch=main&event=push)](https://github.com/strangeflavoured/health/actions/workflows/pre_commit_run.yml)
-[![docker-stack](https://github.com/strangeflavoured/health/actions/workflows/docker-stack.yml/badge.svg?branch=main&event=push)](https://github.com/strangeflavoured/health/actions/workflows/docker-stack.yml)
-[![Run Tests](https://github.com/strangeflavoured/health/actions/workflows/tests.yml/badge.svg?branch=main&event=push)](https://github.com/strangeflavoured/health/actions/workflows/tests.yml)
-[![Dependabot Updates](https://github.com/strangeflavoured/health/actions/workflows/dependabot/dependabot-updates/badge.svg?branch=main)](https://github.com/strangeflavoured/health/actions/workflows/dependabot/dependabot-updates)
-[![Requirements Maintenance](https://github.com/strangeflavoured/health/actions/workflows/requirements-maintenance.yml/badge.svg?branch=main&event=push)](https://github.com/strangeflavoured/health/actions/workflows/requirements-maintenance.yml)
-[![Deploy Sphinx Docs](https://github.com/strangeflavoured/health/actions/workflows/sphinx.yml/badge.svg?branch=main&event=push)](https://github.com/strangeflavoured/health/actions/workflows/sphinx.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=plastic)](https://opensource.org/licenses/MIT)
+![Codecov](https://img.shields.io/codecov/c/github/strangeflavoured/health?style=plastic&logo=codecov)
+[![Renovate enabled](https://img.shields.io/badge/renovate-enabled-brightgreen.svg?style=plastic&logo=renovate)](https://renovatebot.com/)
+![GitHub branch status](https://img.shields.io/github/checks-status/strangeflavoured/health/main?style=plastic&logo=github)
+![GitHub Release Date](https://img.shields.io/github/release-date-pre/strangeflavoured/health?style=plastic)
+![GitHub repo size](https://img.shields.io/github/repo-size/strangeflavoured/health?style=plastic)
 
 ---
 
