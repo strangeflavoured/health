@@ -30,7 +30,8 @@ COPY --chown=health:health ./src ./src
 COPY --chown=health:health ./versions.json .
 COPY --chown=health:health ./tests .
 
-ENTRYPOINT ["python3", "-m", "pytest", "--cov=src"]
+ENTRYPOINT ["python3", "-m", "pytest"]
+CMD ["--cov=src", "--cov-report=term-missing:skip-covered", "--cov-fail-under=80"]
 
 FROM base AS scripts-test
 COPY --chown=health:health ./scripts ./scripts
