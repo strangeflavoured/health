@@ -3,6 +3,12 @@
 {% block extrahead %}
   {{ super() }}
   <style>
+    /* fix badge vertical alignment from included README */
+    img[src*="shields.io"],
+    img[src*="badge"] {
+      vertical-align: middle;
+    }
+
     #version-warning {
       background: #fff3cd;
       color: #664d03;
@@ -21,10 +27,23 @@
       text-decoration: underline;
     }
     #version-switcher {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 0.5em 0 0.75em;
       margin: 0.5em 0;
+      background: var(--color-sidebar-background, var(--color-background-secondary));
+      border-bottom: 1px solid var(--color-background-border);
       font-size: 0.9em;
     }
+    #version-switcher label {
+      position: static;
+      display: block;
+      margin-bottom: 0.3em;
+      font-weight: 600;
+    }
     #version-switcher select {
+      box-sizing: border-box;
       background: var(--color-background-secondary);
       color: var(--color-foreground-primary);
       border: 1px solid var(--color-background-border);
@@ -42,7 +61,7 @@
 
 {% block left_sidebar %}
   {{ super() }}
-  <div id="version-switcher" class="sidebar-tree">
+  <div id="version-switcher" class="sidebar-tree" style="display:none">
     <label
       for="version-select"
       style="display: block; margin-bottom: 0.3em; font-weight: 600"
@@ -50,9 +69,19 @@
       Version
     </label>
     <select id="version-select" disabled>
-      <option>Loading…</option>
+      <option>{{ release }}</option>
     </select>
   </div>
+  <script>
+    (function () {
+      var el     = document.getElementById("version-switcher");
+      var sticky = document.querySelector(".sidebar-sticky");
+      if (el && sticky) {
+        sticky.insertBefore(el, sticky.firstChild);
+        el.style.display = "";
+      }
+    })();
+  </script>
 {% endblock %}
 
 {% block footer %}
@@ -143,7 +172,9 @@
         strong.textContent = msg[1];
         fragment.appendChild(strong);
 
-        fragment.appendChild(document.createTextNode(msg[2]));
+        if (msg[2] !== undefined) {
+          fragment.appendChild(document.createTextNode(msg[2]));
+        }
 
         if (linkVersion) {
           const a = document.createElement("a");
