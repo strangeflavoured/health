@@ -34,7 +34,7 @@ jobs:
           filters: |
             all:
               - 'docker/compose.yml'
-              - '.github/workflows/${{ github.workflow_ref }}'
+              - '.github/workflows/scripts.yml'
             bash:
               - 'docker/Dockerfile.bats*'
               - 'scripts/**'
