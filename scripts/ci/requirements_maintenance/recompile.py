@@ -29,11 +29,15 @@ from .utils import get_uv
 
 
 def pip_check() -> tuple[bool, str]:
-    """Run pip check against the current environment.
+    """Run ``uv pip check`` against the current Python environment.
 
-    Returns a (success, log) tuple. A non-zero exit code means pip found
-    dependency conflicts in the installed packages — this indicates the
-    recompiled .txt files would produce a broken environment.
+    Returns a ``(success, log)`` tuple where *log* is combined stdout+stderr.
+    A non-zero exit code means uv found dependency conflicts in the currently
+    active environment.
+
+    This is called **after** all ``recompile_one`` invocations to give an
+    early signal that the newly written .txt files may be inconsistent.  It
+    does not install anything — it inspects whatever is already installed.
     """
     result = subprocess.run(  # noqa: S603
         [get_uv(), "pip", "check"],
