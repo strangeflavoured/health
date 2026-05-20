@@ -44,7 +44,16 @@ def parse_pins(text: str) -> dict[str, str]:
 
 
 def compile_upgraded(in_file: Path, out_file: Path, errors: list[dict]) -> bool:
-    """Run pip-compile --upgrade --dry-run; write result to out_file."""
+    """Run ``uv pip compile --upgrade`` on *in_file*, writing result to *out_file*.
+
+    Returns ``True`` on success, ``False`` on failure.  On failure, an error
+    record is appended to *errors* with ``file``, ``returncode``, and the last
+    20 lines of ``stderr`` (to keep report sizes bounded).
+
+    Note: the compilation is **not** a dry-run — it writes a real lockfile to
+    *out_file*.  The caller is responsible for placing *out_file* in a
+    temporary directory when only a diff is wanted.
+    """
     result = subprocess.run(  # noqa: S603
         [
             get_uv(),

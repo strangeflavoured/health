@@ -7,6 +7,7 @@ only on earlier groups).
 Outputs (to $GITHUB_OUTPUT if set, else stdout):
   ordered_groups : JSON list of lists of file paths
   all_files      : JSON list of all file paths
+  stacks         : JSON list of install-stacks (see build_stacks())
   has_files      : "true" / "false"
 """
 
@@ -146,7 +147,14 @@ def write_output(key: str, value: str) -> None:
 def main() -> int:
     """Build a topological compile order for pip-tools .in files.
 
-    Returns 0 on success, 1 on failure.
+    Outputs (to $GITHUB_OUTPUT if set, else stdout):
+      ordered_groups : JSON list of lists of file paths
+      all_files      : JSON list of all discovered .in file paths
+      stacks         : JSON list of install-stacks (each stack lists .txt files
+                       in the order they must be installed for one environment)
+      has_files      : "true" / "false"
+
+    Returns 0 on success, 1 on failure (e.g. circular dependency detected).
     """
     failed = False
     root = Path.cwd()
