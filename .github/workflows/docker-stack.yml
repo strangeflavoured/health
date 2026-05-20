@@ -20,8 +20,8 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      integration: ${{ steps.filter.outputs.integration }}
-      sandbox: ${{ steps.filter.outputs.sandbox }}
+      integration: ${{ steps.filter.outputs.integration == 'true' || steps.filter.outputs.all == 'true' }}
+      sandbox: ${{ steps.filter.outputs.sandbox == 'true' || steps.filter.outputs.all == 'true' }}
       any: ${{ steps.filter.outputs.changes != '[]' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -30,14 +30,19 @@ jobs:
         id: filter
         with:
           filters: |
+            all:
+              - '.github/workflows/docker-stack.yml'
+              - 'docker/compose.yml'
+              - 'docker/docker-bake.hcl'
+              - 'src/**'
             integration:
               - 'backend/**'
-              - 'docker/**'
+              - 'docker/Dockerfile.redis*'
+              - 'docker/Dockerfile.backend*'
+              - 'docker/Dockerfile.frontend*'
               - 'frontend/**'
-              - 'src/**'
             sandbox:
-              - 'docker/compose.yml'
-              - 'docker/Dockerfile.sandbox'
+              - 'docker/Dockerfile.sandbox*'
               - 'scripts/**'
 
   stack:
