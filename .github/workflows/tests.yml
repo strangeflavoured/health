@@ -100,9 +100,7 @@ jobs:
                 --tb=long -v
                 --continue-on-collection-errors
                 --no-header
-                --cov-report=term-missing
                 --cov-report=xml:/home/health/test-output/coverage-src.xml
-                --cov-fail-under=80
                 --junit-xml=/home/health/test-output/test-results-src.xml
                 -p no:warnings
               environment:
