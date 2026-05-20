@@ -36,14 +36,15 @@ jobs:
             all:
               - 'docker/compose.yml'
             src:
-              - 'docker/Dockerfile.tests'
+              - 'docker/Dockerfile.tests*'
               - 'src/**'
+              - 'tests/**'
             backend:
               - 'backend/**'
-              - 'docker/Dockerfile.backend'
+              - 'docker/Dockerfile.backend*'
               - 'src/**'
             frontend:
-              - 'docker/Dockerfile.frontend'
+              - 'docker/Dockerfile.frontend*'
               - 'frontend/**'
 
   tests:
