@@ -15,7 +15,11 @@ group "infra" {
 }
 
 group "tests" {
-  targets = ["src-test", "backend-test", "frontend-test", "scripts-test", "bats-test"]
+  targets = ["src-test", "backend-test", "frontend-test"]
+}
+
+group "scripts" {
+  targets = ["scripts-test", "bats-test"]
 }
 
 group "backend" {
