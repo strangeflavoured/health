@@ -34,12 +34,14 @@ jobs:
           filters: |
             all:
               - 'docker/compose.yml'
+              - 'docker/docker-bake.hcl'
+              - '.github/workflows/scripts.yml'
             bash:
-              - 'docker/Dockerfile.bats'
+              - 'docker/Dockerfile.bats*'
               - 'scripts/**'
               - '!scripts/**/*.py'
             python:
-              - 'docker/Dockerfile.tests'
+              - 'docker/Dockerfile.tests*'
               - 'scripts/**'
               - '!scripts/**/*.sh'
               - '!scripts/**/*.bash'
