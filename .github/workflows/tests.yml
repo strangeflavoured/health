@@ -35,6 +35,7 @@ jobs:
           filters: |
             all:
               - 'docker/compose.yml'
+              - '.github/workflows/${{ github.workflow_ref }}'
             src:
               - 'docker/Dockerfile.tests*'
               - 'src/**'
