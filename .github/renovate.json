@@ -9,6 +9,7 @@
   "automerge": true,
   "automergeType": "pr",
   "platformAutomerge": true,
+  "mergeMethod": "rebase",
   "vulnerabilityAlerts": {
     "enabled": true,
     "labels": ["automated", "dependencies", "security"]
