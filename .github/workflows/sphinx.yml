@@ -86,6 +86,8 @@ jobs:
         if: inputs.upload-artifact == true
         run: |
           mkdir -p ./badges
+
+          # GitHub Actions workflow badges
           grep -oP 'https://github\.com/[^/]+/[^/]+/actions/workflows/[^/]+\.yml/badge\.svg[^)]*' README.md \
             | while IFS= read -r url; do
                 name=$(echo "$url" | grep -oP '(?<=/workflows/)[^/]+(?=\.yml)')
@@ -93,12 +95,33 @@ jobs:
                 echo "Fetched: ${name}.svg from ${url}"
               done
 
+          # shields.io badges
+          grep -oP 'https://img\.shields\.io/[^\s)\"]+' README.md \
+            | while IFS= read -r url; do
+                # Derive a stable slug from the URL path (strip domain, replace special chars)
+                slug=$(echo "$url" | sed 's|https://img\.shields\.io/||; s|[/?=&.]|_|g; s|_svg$||; s|__*|_|g; s|_$||')
+                curl -sL "$url" -o "./badges/shields_${slug}.svg"
+                echo "Fetched: shields_${slug}.svg from ${url}"
+
+                # Build a sed rewrite rule for this URL
+                # Escape regex metacharacters for use as a sed pattern
+                safe_url=$(printf '%s' "$url" | sed 's|[.[\*^$()+?{]|\\&|g')
+                echo "s|${safe_url}|https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.ref_name }}/badges/shields_${slug}.svg|g" \
+                  >> ./badges/.shields_rewrites.sed
+              done
+
       - name: Rewrite badge URLs for docs
         if: inputs.upload-artifact == true
         run: |
+          # GitHub Actions workflow badges (regex-reconstructible)
           sed -i -E \
             's|https://github\.com/([^/]+)/([^/]+)/actions/workflows/([^/]+)\.yml/badge\.svg[^)]*|https://\1.github.io/\2/${{ github.ref_name }}/badges/\3.svg|g' \
             README.md
+
+          # shields.io badges (apply pre-built rewrite rules from fetch step)
+          if [ -f ./badges/.shields_rewrites.sed ]; then
+            sed -i -f ./badges/.shields_rewrites.sed README.md
+          fi
 
       - name: Write compose override
         run: |
