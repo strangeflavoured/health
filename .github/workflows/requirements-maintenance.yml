@@ -77,7 +77,7 @@ jobs:
 
       - name: Build compile DAG
         id: dag
-        run: python3 scripts/ci/requirements-maintenance/build_dag.py
+        run: python3 scripts/ci/requirements_maintenance/build_dag.py
 
       - name: Assert DAG covers all .in files
         if: steps.dag.outputs.has_files == 'true'
@@ -107,7 +107,7 @@ jobs:
         env:
           ALL_FILES: ${{ steps.dag.outputs.all_files }}
           REPORTS_DIR: ${{ runner.temp }}/reports
-        run: python3 scripts/ci/requirements-maintenance/check_updates.py
+        run: python3 scripts/ci/requirements_maintenance/check_updates.py
 
       - name: Fail on pip-compile errors
         if: steps.dag.outputs.has_files == 'true'
@@ -133,7 +133,7 @@ jobs:
           STACKS: ${{ steps.dag.outputs.stacks }}
           REPORTS_DIR: ${{ runner.temp }}/reports
         continue-on-error: true
-        run: python3 scripts/ci/requirements-maintenance/check_conflicts.py
+        run: python3 scripts/ci/requirements_maintenance/check_conflicts.py
 
       - name: Fail on install / check errors
         if: steps.dag.outputs.has_files == 'true'
@@ -154,7 +154,7 @@ jobs:
         if: steps.dag.outputs.has_files == 'true'
         env:
           REPORTS_DIR: ${{ runner.temp }}/reports
-        run: python3 scripts/ci/requirements-maintenance/summarise.py
+        run: python3 scripts/ci/requirements_maintenance/summarise.py
 
       - name: Upload analysis reports
         if: always() && steps.dag.outputs.has_files == 'true'
@@ -212,7 +212,7 @@ jobs:
       - name: Recompile requirements
         env:
           ORDERED_GROUPS: ${{ needs.analyse.outputs.ordered_groups }}
-        run: python3 scripts/ci/requirements-maintenance/recompile.py
+        run: python3 scripts/ci/requirements_maintenance/recompile.py
 
       - name: Verify --hash= entries on recompiled files
         run: |
