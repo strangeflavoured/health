@@ -47,12 +47,12 @@ jobs:
               - "!**/*.md"
               - "!**/*.rst"
               - "!**/*.txt"
-              - "!.gitignore"
+              - "!**/*.dockerignore"
+              - "!**/*.gitignore"
               - "!.gitattributes"
               - "!LICENSE"
               - "!CHANGELOG"
               - "!NOTICE"
-              - "!docs/**"
 
   pre-commit:
     name: Run pre-commit hooks
