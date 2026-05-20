@@ -59,8 +59,8 @@ target "src-test" {
   tags       = ["health-test-runner"]
   target     = "src-test"
   output     = ["type=docker"]
-  cache-from = ["type=gha,scope=tests"]
-  cache-to   = ["type=gha,scope=tests,mode=max"]
+  cache-from = ["type=gha,scope=src-test"]
+  cache-to   = ["type=gha,scope=src-test,mode=max"]
 }
 
 target "scripts-test" {
@@ -69,8 +69,8 @@ target "scripts-test" {
   tags       = ["health-scripts-test"]
   target     = "scripts-test"
   output     = ["type=docker"]
-  cache-from = ["type=gha,scope=tests"]
-  cache-to   = ["type=gha,scope=tests,mode=max"]
+  cache-from = ["type=gha,scope=scripts-test"]
+  cache-to   = ["type=gha,scope=scripts-test,mode=max"]
 }
 
 target "bats-test" {
@@ -78,8 +78,8 @@ target "bats-test" {
   dockerfile = "docker/Dockerfile.bats"
   tags       = ["health-bats-test"]
   output     = ["type=docker"]
-  cache-from = ["type=gha,scope=tests"]
-  cache-to   = ["type=gha,scope=tests,mode=max"]
+  cache-from = ["type=gha,scope=bats-test"]
+  cache-to   = ["type=gha,scope=bats-test,mode=max"]
 }
 
 
@@ -107,8 +107,8 @@ target "backend-dev" {
   target     = "dev"
   tags       = ["health-backend:dev"]
   output     = ["type=docker"]
-  cache-from = ["type=gha,scope=backend"]
-  cache-to   = ["type=gha,scope=backend,mode=max"]
+  cache-from = ["type=gha,scope=backend-dev"]
+  cache-to   = ["type=gha,scope=backend-dev,mode=max"]
 }
 
 target "backend-test" {
@@ -117,8 +117,8 @@ target "backend-test" {
   target     = "test"
   tags       = ["health-backend:test"]
   output     = ["type=docker"]
-  cache-from = ["type=gha,scope=backend"]
-  cache-to   = ["type=gha,scope=backend,mode=max"]
+  cache-from = ["type=gha,scope=backend-test"]
+  cache-to   = ["type=gha,scope=backend-test,mode=max"]
 }
 
 target "backend-prod" {
@@ -127,8 +127,8 @@ target "backend-prod" {
   target     = "prod"
   tags       = ["health-backend:prod"]
   output     = ["type=docker"]
-  cache-from = ["type=gha,scope=backend"]
-  cache-to   = ["type=gha,scope=backend,mode=max"]
+  cache-from = ["type=gha,scope=backend-prod"]
+  cache-to   = ["type=gha,scope=backend-prod,mode=max"]
 }
 
 target "frontend-dev" {
@@ -137,8 +137,8 @@ target "frontend-dev" {
   target     = "dev"
   tags       = ["health-frontend:dev"]
   output     = ["type=docker"]
-  cache-from = ["type=gha,scope=frontend"]
-  cache-to   = ["type=gha,scope=frontend,mode=max"]
+  cache-from = ["type=gha,scope=frontend-dev"]
+  cache-to   = ["type=gha,scope=frontend-dev,mode=max"]
 }
 
 target "frontend-test" {
@@ -147,8 +147,8 @@ target "frontend-test" {
   target     = "test"
   tags       = ["health-frontend:test"]
   output     = ["type=docker"]
-  cache-from = ["type=gha,scope=frontend"]
-  cache-to   = ["type=gha,scope=frontend,mode=max"]
+  cache-from = ["type=gha,scope=frontend-test"]
+  cache-to   = ["type=gha,scope=frontend-test,mode=max"]
 }
 
 target "frontend-prod" {
@@ -157,6 +157,6 @@ target "frontend-prod" {
   target     = "prod"
   tags       = ["health-frontend:prod"]
   output     = ["type=docker"]
-  cache-from = ["type=gha,scope=frontend"]
-  cache-to   = ["type=gha,scope=frontend,mode=max"]
+  cache-from = ["type=gha,scope=frontend-prod"]
+  cache-to   = ["type=gha,scope=frontend-prod,mode=max"]
 }
