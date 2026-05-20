@@ -40,7 +40,7 @@ jobs:
             docs:
               - 'backend/**'
               - 'docker/compose.yml'
-              - 'docker/Dockerfile.docs'
+              - 'docker/Dockerfile.docs*'
               - 'docs/**'
               - 'frontend/**'
               - 'src/**'
