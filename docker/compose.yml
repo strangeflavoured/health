@@ -216,6 +216,13 @@ services:
     container_name: health-scripts-tests
     restart: no
 
+  bats-tests:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.bats
+    container_name: health-bats-tests
+    restart: no
+
 secrets:
   users.acl:
     file: ${SECRETS_DIR}/users.acl

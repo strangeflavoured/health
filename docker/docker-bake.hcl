@@ -15,7 +15,7 @@ group "infra" {
 }
 
 group "tests" {
-  targets = ["src-test", "backend-test", "frontend-test", "scripts-test"]
+  targets = ["src-test", "backend-test", "frontend-test", "scripts-test", "bats-test"]
 }
 
 group "backend" {
@@ -68,6 +68,15 @@ target "scripts-test" {
   dockerfile = "docker/Dockerfile.tests"
   tags       = ["health-scripts-test"]
   target     = "scripts-test"
+  output     = ["type=docker"]
+  cache-from = ["type=gha,scope=tests"]
+  cache-to   = ["type=gha,scope=tests,mode=max"]
+}
+
+target "bats-test" {
+  context    = "."
+  dockerfile = "docker/Dockerfile.bats"
+  tags       = ["health-bats-test"]
   output     = ["type=docker"]
   cache-from = ["type=gha,scope=tests"]
   cache-to   = ["type=gha,scope=tests,mode=max"]
