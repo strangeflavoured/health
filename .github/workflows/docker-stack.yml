@@ -32,12 +32,17 @@ jobs:
           filters: |
             integration:
               - 'backend/**'
-              - 'docker/**'
+              - 'docker/compose.yml'
+              - 'docker/docker-bake.hcl'
+              - 'docker/Dockerfile.redis*'
+              - 'docker/Dockerfile.backend*'
+              - 'docker/Dockerfile.frontend*'
               - 'frontend/**'
               - 'src/**'
             sandbox:
               - 'docker/compose.yml'
-              - 'docker/Dockerfile.sandbox'
+              - 'docker/docker-bake.hcl'
+              - 'docker/Dockerfile.sandbox*'
               - 'scripts/**'
 
   stack:
