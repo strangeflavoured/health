@@ -212,7 +212,7 @@ jobs:
       - name: Recompile requirements
         env:
           ORDERED_GROUPS: ${{ needs.analyse.outputs.ordered_groups }}
-        run: python3 scripts/ci/requirements-maintenance/recompile.py
+        run: python3 scripts/ci/requirements_maintenance/recompile.py
 
       - name: Verify --hash= entries on recompiled files
         run: |
