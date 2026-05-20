@@ -24,13 +24,15 @@
       margin: 0.5em 0;
       font-size: 0.9em;
     }
-    #version-switcher select {
-      background: var(--color-background-secondary);
-      color: var(--color-foreground-primary);
-      border: 1px solid var(--color-background-border);
-      border-radius: 4px;
-      padding: 0.3em 0.5em;
-      width: 100%;
+    #version-switcher {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 0.5em 0 0.75em;
+      margin-bottom: 0.5em;
+      background: var(--color-sidebar-background, var(--color-background-secondary));
+      border-bottom: 1px solid var(--color-background-border);
+      font-size: 0.9em;
     }
   </style>
 {% endblock %}
@@ -41,7 +43,6 @@
 {% endblock %}
 
 {% block left_sidebar %}
-  {{ super() }}
   <div id="version-switcher" class="sidebar-tree">
     <label
       for="version-select"
@@ -50,9 +51,10 @@
       Version
     </label>
     <select id="version-select" disabled>
-      <option>Loading…</option>
+      <option>{{ release }}</option>
     </select>
   </div>
+  {{ super() }}
 {% endblock %}
 
 {% block footer %}
@@ -142,8 +144,10 @@
         const strong = document.createElement("strong");
         strong.textContent = msg[1];
         fragment.appendChild(strong);
-
-        fragment.appendChild(document.createTextNode(msg[2]));
+        
+        if (msg[2] !== undefined) {
+          fragment.appendChild(document.createTextNode(msg[2]));
+        }
 
         if (linkVersion) {
           const a = document.createElement("a");
