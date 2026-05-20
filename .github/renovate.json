@@ -12,6 +12,11 @@
   },
   "packageRules": [
     {
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
       "matchManagers": ["npm"],
       "respectLatest": true,
       "addLabels": ["javascript"]
