@@ -34,7 +34,7 @@ jobs:
         with:
           filters: |
             requirements:
-              - '.github/workflows/${{ github.workflow_ref }}'
+              - '.github/workflows/requirements_maintenance.yml'
               - '**/{requirements,*-requirements,requirements-*}.in'
               - '**/{requirements,*-requirements,requirements-*}.txt'
               - '**/requirements/*.in'
