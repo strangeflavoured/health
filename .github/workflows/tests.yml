@@ -35,15 +35,18 @@ jobs:
           filters: |
             all:
               - 'docker/compose.yml'
+              - 'docker/docker-bake.hcl'
+              - '.github/workflows/tests.yml'
             src:
-              - 'docker/Dockerfile.tests'
+              - 'docker/Dockerfile.tests*'
               - 'src/**'
+              - 'tests/**'
             backend:
               - 'backend/**'
-              - 'docker/Dockerfile.backend'
+              - 'docker/Dockerfile.backend*'
               - 'src/**'
             frontend:
-              - 'docker/Dockerfile.frontend'
+              - 'docker/Dockerfile.frontend*'
               - 'frontend/**'
 
   tests:
