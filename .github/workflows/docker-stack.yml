@@ -31,6 +31,7 @@ jobs:
         with:
           filters: |
             integration:
+              - '.github/workflows/${{ github.workflow_ref }}'
               - 'backend/**'
               - 'docker/compose.yml'
               - 'docker/docker-bake.hcl'
@@ -40,6 +41,7 @@ jobs:
               - 'frontend/**'
               - 'src/**'
             sandbox:
+              - '.github/workflows/${{ github.workflow_ref }}'
               - 'docker/compose.yml'
               - 'docker/docker-bake.hcl'
               - 'docker/Dockerfile.sandbox*'
