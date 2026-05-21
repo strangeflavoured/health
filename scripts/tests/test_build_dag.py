@@ -443,10 +443,10 @@ class TestWriteOutput:
         build_dag.write_output("my_key", "my_value")
         assert "my_key=my_value" in out_file.read_text()
 
-    def test_writes_to_stdout_when_no_env(self, monkeypatch, capsys):
+    def test_raises_oserror_when_no_env(self, monkeypatch, capsys):  # noqa: ARG002
         monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
-        build_dag.write_output("k", "v")
-        assert "k=v" in capsys.readouterr().out
+        with pytest.raises(OSError):
+            build_dag.write_output("k", "v")
 
     def test_appends_rather_than_overwrites(self, tmp_path, monkeypatch):
         out_file = tmp_path / "out.txt"
