@@ -1,11 +1,10 @@
-import axios from 'axios'
+import axios, { AxiosResponse } from 'axios'
 
-const api = axios.create({
-  baseURL: '', // empty - proxy handles routing in dev
-})
+const api = axios.create({ baseURL: '' })
 
 /**
  * Checks the backend health status.
  * @returns {Promise<import('axios').AxiosResponse<{status: string}>>} Resolves with the health response
  */
-export const getHealth = () => api.get('/api/health/')
+export const getHealth = (): Promise<AxiosResponse<{ status: string }>> =>
+  api.get('/api/health/')
