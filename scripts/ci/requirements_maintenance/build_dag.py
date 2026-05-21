@@ -134,14 +134,14 @@ def build_stacks(
     return stacks
 
 
-def write_output(key: str, value: str) -> None:
-    """Write to $GITHUB_OUTPUT or fall back to stdout for local runs."""
+def write_output(key: str, value: str) -> bool:
+    """Write to $GITHUB_OUTPUT."""
     out = os.environ.get("GITHUB_OUTPUT")
     if out:
         with open(out, "a") as fh:
             fh.write(f"{key}={value}\n")
     else:
-        print(f"{key}={value}")
+        raise OSError("GITHUB_OUTPUT is not set - must be run in CI.")
 
 
 def main() -> int:
