@@ -100,3 +100,10 @@ repos:
         files: \.rst$
         additional_dependencies:
           - sphinx-lint
+
+      - id: typecheck
+        name: TypeScript type check
+        language: node
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
