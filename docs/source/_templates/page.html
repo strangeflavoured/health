@@ -1,8 +1,7 @@
 {% extends "!page.html" %}
-
 {% block extrahead %}
-  {{ super() }}
-  <style>
+    {{ super() }}
+    <style>
     /* fix badge vertical alignment from included README */
     img[src*="shields.io"],
     img[src*="badge"] {
@@ -51,28 +50,24 @@
       padding: 0.3em 0.5em;
       width: 100%;
     }
-  </style>
+    </style>
 {% endblock %}
-
 {% block body %}
-  <div id="version-warning" hidden></div>
-  {{ super() }}
+    <div id="version-warning" hidden></div>
+    {{ super() }}
 {% endblock %}
-
 {% block left_sidebar %}
-  {{ super() }}
-  <div id="version-switcher" class="sidebar-tree" style="display:none">
-    <label
-      for="version-select"
-      style="display: block; margin-bottom: 0.3em; font-weight: 600"
-    >
-      Version
-    </label>
-    <select id="version-select" disabled>
-      <option>{{ release }}</option>
-    </select>
-  </div>
-  <script>
+    {{ super() }}
+    <div id="version-switcher" class="sidebar-tree" style="display:none">
+        <label for="version-select"
+               style="display: block;
+                      margin-bottom: 0.3em;
+                      font-weight: 600">Version</label>
+        <select id="version-select" disabled>
+            <option>{{ release }}</option>
+        </select>
+    </div>
+    <script>
     (function () {
       var el     = document.getElementById("version-switcher");
       var sticky = document.querySelector(".sidebar-sticky");
@@ -81,12 +76,11 @@
         el.style.display = "";
       }
     })();
-  </script>
+    </script>
 {% endblock %}
-
 {% block footer %}
-  {{ super() }}
-  <script>
+    {{ super() }}
+    <script>
     (function () {
       const CURRENT = "{{ release }}";
       const VERSIONS_URL = "/health/versions.json";
@@ -188,5 +182,5 @@
         banner.appendChild(fragment);
       }
     })();
-  </script>
+    </script>
 {% endblock %}
