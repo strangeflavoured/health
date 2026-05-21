@@ -364,7 +364,7 @@ def _generate_react_docs(app: Sphinx) -> None:
             "React Components",
             "================",
             "",
-            "Auto-generated from JSDoc comments in ``frontend/src``.",
+            "Auto-generated from TypeScript types and JSDoc comments in ``frontend/src``.",  # noqa: E501
             "Re-generated on every ``make html`` run.",
             "",
             ".. toctree::",
