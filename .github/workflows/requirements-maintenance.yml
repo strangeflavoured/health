@@ -15,12 +15,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   changes:
     name: Detect Changes
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       requirements: ${{ steps.filter.outputs.requirements }}
@@ -50,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}/scripts
+    permissions:
+      contents: read
 
     outputs:
       ordered_groups: ${{ steps.dag.outputs.ordered_groups }}

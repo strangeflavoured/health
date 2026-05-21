@@ -8,8 +8,7 @@ on:
     branches: ["**"]
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -19,6 +18,8 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       integration: ${{ steps.filter.outputs.integration == 'true' || steps.filter.outputs.all == 'true' }}
       sandbox: ${{ steps.filter.outputs.sandbox == 'true' || steps.filter.outputs.all == 'true' }}
@@ -51,6 +52,8 @@ jobs:
     if: needs.changes.outputs.any == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
 
     env:
       # Required by compose.yml
