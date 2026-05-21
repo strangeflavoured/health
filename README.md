@@ -1,12 +1,13 @@
 # Health Analyser
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=plastic)](https://opensource.org/licenses/MIT)
-![OSSF-Scorecard Score](https://img.shields.io/ossf-scorecard/github.com/strangeflavoured/health?style=plastic&logo=openssf)
-![Codecov](https://img.shields.io/codecov/c/github/strangeflavoured/health?style=plastic&logo=codecov)
-[![Renovate enabled](https://img.shields.io/badge/renovate-enabled-brightgreen.svg?style=plastic&logo=renovate)](https://renovatebot.com/)
-![GitHub branch status](https://img.shields.io/github/checks-status/strangeflavoured/health/main?style=plastic&logo=github)
-![GitHub Release Date](https://img.shields.io/github/release-date-pre/strangeflavoured/health?style=plastic)
-![GitHub repo size](https://img.shields.io/github/repo-size/strangeflavoured/health?style=plastic)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12933/badge)](https://www.bestpractices.dev/projects/12933)
+![OSSF-Scorecard Score](https://img.shields.io/ossf-scorecard/github.com/strangeflavoured/health?label=OSSF%20score)
+![Codecov](https://img.shields.io/codecov/c/github/strangeflavoured/health?logo=codecov)
+[![Renovate enabled](https://img.shields.io/badge/renovate-enabled-brightgreen.svg?logo=renovate)](https://renovatebot.com/)
+![GitHub branch status](https://img.shields.io/github/checks-status/strangeflavoured/health/main?logo=github)
+![GitHub Release Date](https://img.shields.io/github/release-date-pre/strangeflavoured/health)
+![GitHub repo size](https://img.shields.io/github/repo-size/strangeflavoured/health)
 
 ---
 
