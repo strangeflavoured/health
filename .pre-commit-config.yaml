@@ -81,3 +81,20 @@ repos:
         pass_filenames: false
         require_serial: true
         stages: [pre-commit]
+
+      - id: djlint
+        name: Jinja template formatting (docs)
+        language: python
+        entry: djlint
+        args: [ --reformat ]
+        files: \.html$
+        additional_dependencies:
+          - djlint
+
+      - id: sphinx-lint
+        name: RST lint (docs)
+        language: python
+        entry: sphinx-lint
+        files: \.rst$
+        additional_dependencies:
+          - sphinx-lint
