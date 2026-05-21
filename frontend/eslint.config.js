@@ -56,5 +56,8 @@ export default [
         vi: 'readonly',
       },
     },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
   },
 ]
