@@ -1,9 +1,10 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [
     react({
+      // @ts-expect-error babel types require @babel/core peer dep
       babel: {
         plugins: ['babel-plugin-react-compiler'],
       },
