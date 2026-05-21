@@ -12,7 +12,7 @@ import { getHealth } from './services/api'
  * the React and Vite logos.
  * @returns {React.JSX.Element} The rendered app shell
  */
-function App() {
+function App(): React.JSX.Element {
   const [status, setStatus] = useState('checking...')
 
   useEffect(() => {
