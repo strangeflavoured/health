@@ -113,6 +113,14 @@ jobs:
                   >> ./badges/.shields_rewrites.sed
               done
 
+          # bestpractices badges
+          grep -oP 'https://www\.bestpractices\.dev/projects/12933/[^)]*' README.md \
+            | while IFS= read -r url; do
+                name=bestpractices_$(echo "$url" | grep -oP '(?<=/12933/)[^/]+')
+                curl -sL "$url" -o "./badges/${name}.svg"
+                echo "Fetched: ${name}.svg from ${url}"
+              done
+
       - name: Rewrite badge URLs for docs
         if: inputs.upload-artifact == true
         run: |
@@ -125,6 +133,11 @@ jobs:
           if [ -f ./badges/.shields_rewrites.sed ]; then
             sed -i -f ./badges/.shields_rewrites.sed README.md
           fi
+
+          # bestpractices badges
+          sed -i -E \
+            's|https://www\.bestpractices\.dev/projects/12933/([^)]*)|https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.ref_name }}/badges/bestpractices_\1.svg|g' \
+            README.md
 
       - name: Write compose override
         run: |
