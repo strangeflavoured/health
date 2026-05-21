@@ -1,0 +1,25 @@
+name: OSV Scan
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 6 * * 2'
+
+permissions: {}
+
+jobs:
+  osv-scan:
+    permissions:
+      contents: read
+      security-events: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2  # v2.3.8
+        with:
+          scan-args: |-
+            --recursive
+            ./
