@@ -21,13 +21,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
     steps:
@@ -51,6 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Build docs
     needs: changes
+    permissions:
+      contents: read
     if: needs.changes.outputs.docs == 'true'
     outputs:
       artifact-id: ${{ steps.upload.outputs.artifact-id }}

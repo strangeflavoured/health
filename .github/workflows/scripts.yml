@@ -8,10 +8,7 @@ on:
     branches: ["**"]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  checks: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -21,6 +18,8 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       bash: ${{ steps.filter.outputs.bash == 'true' || steps.filter.outputs.all == 'true' }}
       python: ${{ steps.filter.outputs.python == 'true' || steps.filter.outputs.all == 'true' }}
@@ -52,6 +51,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.any == 'true'
+    permissions:
+      contents: read
+      checks: write # required by dorny/test-reporter to publish PR check results
+      pull-requests: write # required by dorny/test-reporter to post PR comments
 
     env:
       # Required by compose.yml
