@@ -46,8 +46,8 @@ repos:
 
   - repo: local
     hooks:
-      - id: eslint-jsdoc
-        name: JSDoc enforcement (frontend)
+      - id: eslint
+        name: ESLint (frontend)
         language: node
         entry: bash -c 'cd frontend && npx eslint --no-warn-ignored --max-warnings 0 .'
         files: ^frontend/.*\.(ts|tsx)$
