@@ -1,6 +1,7 @@
 # Health Analyser
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=plastic)](https://opensource.org/licenses/MIT)
+![OSSF-Scorecard Score](https://img.shields.io/ossf-scorecard/github.com/strangeflavoured/health?style=plastic&logo=openssf)
 ![Codecov](https://img.shields.io/codecov/c/github/strangeflavoured/health?style=plastic&logo=codecov)
 [![Renovate enabled](https://img.shields.io/badge/renovate-enabled-brightgreen.svg?style=plastic&logo=renovate)](https://renovatebot.com/)
 ![GitHub branch status](https://img.shields.io/github/checks-status/strangeflavoured/health/main?style=plastic&logo=github)
