@@ -81,3 +81,28 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./publish
           keep_files: true
+
+      - name: Update CHANGELOG.md
+        env:
+          RELEASE_BODY: ${{ github.event.release.body }}
+          TAG: ${{ github.event.release.tag_name }}
+          DATE: ${{ github.event.release.published_at }}
+        run: |
+          tmp=$(mktemp)
+          printf "## [%s] - %s\n\n%s\n\n" \
+            "${TAG}" "${DATE:0:10}" "${RELEASE_BODY}" > "$tmp"
+          if [ -f CHANGELOG.md ]; then
+            # Insert after the first line (the # Changelog heading)
+            head -1 CHANGELOG.md >> "$tmp"
+            echo >> "$tmp"
+            tail -n +2 CHANGELOG.md >> "$tmp"
+          fi
+          mv "$tmp" CHANGELOG.md
+
+      - name: Commit changelog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog for ${TAG}"
+          git push origin HEAD:main
