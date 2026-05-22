@@ -88,6 +88,10 @@ jobs:
 
       - name: Fetch badge snapshots
         if: inputs.upload-artifact == true
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           mkdir -p ./badges
 
@@ -110,9 +114,9 @@ jobs:
                 # Build a sed rewrite rule for this URL
                 # Escape regex metacharacters for use as a sed pattern
                 safe_url=$(printf '%s' "$url" | sed 's|[.[\*^$()+?{]|\\&|g')
-                owner="${{ github.repository_owner }}"
-                repo="${{ github.event.repository.name }}"
-                ref="${{ github.ref_name }}"
+                owner="$REPO_OWNER"
+                repo="$REPO_NAME"
+                ref="$REF_NAME"
                 replacement="https://${owner}.github.io/${repo}/${ref}/badges/shields_${slug}.svg"
                 echo "s|${safe_url}|${replacement}|g" >> ./badges/.shields_rewrites.sed
               done
@@ -127,10 +131,14 @@ jobs:
 
       - name: Rewrite badge URLs for docs
         if: inputs.upload-artifact == true
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           # GitHub Actions workflow badges (regex-reconstructible)
           pattern='https://github\.com/([^/]+)/([^/]+)/actions/workflows/([^/]+)\.yml/badge\.svg[^)]*'
-          replace="https://\1.github.io/\2/${{ github.ref_name }}/badges/\3.svg"
+          replace="https://\1.github.io/\2/$REF_NAME/badges/\3.svg"
           sed -i -E "s|${pattern}|${replace}|g" README.md
 
           # shields.io badges (apply pre-built rewrite rules from fetch step)
@@ -140,9 +148,9 @@ jobs:
 
           # bestpractices badges
           pattern="https://www\.bestpractices\.dev/projects/12933/([^)]*)"
-          owner="${{ github.repository_owner }}"
-          repo="${{ github.event.repository.name }}"
-          ref="${{ github.ref_name }}"
+          owner="$REPO_OWNER"
+          repo="$REPO_NAME"
+          ref="$REF_NAME"
           replace="https://${owner}.github.io/${repo}/${ref}/badges/bestpractices_\1.svg"
           sed -i -E "s|${pattern}|${replace}|g" README.md
 
@@ -194,10 +202,14 @@ jobs:
     needs: [changes, build-docs]
     if: always() && github.ref_name != 'workflow_call'
     runs-on: ubuntu-latest
+
     steps:
       - name: Verify no failures
+        env:
+          CHANGES_RESULT: "${{ needs.changes.result }}"
+          BUILD_RESULT: "${{ needs.build-docs.result }}"
         run: |
-          if [[ "${{ needs.changes.result }}" == "failure" ]] || \
-             [[ "${{ needs.build-docs.result }}" == "failure" ]]; then
+          if [[ "$CHANGES_RESULT" == "failure" ]] || \
+             [[ "$BUILD_RESULT" == "failure" ]]; then
             exit 1
           fi

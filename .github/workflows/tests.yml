@@ -236,8 +236,11 @@ jobs:
 
     steps:
       - name: Verify no failures
+        env:
+          CHANGES_RESULT: "${{ needs.changes.result }}"
+          TESTS_RESULT: "${{ needs.tests.result }}"
         run: |
-          if [[ "${{ needs.changes.result }}" == "failure" ]] || \
-             [[ "${{ needs.tests.result }}" == "failure" ]]; then
+          if [[ "$CHANGES_RESULT" == "failure" ]] || \
+             [[ "$TESTS_RESULT" == "failure" ]]; then
             exit 1
           fi

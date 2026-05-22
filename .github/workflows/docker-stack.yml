@@ -252,8 +252,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Verify no failures
+        env:
+          CHANGES_RESULT: "${{ needs.changes.result }}"
+          STACK_RESULT: "${{ needs.changes.result }}"
         run: |
-          if [[ "${{ needs.changes.result }}" == "failure" ]] || \
-             [[ "${{ needs.stack.result }}" == "failure" ]]; then
+          if [[ "$CHANGES_RESULT" == "failure" ]] || \
+             [[ "$STACK_RESULT" == "failure" ]]; then
             exit 1
           fi
