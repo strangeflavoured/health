@@ -6,6 +6,7 @@
 !.yamllint
 !.allstar
 !.git-hooks
+!.openvex
 
 *__pycache__/
 *.zip
