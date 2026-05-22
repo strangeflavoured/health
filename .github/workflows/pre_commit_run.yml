@@ -129,15 +129,19 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           SKIP: compile-requirements
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           pre-commit run \
-            --from-ref ${{ github.event.pull_request.base.sha }} \
-            --to-ref   ${{ github.event.pull_request.head.sha }}
+            --from-ref  $BASE_SHA\
+            --to-ref   $HEAD_SHA
 
       - name: Run pre-commit (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
+        env:
+          ALL_FILES: "${{ inputs.all_files }}"
         run: |
-          if [ "${{ inputs.all_files }}" = "true" ]; then
+          if [ "$ALL_FILES" = "true" ]; then
             echo "Running on all files..."
             pre-commit run --all-files
           else
@@ -153,8 +157,11 @@ jobs:
 
     steps:
       - name: Verify no failures
+        env:
+          CHANGES_RESULT: "${{ needs.changes.result }}"
+          PRE_COMMIT_RESULT: "${{ needs.pre-commit.result }}"
         run: |
-          if [[ "${{ needs.changes.result }}" == "failure" ]] || \
-             [[ "${{ needs.pre-commit.result }}" == "failure" ]]; then
+          if [[ "$CHANGES_RESULT" == "failure" ]] || \
+             [[ "$PRE_COMMIT_RESULT" == "failure" ]]; then
             exit 1
           fi

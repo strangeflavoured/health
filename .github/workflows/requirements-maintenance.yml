@@ -108,10 +108,12 @@ jobs:
       - name: Detect unused packages
         if: steps.dag.outputs.has_files == 'true'
         continue-on-error: true
+        env:
+          RUNNER_TEMP: "${{ runner.temp }}"
         run: |
-          mkdir -p "${{ runner.temp }}/reports"
+          mkdir -p "$RUNNER_TEMP/reports"
           deptry . --verbose \
-            --json-output "${{ runner.temp }}/reports/deptry.json" \
+            --json-output "$RUNNER_TEMP/reports/deptry.json" \
           deptry --version
 
       - name: Check for newer versions
@@ -252,9 +254,11 @@ jobs:
 
       - name: Commit to PR branch
         if: steps.diff.outputs.changed == 'true' && github.event_name == 'pull_request'
+        env:
+          APP_SLUG: "${{ steps.app-token.outputs.app-slug }}"
         run: |
-          git config user.name  "${{ steps.app-token.outputs.app-slug }}[bot]"
-          git config user.email "${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+          git config user.name  "$APP_SLUG[bot]"
+          git config user.email "$APP_SLUG[bot]@users.noreply.github.com"
           git add -A
           git commit -m "chore(deps): recompile requirements"
           git push
@@ -290,10 +294,11 @@ jobs:
 
     steps:
       - name: Verify no upstream failures
+        env:
+          CHANGES_RESULT: "${{ needs.changes.result }}"
+          ANALYSE_RESULT: "${{ needs.analyse.result }}"
+          APPLY_RESULT: "${{ needs.apply-fixes.result }}"
         run: |
-          CHANGES_RESULT="${{ needs.changes.result }}"
-          ANALYSE_RESULT="${{ needs.analyse.result }}"
-          APPLY_RESULT="${{ needs.apply-fixes.result }}"
           echo "changes:  $CHANGES_RESULT"
           echo "analyse:  $ANALYSE_RESULT"
           echo "apply-fixes:  $APPLY_RESULT"
@@ -309,9 +314,10 @@ jobs:
           needs.analyse.result == 'success' &&
           needs.apply-fixes.result == 'skipped' &&
           github.actor != 'deps-bot[bot]'
+        env:
+          HAS_UPDATES: "${{ needs.analyse.outputs.has_updates }}"
+          HAS_CONFLICTS: "${{ needs.analyse.outputs.has_conflicts }}"
         run: |
-          HAS_UPDATES="${{ needs.analyse.outputs.has_updates }}"
-          HAS_CONFLICTS="${{ needs.analyse.outputs.has_conflicts }}"
           echo "has_updates:   $HAS_UPDATES"
           echo "has_conflicts: $HAS_CONFLICTS"
 

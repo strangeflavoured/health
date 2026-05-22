@@ -44,12 +44,14 @@ jobs:
           path: ./dist
 
       - name: Assemble publish tree
+        env:
+          REF_NAME: "${{ github.ref_name }}"
         run: |
-          mkdir -p ./publish/${{ github.ref_name }}
-          cp -r ./dist/_site/. ./publish/${{ github.ref_name }}/
-          mkdir -p ./publish/${{ github.ref_name }}/badges
+          mkdir -p ./publish/$REF_NAME
+          cp -r ./dist/_site/. ./publish/$REF_NAME/
+          mkdir -p ./publish/$REF_NAME/badges
           if [ -d ./dist/badges ] && [ -n "$(ls -A ./dist/badges)" ]; then
-            cp -r ./dist/badges/. ./publish/${{ github.ref_name }}/badges/
+            cp -r ./dist/badges/. ./publish/$REF_NAME/badges/
           fi
           mv ./dist/versions.json ./publish/versions.json
 
@@ -57,12 +59,12 @@ jobs:
           <!DOCTYPE html>
           <html>
           <head>
-           <meta http-equiv="refresh" content="0; url=${{ github.ref_name }}/">
-           <script>window.location.replace("${{ github.ref_name }}/");</script>
-           <title>Redirecting to ${{ github.ref_name }}...</title>
+           <meta http-equiv="refresh" content="0; url=$REF_NAME/">
+           <script>window.location.replace("$REF_NAME/");</script>
+           <title>Redirecting to $REF_NAME...</title>
           </head>
           <body>
-           <a href="${{ github.ref_name }}/">Click here if not redirected</a>
+           <a href="$REF_NAME/">Click here if not redirected</a>
           </body>
           </html>
           EOF
