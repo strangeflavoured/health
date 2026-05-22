@@ -76,7 +76,6 @@ repos:
         language: script
         entry: .git-hooks/commit-msg-dco.sh
         stages: [commit-msg]
-        pass_filenames: false
 
       - id: djlint
         additional_dependencies:
