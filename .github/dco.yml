@@ -1,0 +1,3 @@
+allowMemberCommits: false
+allowRemediationCommits:
+  individual: true
