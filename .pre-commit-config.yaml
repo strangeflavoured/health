@@ -71,6 +71,13 @@ repos:
         require_serial: true
         stages: [pre-commit]
 
+      - id: dco-signoff
+        name: DCO sign-off
+        language: script
+        entry: .git-hooks/commit-msg-dco.sh
+        stages: [commit-msg]
+        pass_filenames: false
+
       - id: djlint
         additional_dependencies:
           - djlint

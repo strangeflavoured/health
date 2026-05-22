@@ -5,6 +5,7 @@
 !.yamlfmt
 !.yamllint
 !.allstar
+!.git-hooks
 
 *__pycache__/
 *.zip
