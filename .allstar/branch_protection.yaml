@@ -18,3 +18,4 @@ requireStatusChecks:
   - context: "Run Scripts Tests / Passed Scripts Tests"
   - context: "Build Sphinx Docs / Built Docs"
   - context: "Run Tests / Passed Tests"
+  - context: "DCO"
