@@ -1,37 +1,38 @@
 name: Requirements Maintenance
 
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+
 on:
-  schedule:
-    - cron: "0 6 * * 1"
   pull_request:
     branches:
       - main
   push:
     branches:
       - main
+  schedule:
+    - cron: "0 6 * * 1"
   workflow_dispatch:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: true
 
 permissions: {}
 
 jobs:
   changes:
     name: Detect Changes
+    outputs:
+      requirements: ${{ steps.filter.outputs.requirements }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    outputs:
-      requirements: ${{ steps.filter.outputs.requirements }}
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 2
 
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: filter
+      - id: filter
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         with:
           filters: |
             requirements:
@@ -48,19 +49,18 @@ jobs:
       needs.changes.outputs.requirements == 'true' ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}/scripts
-    permissions:
-      contents: read
-
     outputs:
-      ordered_groups: ${{ steps.dag.outputs.ordered_groups }}
       all_files: ${{ steps.dag.outputs.all_files }}
-      stacks: ${{ steps.dag.outputs.stacks }}
+      has_conflicts: ${{ steps.summary.outputs.has_conflicts }}
       has_files: ${{ steps.dag.outputs.has_files }}
       has_updates: ${{ steps.summary.outputs.has_updates }}
-      has_conflicts: ${{ steps.summary.outputs.has_conflicts }}
+      ordered_groups: ${{ steps.dag.outputs.ordered_groups }}
+      stacks: ${{ steps.dag.outputs.stacks }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -68,8 +68,8 @@ jobs:
       - name: Set up Python 3.12
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: "3.12"
           cache: "pip"
+          python-version: "3.12"
 
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
@@ -110,9 +110,9 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p "${{ runner.temp }}/reports"
-          deptry --version
           deptry . --verbose \
             --json-output "${{ runner.temp }}/reports/deptry.json" \
+          deptry --version
 
       - name: Check for newer versions
         if: steps.dag.outputs.has_files == 'true'
@@ -141,10 +141,10 @@ jobs:
 
       - name: Check per-stack conflicts
         if: steps.dag.outputs.has_files == 'true'
-        env:
-          STACKS: ${{ steps.dag.outputs.stacks }}
-          REPORTS_DIR: ${{ runner.temp }}/reports
         continue-on-error: true
+        env:
+          REPORTS_DIR: ${{ runner.temp }}/reports
+          STACKS: ${{ steps.dag.outputs.stacks }}
         run: python3 -m ci.requirements_maintenance.check_conflicts
 
       - name: Fail on install / check errors
@@ -185,12 +185,12 @@ jobs:
       (needs.analyse.outputs.has_updates == 'true' || needs.analyse.outputs.has_conflicts == 'true') &&
       github.actor != 'deps-bot[bot]' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}/scripts
     permissions:
       contents: write
       pull-requests: write
-    env:
-      PYTHONPATH: ${{ github.workspace }}/scripts
+    runs-on: ubuntu-latest
 
     steps:
       - name: Generate app token
@@ -198,9 +198,9 @@ jobs:
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ vars.APP_CLIENT_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -210,8 +210,8 @@ jobs:
       - name: Set up Python 3.12
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: "3.12"
           cache: "pip"
+          python-version: "3.12"
 
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
@@ -263,30 +263,31 @@ jobs:
         if: steps.diff.outputs.changed == 'true' && github.event_name != 'pull_request'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ steps.app-token.outputs.token }}
-          committer: >-
-            ${{ steps.app-token.outputs.app-slug }}[bot]
-            <${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>
           author: >-
             ${{ steps.app-token.outputs.app-slug }}[bot]
             <${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>
-          branch: deps/recompile-requirements
-          commit-message: "chore(deps): recompile requirements"
-          title: "chore(deps): recompile requirements"
           body: |
             Automated recompilation of requirements files.
 
             Triggered by: ${{ github.event_name }} on `${{ github.ref_name }}`
 
             Resolves available updates and dependency conflicts detected by the analysis job.
-          labels: dependencies
+          branch: deps/recompile-requirements
+          commit-message: "chore(deps): recompile requirements"
+          committer: >-
+            ${{ steps.app-token.outputs.app-slug }}[bot]
+            <${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>
           delete-branch: true
+          labels: dependencies
+          title: "chore(deps): recompile requirements"
+          token: ${{ steps.app-token.outputs.token }}
 
   ci-success:
     name: Ran Dependency Analysis
     needs: [changes, analyse, apply-fixes]
     if: always()
     runs-on: ubuntu-latest
+
     steps:
       - name: Verify no upstream failures
         run: |

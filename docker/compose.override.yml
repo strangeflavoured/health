@@ -7,19 +7,15 @@ services:
       - ./src:/home/health/src:ro
   backend-test:
     image: health-backend:test
-
   docs-compiler:
     image: health-docs
     volumes:
       - ./docs/build:/home/health/docs/build
       - ./docs/source:/home/health/docs/source
-
   frontend:
     image: health-frontend:dev
-
   frontend-test:
     image: health-frontend:test
-
   sandbox:
     volumes:
       - ./src:/home/health/src:ro

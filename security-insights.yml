@@ -17,7 +17,7 @@ annotations:
         value: Token-Permissions
     text: >
       Three elevated permissions are intentional and unavoidable:
-      (1) checks:write and pull-requests:write are required by dorny/test-reporter to publish JUnit
-      test results as PR checks, isolated to the scripts and tests workflows.
-      (2) security-events:write is required to upload SARIF to GitHub Code Scanning, isolated to the
-      OSV Scanner job. GitHub Actions does not support step-level permissions.
+      (1) checks:write and pull-requests:write are required by dorny/test-reporter to publish
+      JUnit test results as PR checks, isolated to the scripts and tests workflows.
+      (2) security-events:write is required to upload SARIF to GitHub Code Scanning, isolated to the OSV Scanner job.
+      GitHub Actions does not support step-level permissions.

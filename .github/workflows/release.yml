@@ -1,5 +1,9 @@
 name: Deploy Docs to GitHub Pages
 
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 on:
   release:
     types:
@@ -14,10 +18,6 @@ on:
         options:
           - "true"
           - "false"
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 permissions: {}
 

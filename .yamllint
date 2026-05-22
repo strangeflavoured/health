@@ -1,9 +1,9 @@
 extends: default
 rules:
+  comments:
+    min-spaces-from-content: 1
   document-start: disable
   line-length:
     max: 120
   truthy:
     allowed-values: ['true', 'false', 'on', 'no']
-  comments:
-    min-spaces-from-content: 1

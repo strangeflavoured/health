@@ -1,33 +1,36 @@
 name: Run Tests
 
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+
 on:
+  pull_request:
+    branches: ["**"]
   push:
     branches:
       - main
-  pull_request:
-    branches: ["**"]
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+permissions: {}
 
 jobs:
   changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
     outputs:
-      src: ${{ steps.filter.outputs.src == 'true' || steps.filter.outputs.all == 'true' }}
+      any: ${{ steps.filter.outputs.changes != '[]' }}
       backend: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.all == 'true' }}
       frontend: ${{ steps.filter.outputs.frontend == 'true' || steps.filter.outputs.all == 'true' }}
-      any: ${{ steps.filter.outputs.changes != '[]' }}
+      src: ${{ steps.filter.outputs.src == 'true' || steps.filter.outputs.all == 'true' }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: filter
+      - id: filter
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         with:
           filters: |
             all:
@@ -48,25 +51,24 @@ jobs:
 
   tests:
     name: Run Tests
-    runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.any == 'true'
-    permissions:
-      contents: read
-      checks: write # required by dorny/test-reporter to publish PR check results
-      pull-requests: write # required by dorny/test-reporter to post PR comments
-
     env:
+      COMPOSE_FILE: docker/compose.yml
+      REDIS_DB: "0"
       # Required by compose.yml
       REDIS_HOST: 127.0.0.1
-      REDIS_PORT: "6380"
       REDIS_INSIGHT_PORT: "5540"
-      REDIS_DB: "0"
-
-      COMPOSE_FILE: docker/compose.yml
+      REDIS_PORT: "6380"
+    permissions:
+      checks: write # required by dorny/test-reporter to publish PR check results
+      contents: read
+      pull-requests: write # required by dorny/test-reporter to post PR comments
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - uses: docker/setup-compose-action@8cccb8c14b6500aaffebff1aa49c502c34d2e5e6 # v2.1.0
         with:
           version: v2.40.3
@@ -80,8 +82,8 @@ jobs:
         uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         with:
           files: docker/docker-bake.hcl
-          targets: tests
           load: true
+          targets: tests
 
       - name: Create backend .env
         run: |
@@ -182,10 +184,10 @@ jobs:
           steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         with:
+          fail-on-error: false
           name: Test Report
           path: test-output/test-results-*.xml
           reporter: java-junit
-          fail-on-error: false
 
       - name: Upload coverage to Codecov
         if: |
@@ -193,13 +195,13 @@ jobs:
           steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
           files: |
             test-output/coverage-src.xml
             test-output/coverage-backend.xml
             test-output/coverage-js/lcov.info
           flags: integration,python,javascript
-          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Dump container logs on failure
         if: failure()
@@ -231,6 +233,7 @@ jobs:
     needs: [changes, tests]
     if: always()
     runs-on: ubuntu-latest
+
     steps:
       - name: Verify no failures
         run: |

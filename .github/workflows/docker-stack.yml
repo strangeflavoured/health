@@ -1,34 +1,35 @@
 name: docker-stack
 
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+
 on:
+  pull_request:
+    branches: ["**"]
   push:
     branches:
       - main
-  pull_request:
-    branches: ["**"]
   workflow_dispatch:
 
 permissions: {}
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
     outputs:
+      any: ${{ steps.filter.outputs.changes != '[]' }}
       integration: ${{ steps.filter.outputs.integration == 'true' || steps.filter.outputs.all == 'true' }}
       sandbox: ${{ steps.filter.outputs.sandbox == 'true' || steps.filter.outputs.all == 'true' }}
-      any: ${{ steps.filter.outputs.changes != '[]' }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: filter
+      - id: filter
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         with:
           filters: |
             all:
@@ -50,44 +51,39 @@ jobs:
     name: Docker Stack Integration Test
     needs: [changes]
     if: needs.changes.outputs.any == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
     permissions:
       contents: read
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
-      # Required by compose.yml
-      REDIS_HOST: 127.0.0.1
-      REDIS_PORT: "6380"
-      REDIS_INSIGHT_PORT: "5540"
-      REDIS_DB: "0"
-
+      COMPOSE_FILE: docker/compose.yml
+      REDIS_CERT_APP: ${{ secrets.REDIS_CERT_APP }}
       # Secrets injected from the repo's GH Actions secrets.
       REDIS_CERT_CA: ${{ secrets.REDIS_CERT_CA }}
-      REDIS_CERT_SERVER: ${{ secrets.REDIS_CERT_SERVER }}
       REDIS_CERT_HEALTHCHECK: ${{ secrets.REDIS_CERT_HEALTHCHECK }}
       REDIS_CERT_REDISINSIGHT: ${{ secrets.REDIS_CERT_REDISINSIGHT }}
-      REDIS_CERT_APP: ${{ secrets.REDIS_CERT_APP }}
-
-      REDIS_KEY_SERVER: ${{ secrets.REDIS_KEY_SERVER }}
-      REDIS_KEY_HEALTHCHECK: ${{ secrets.REDIS_KEY_HEALTHCHECK }}
-      REDIS_KEY_REDISINSIGHT: ${{ secrets.REDIS_KEY_REDISINSIGHT }}
-      REDIS_KEY_APP: ${{ secrets.REDIS_KEY_APP }}
-
-      REDIS_PASSWORD_ADMIN: ${{ secrets.REDIS_PASSWORD_ADMIN }}
-      REDIS_PASSWORD_APP: ${{ secrets.REDIS_PASSWORD_APP }}
-      REDIS_PASSWORD_HEALTHCHECK: ${{ secrets.REDIS_PASSWORD_HEALTHCHECK }}
-      REDIS_PASSWORD_INSIGHT: ${{ secrets.REDIS_PASSWORD_INSIGHT }}
-
+      REDIS_CERT_SERVER: ${{ secrets.REDIS_CERT_SERVER }}
+      REDIS_DB: "0"
       REDIS_HASH_ADMIN: ${{ secrets.REDIS_HASH_ADMIN }}
       REDIS_HASH_APP: ${{ secrets.REDIS_HASH_APP }}
       REDIS_HASH_HEALTHCHECK: ${{ secrets.REDIS_HASH_HEALTHCHECK }}
       REDIS_HASH_INSIGHT: ${{ secrets.REDIS_HASH_INSIGHT }}
-
-      COMPOSE_FILE: docker/compose.yml
+      # Required by compose.yml
+      REDIS_HOST: 127.0.0.1
+      REDIS_INSIGHT_PORT: "5540"
+      REDIS_KEY_APP: ${{ secrets.REDIS_KEY_APP }}
+      REDIS_KEY_HEALTHCHECK: ${{ secrets.REDIS_KEY_HEALTHCHECK }}
+      REDIS_KEY_REDISINSIGHT: ${{ secrets.REDIS_KEY_REDISINSIGHT }}
+      REDIS_KEY_SERVER: ${{ secrets.REDIS_KEY_SERVER }}
+      REDIS_PASSWORD_ADMIN: ${{ secrets.REDIS_PASSWORD_ADMIN }}
+      REDIS_PASSWORD_APP: ${{ secrets.REDIS_PASSWORD_APP }}
+      REDIS_PASSWORD_HEALTHCHECK: ${{ secrets.REDIS_PASSWORD_HEALTHCHECK }}
+      REDIS_PASSWORD_INSIGHT: ${{ secrets.REDIS_PASSWORD_INSIGHT }}
+      REDIS_PORT: "6380"
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - uses: docker/setup-compose-action@8cccb8c14b6500aaffebff1aa49c502c34d2e5e6 # v2.1.0
         with:
           version: v2.40.3
@@ -101,18 +97,18 @@ jobs:
         uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         with:
           files: docker/docker-bake.hcl
+          load: true
           targets: |
             infra
             dev
-          load: true
 
       - name: Build Integration images via bake
-        uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         if: needs.changes.outputs.sandbox == 'true'
+        uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         with:
           files: docker/docker-bake.hcl
-          targets: sandbox
           load: true
+          targets: sandbox
 
       - name: Materialize secrets from GH Actions secrets
         run: |
@@ -251,8 +247,8 @@ jobs:
 
   ci-success:
     name: Ran Docker Stack Integration
-    needs: [changes, stack]
     if: always()
+    needs: [changes, stack]
     runs-on: ubuntu-latest
     steps:
       - name: Verify no failures
