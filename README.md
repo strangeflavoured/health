@@ -11,4 +11,8 @@
 
 ---
 
-Playing around with Apple Health data. Get started [here](https://strangeflavoured.github.io/health/getting-started.html).
+Playing around with Apple Health data. Get started [here](https://strangeflavoured.github.io/health/index.html).
+
+---
+
+Contribute [here](CONTRIBUTING.md)
