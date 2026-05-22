@@ -11,8 +11,8 @@ on:
 permissions: {}
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   changes:
@@ -147,7 +147,9 @@ jobs:
           retention-days: 30
 
       - name: Publish test results as PR check
-        if: always() && github.event_name == 'pull_request' && (steps.py_scripts.conclusion != 'skipped' || steps.bash_scripts.conclusion != 'skipped')
+        if: |
+          always() && github.event_name == 'pull_request' &&
+          (steps.py_scripts.conclusion != 'skipped' || steps.bash_scripts.conclusion != 'skipped')
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         with:
           name: Test Report

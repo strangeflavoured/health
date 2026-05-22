@@ -80,7 +80,16 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .venv
-          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('pip-requirements.txt', 'requirements-dev.txt', 'src/requirements.txt', 'backend/requirements/base.txt', 'backend/requirements/tests.txt', 'docs/requirements.txt') }}
+          key: >-
+            venv-${{ runner.os }}-py3.12-${{
+            hashFiles(
+            'pip-requirements.txt',
+            'requirements-dev.txt',
+            'src/requirements.txt',
+            'backend/requirements/base.txt',
+            'backend/requirements/tests.txt',
+            'docs/requirements.txt'
+            ) }}
 
       - name: Cache pre-commit environments
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -141,7 +150,7 @@ jobs:
 
   ci-success:
     name: Passed pre-commit
-    needs: [ changes, pre-commit ]
+    needs: [changes, pre-commit]
     if: always()
     runs-on: ubuntu-latest
     steps:

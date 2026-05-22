@@ -11,8 +11,8 @@ on:
 permissions: {}
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   changes:
@@ -48,7 +48,7 @@ jobs:
 
   stack:
     name: Docker Stack Integration Test
-    needs: [ changes ]
+    needs: [changes]
     if: needs.changes.outputs.any == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -63,26 +63,26 @@ jobs:
       REDIS_DB: "0"
 
       # Secrets injected from the repo's GH Actions secrets.
-      REDIS_CERT_CA:            ${{ secrets.REDIS_CERT_CA }}
-      REDIS_CERT_SERVER:        ${{ secrets.REDIS_CERT_SERVER }}
-      REDIS_CERT_HEALTHCHECK:   ${{ secrets.REDIS_CERT_HEALTHCHECK }}
-      REDIS_CERT_REDISINSIGHT:  ${{ secrets.REDIS_CERT_REDISINSIGHT }}
-      REDIS_CERT_APP:           ${{ secrets.REDIS_CERT_APP }}
+      REDIS_CERT_CA: ${{ secrets.REDIS_CERT_CA }}
+      REDIS_CERT_SERVER: ${{ secrets.REDIS_CERT_SERVER }}
+      REDIS_CERT_HEALTHCHECK: ${{ secrets.REDIS_CERT_HEALTHCHECK }}
+      REDIS_CERT_REDISINSIGHT: ${{ secrets.REDIS_CERT_REDISINSIGHT }}
+      REDIS_CERT_APP: ${{ secrets.REDIS_CERT_APP }}
 
-      REDIS_KEY_SERVER:         ${{ secrets.REDIS_KEY_SERVER }}
-      REDIS_KEY_HEALTHCHECK:    ${{ secrets.REDIS_KEY_HEALTHCHECK }}
-      REDIS_KEY_REDISINSIGHT:   ${{ secrets.REDIS_KEY_REDISINSIGHT }}
-      REDIS_KEY_APP:            ${{ secrets.REDIS_KEY_APP }}
+      REDIS_KEY_SERVER: ${{ secrets.REDIS_KEY_SERVER }}
+      REDIS_KEY_HEALTHCHECK: ${{ secrets.REDIS_KEY_HEALTHCHECK }}
+      REDIS_KEY_REDISINSIGHT: ${{ secrets.REDIS_KEY_REDISINSIGHT }}
+      REDIS_KEY_APP: ${{ secrets.REDIS_KEY_APP }}
 
-      REDIS_PASSWORD_ADMIN:        ${{ secrets.REDIS_PASSWORD_ADMIN }}
-      REDIS_PASSWORD_APP:          ${{ secrets.REDIS_PASSWORD_APP }}
-      REDIS_PASSWORD_HEALTHCHECK:  ${{ secrets.REDIS_PASSWORD_HEALTHCHECK }}
-      REDIS_PASSWORD_INSIGHT:      ${{ secrets.REDIS_PASSWORD_INSIGHT }}
+      REDIS_PASSWORD_ADMIN: ${{ secrets.REDIS_PASSWORD_ADMIN }}
+      REDIS_PASSWORD_APP: ${{ secrets.REDIS_PASSWORD_APP }}
+      REDIS_PASSWORD_HEALTHCHECK: ${{ secrets.REDIS_PASSWORD_HEALTHCHECK }}
+      REDIS_PASSWORD_INSIGHT: ${{ secrets.REDIS_PASSWORD_INSIGHT }}
 
-      REDIS_HASH_ADMIN:        ${{ secrets.REDIS_HASH_ADMIN }}
-      REDIS_HASH_APP:          ${{ secrets.REDIS_HASH_APP }}
-      REDIS_HASH_HEALTHCHECK:  ${{ secrets.REDIS_HASH_HEALTHCHECK }}
-      REDIS_HASH_INSIGHT:      ${{ secrets.REDIS_HASH_INSIGHT }}
+      REDIS_HASH_ADMIN: ${{ secrets.REDIS_HASH_ADMIN }}
+      REDIS_HASH_APP: ${{ secrets.REDIS_HASH_APP }}
+      REDIS_HASH_HEALTHCHECK: ${{ secrets.REDIS_HASH_HEALTHCHECK }}
+      REDIS_HASH_INSIGHT: ${{ secrets.REDIS_HASH_INSIGHT }}
 
       COMPOSE_FILE: docker/compose.yml
 
@@ -251,7 +251,7 @@ jobs:
 
   ci-success:
     name: Ran Docker Stack Integration
-    needs: [ changes, stack ]
+    needs: [changes, stack]
     if: always()
     runs-on: ubuntu-latest
     steps:

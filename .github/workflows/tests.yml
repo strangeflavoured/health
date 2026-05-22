@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   changes:
@@ -167,7 +167,9 @@ jobs:
         run: docker compose --project-directory . run frontend-test
 
       - name: Upload JUnit test results
-        if: always() && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
+        if: |
+          always() && (steps.test_runner.conclusion != 'skipped' ||
+          steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results
@@ -175,7 +177,9 @@ jobs:
           retention-days: 30
 
       - name: Publish test results as PR check
-        if: always() && github.event_name == 'pull_request' && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
+        if: |
+          always() && github.event_name == 'pull_request' && (steps.test_runner.conclusion != 'skipped' ||
+          steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         with:
           name: Test Report
@@ -184,7 +188,9 @@ jobs:
           fail-on-error: false
 
       - name: Upload coverage to Codecov
-        if: always() && (steps.test_runner.conclusion != 'skipped' || steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
+        if: |
+          always() && (steps.test_runner.conclusion != 'skipped' ||
+          steps.backend_tests.conclusion != 'skipped' || steps.frontend_tests.conclusion != 'skipped')
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
