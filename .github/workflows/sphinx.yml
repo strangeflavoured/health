@@ -1,5 +1,9 @@
 name: Build Sphinx Docs
 
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+
 on:
   pull_request:
     branches:
@@ -10,32 +14,29 @@ on:
   workflow_call:
     inputs:
       upload-artifact:
-        type: boolean
         default: false
+        type: boolean
     outputs:
       artifact-id:
         description: "ID of the uploaded docs artifact"
         value: ${{ jobs.build-docs.outputs.artifact-id }}
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions: {}
 
 jobs:
   changes:
     name: Detect Changes
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: filter
+      - id: filter
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         with:
           filters: |
             docs:
@@ -49,26 +50,26 @@ jobs:
               - 'src/**'
 
   build-docs:
-    runs-on: ubuntu-latest
     name: Build docs
     needs: changes
-    permissions:
-      contents: read
     if: needs.changes.outputs.docs == 'true'
-    outputs:
-      artifact-id: ${{ steps.upload.outputs.artifact-id }}
     env:
+      COMPOSE_FILE: docker/compose.yml
+      REDIS_DB: "0"
       # Required by compose.yml
       REDIS_HOST: 127.0.0.1
-      REDIS_PORT: "6380"
       REDIS_INSIGHT_PORT: "5540"
-      REDIS_DB: "0"
+      REDIS_PORT: "6380"
       SECRETS_DIR: ""
-
-      COMPOSE_FILE: docker/compose.yml
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - uses: docker/setup-compose-action@8cccb8c14b6500aaffebff1aa49c502c34d2e5e6 # v2.1.0
         with:
           version: v2.40.3
@@ -82,8 +83,8 @@ jobs:
         uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         with:
           files: docker/docker-bake.hcl
-          targets: docs
           load: true
+          targets: docs
 
       - name: Fetch badge snapshots
         if: inputs.upload-artifact == true
@@ -178,8 +179,8 @@ jobs:
         run: docker rm -f docs || true
 
       - name: Upload docs artifact
-        if: inputs.upload-artifact == true
         id: upload
+        if: inputs.upload-artifact == true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docs-site

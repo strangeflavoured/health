@@ -3,10 +3,18 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-json
-      - id: check-yaml
       - id: check-merge-conflict
+      - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
+
+  - repo: https://github.com/fpgmaas/deptry
+    rev: 0.25.1
+    hooks:
+      - id: deptry
+        entry: .venv/bin/deptry .
+        language: system
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.13
     hooks:
@@ -18,90 +26,96 @@ repos:
           - --fix
           - --show-fixes
       - id: ruff-format
+
   - repo: https://github.com/jendrikseipp/vulture
     rev: v2.16
     hooks:
       - id: vulture
-  - repo: https://github.com/fpgmaas/deptry
-    rev: 0.25.1
-    hooks:
-      - id: deptry
-        language: system
-        entry: .venv/bin/deptry .
+
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.11.0
     hooks:
       - id: shellcheck
         args: ["--severity=warning"]
+
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.13.1-1
     hooks:
       - id: shfmt
         args: ["-i", "2", "-ci"]
+
   - repo: https://github.com/google/yamlfmt
     rev: v0.19.0
     hooks:
       - id: yamlfmt
+
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.35.1
     hooks:
       - id: yamllint
         args: [--format, parsable, --strict]
+
   - repo: local
     hooks:
-      - id: eslint
-        name: ESLint (frontend)
-        language: node
-        entry: >-
-          bash -c 'cd frontend && npx eslint --no-warn-ignored --max-warnings 0 .'
-        files: ^frontend/.*\.(ts|tsx)$
+      - id: compile-requirements
+        entry: scripts/compile-requirements.sh
+        files: \.in$
+        language: script
+        name: Recompile requirements (.in → .txt)
         pass_filenames: false
+        require_serial: true
+        stages: [pre-commit]
+
+      - id: djlint
+        additional_dependencies:
+          - djlint
+        args: [--reformat]
+        entry: djlint
+        files: \.html$
+        language: python
+        name: Jinja template formatting (docs)
+
+      - id: eslint
         additional_dependencies:
           - eslint
           - eslint-plugin-jsdoc
           - "@typescript-eslint/eslint-plugin"
           - "@typescript-eslint/parser"
-      - id: prettier
-        name: prettier
+        entry: >-
+          bash -c 'cd frontend && npx eslint --no-warn-ignored --max-warnings 0 .'
+        files: ^frontend/.*\.(ts|tsx)$
         language: node
-        entry: npx prettier
-        args: [--write]
-        files: \.(js|jsx|ts|tsx|css|json|md)$
-        types: [file]
-        additional_dependencies:
-          - prettier
+        name: ESLint (frontend)
+        pass_filenames: false
+
       - id: npm-audit
-        name: npm audit (frontend)
-        language: node
         entry: bash -c 'cd frontend && npm audit --audit-level=moderate'
         files: ^frontend/package.*\.json$
+        language: node
+        name: npm audit (frontend)
         pass_filenames: false
-      - id: compile-requirements
-        name: Recompile requirements (.in → .txt)
-        entry: scripts/compile-requirements.sh
-        language: script
-        files: \.in$
-        pass_filenames: false
-        require_serial: true
-        stages: [pre-commit]
-      - id: djlint
-        name: Jinja template formatting (docs)
-        language: python
-        entry: djlint
-        args: [--reformat]
-        files: \.html$
+
+      - id: prettier
         additional_dependencies:
-          - djlint
+          - prettier
+        args: [--write]
+        entry: npx prettier
+        files: \.(js|jsx|ts|tsx|css|json|md)$
+        language: node
+        name: prettier
+        types: [file]
+
       - id: sphinx-lint
-        name: RST lint (docs)
-        language: python
-        entry: sphinx-lint
-        files: \.rst$
         additional_dependencies:
           - sphinx-lint
+        entry: sphinx-lint
+        files: \.rst$
+        language: python
+        name: RST lint (docs)
+
       - id: typecheck
-        name: TypeScript type check
-        language: node
         entry: bash -c 'cd frontend && npx tsc --noEmit'
         files: ^frontend/.*\.(ts|tsx)$
+        language: node
+        name: TypeScript type check
         pass_filenames: false

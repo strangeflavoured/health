@@ -17,10 +17,10 @@ services:
           memory: 128M
     env_file: ./backend/.env
     environment:
-      REDIS_HOST: "redis"
       REDIS_CERTS_DIR: "/run/secrets"
-      REDIS_PORT: "6380"
       REDIS_DB: $REDIS_DB
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6380"
     mem_swappiness: 0
     ports:
       - "8000:8000"
@@ -30,13 +30,17 @@ services:
       - source: app.pem
       - source: app.key
       - source: app_password
-
   backend-test:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.backend
       target: test
-
+  bats-tests:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.bats
+    container_name: health-bats-tests
+    restart: no
   docs-compiler:
     build:
       context: .
@@ -45,7 +49,6 @@ services:
     restart: no
     volumes:
       - ./docs/build:/home/health/docs/build
-
   frontend:
     build:
       context: .
@@ -65,22 +68,11 @@ services:
     ports:
       - "5173:5173"
     restart: unless-stopped
-
   frontend-test:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.frontend
       target: test
-
-  redis-init:
-    build:
-      context: .
-      dockerfile: ./docker/Dockerfile.redis-init
-    restart: no
-    user: root
-    volumes:
-      - redis-data:/data
-
   redis:
     build:
       context: .
@@ -99,7 +91,6 @@ services:
         reservations:
           cpus: "0.10"
           memory: 256M
-    mem_swappiness: 0
     environment:
       REDIS_ARGS: >-
         --tls-port 6380
@@ -108,11 +99,11 @@ services:
         --tls-ca-cert-file /run/secrets/ca.pem
         --tls-cert-file /run/secrets/server.pem
         --tls-key-file /run/secrets/server.key
-        --appendonly yes
-        --maxmemory 900mb
+        --appendonly yes --maxmemory 900mb
         --maxmemory-policy allkeys-lfu
         --loglevel notice
         --aclfile /run/secrets/users.acl
+    mem_swappiness: 0
     ports:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:?REDIS_PORT must be set}:6380"
     restart: unless-stopped
@@ -135,13 +126,21 @@ services:
       - seccomp:docker/seccomp-redis.json
     volumes:
       - redis-data:/data
-
+  redis-init:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.redis-init
+    restart: no
+    user: root
+    volumes:
+      - redis-data:/data
   redisinsight:
     build:
       context: .
       dockerfile: ./docker/Dockerfile.redisinsight
     cap_drop:
       - ALL
+    container_name: health-redisinsight
     depends_on:
       redis:
         condition: service_healthy
@@ -153,7 +152,6 @@ services:
         reservations:
           cpus: "0.05"
           memory: 128M
-    container_name: health-redisinsight
     mem_swappiness: 0
     ports:
       - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:?REDIS_INSIGHT_PORT must be set}:5540"
@@ -166,7 +164,6 @@ services:
       - no-new-privileges:true
     volumes:
       - redisinsight-data:/data
-
   sandbox:
     build:
       context: .
@@ -184,10 +181,10 @@ services:
           cpus: "0.10"
           memory: 64M
     environment:
-      REDIS_HOST: "redis"
       REDIS_CERTS_DIR: "/run/secrets"
-      REDIS_PORT: "6380"
       REDIS_DB: $REDIS_DB
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6380"
     mem_swappiness: 0
     restart: no
     secrets:
@@ -199,15 +196,6 @@ services:
       - ./output:/home/health/output
       - ./data:/home/health/data
       - ./data/export.zip:/home/health/data/export.zip:ro
-
-  test-runner:
-    build:
-      context: .
-      dockerfile: ./docker/Dockerfile.tests
-      target: src-test
-    container_name: health-test-suite
-    restart: no
-
   scripts-tests:
     build:
       context: .
@@ -215,47 +203,45 @@ services:
       target: scripts-test
     container_name: health-scripts-tests
     restart: no
-
-  bats-tests:
+  test-runner:
     build:
       context: .
-      dockerfile: ./docker/Dockerfile.bats
-    container_name: health-bats-tests
+      dockerfile: ./docker/Dockerfile.tests
+      target: src-test
+    container_name: health-test-suite
     restart: no
-
 secrets:
-  users.acl:
-    file: ${SECRETS_DIR}/users.acl
-  # CERTIFICATES
-  ca.pem:
-    file: ${SECRETS_DIR}/ca.pem
-  server.pem:
-    file: ${SECRETS_DIR}/server.pem
-  healthcheck.pem:
-    file: ${SECRETS_DIR}/healthcheck.pem
-  redisinsight.pem:
-    file: ${SECRETS_DIR}/redisinsight.pem
-  app.pem:
-    file: ${SECRETS_DIR}/app.pem
-  # KEYS
-  server.key:
-    file: ${SECRETS_DIR}/server.key
-  healthcheck.key:
-    file: ${SECRETS_DIR}/healthcheck.key
-  redisinsight.key:
-    file: ${SECRETS_DIR}/redisinsight.key
-  app.key:
-    file: ${SECRETS_DIR}/app.key
   # PASSWORDS
   admin_password:
     file: ${SECRETS_DIR}/admin_password
+  app.key:
+    file: ${SECRETS_DIR}/app.key
+  app.pem:
+    file: ${SECRETS_DIR}/app.pem
+  app_password:
+    file: ${SECRETS_DIR}/app_password
+  # CERTIFICATES
+  ca.pem:
+    file: ${SECRETS_DIR}/ca.pem
+  healthcheck.key:
+    file: ${SECRETS_DIR}/healthcheck.key
+  healthcheck.pem:
+    file: ${SECRETS_DIR}/healthcheck.pem
   healthcheck_password:
     file: ${SECRETS_DIR}/healthcheck_password
   insight_password:
     file: ${SECRETS_DIR}/insight_password
-  app_password:
-    file: ${SECRETS_DIR}/app_password
-
+  redisinsight.key:
+    file: ${SECRETS_DIR}/redisinsight.key
+  redisinsight.pem:
+    file: ${SECRETS_DIR}/redisinsight.pem
+  # KEYS
+  server.key:
+    file: ${SECRETS_DIR}/server.key
+  server.pem:
+    file: ${SECRETS_DIR}/server.pem
+  users.acl:
+    file: ${SECRETS_DIR}/users.acl
 volumes:
   redis-data:
     driver: local
