@@ -36,6 +36,11 @@ in scope:
 Out of scope: third-party dependencies (report those to the relevant upstream
 project), and the development-only local setup with mock credentials.
 
+When a security vulnerability is confirmed and a fix is released, a GitHub Security Advisory
+will be published at https://github.com/strangeflavoured/health/security/advisories.
+The advisory will include a CVE if applicable and a description of the vulnerability,
+affected versions, and fix.
+
 ## Automated Security Scanning
 
 The following tools run continuously in CI and findings are visible in the
