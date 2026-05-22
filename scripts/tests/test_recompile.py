@@ -158,13 +158,13 @@ class TestRecompileOne:
         out_idx = cmd.index("--output-file") + 1
         assert cmd[out_idx] == str(tmp_path / "requirements.txt")
 
-    def test_input_file_is_last_argument(self, tmp_path):
+    def test_input_file_is_fourth_argument(self, tmp_path):
         in_file = tmp_path / "requirements.in"
         in_file.write_text("")
         with patch("subprocess.run", return_value=_make_completed(0)) as mock_run:
             recompile.recompile_one(in_file)
         cmd = mock_run.call_args[0][0]
-        assert cmd[-1] == str(in_file)
+        assert cmd[3] == str(in_file)
 
     def test_combines_stdout_and_stderr_in_log(self, tmp_path):
         in_file = tmp_path / "requirements.in"
@@ -189,9 +189,9 @@ class TestRecompileOne:
         with patch("subprocess.run", return_value=_make_completed(0)) as mock_run:
             recompile.recompile_one(evil)
         cmd = mock_run.call_args[0][0]
-        assert cmd[-1] == str(evil)
+        assert cmd[3] == str(evil)
         # The semicolon and space appear inside a single argv element, never split.
-        assert "; echo PWND" in cmd[-1]
+        assert "; echo PWND" in cmd[3]
 
 
 # ---------------------------------------------------------------------------
