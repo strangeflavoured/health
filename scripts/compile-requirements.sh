@@ -45,9 +45,9 @@ compile_one() {
   if ! log=$(uv pip compile "$in_file" \
       --allow-unsafe \
       --generate-hashes \
-      --strip-extras \
-      --output-file="$out_file" \
+      --output-file "$out_file" \
       --quiet \
+      --strip-extras \
       2>&1); then
     echo "FAILED: ${in_file}" >&2
     echo "$log" >&2
