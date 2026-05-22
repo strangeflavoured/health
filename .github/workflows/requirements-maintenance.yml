@@ -72,7 +72,7 @@ jobs:
           cache: "pip"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
 
@@ -178,7 +178,7 @@ jobs:
 
   apply-fixes:
     name: Apply dependency fixes
-    needs: [ analyse ]
+    needs: [analyse]
     if: |
       always() &&
       needs.analyse.result == 'success' &&
@@ -214,7 +214,7 @@ jobs:
           cache: "pip"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
 
@@ -264,8 +264,12 @@ jobs:
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ steps.app-token.outputs.token }}
-          committer: "${{ steps.app-token.outputs.app-slug }}[bot] <${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>"
-          author: "${{ steps.app-token.outputs.app-slug }}[bot] <${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>"
+          committer: >-
+            ${{ steps.app-token.outputs.app-slug }}[bot]
+            <${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>
+          author: >-
+            ${{ steps.app-token.outputs.app-slug }}[bot]
+            <${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>
           branch: deps/recompile-requirements
           commit-message: "chore(deps): recompile requirements"
           title: "chore(deps): recompile requirements"
@@ -280,7 +284,7 @@ jobs:
 
   ci-success:
     name: Ran Dependency Analysis
-    needs: [ changes, analyse, apply-fixes ]
+    needs: [changes, analyse, apply-fixes]
     if: always()
     runs-on: ubuntu-latest
     steps:
