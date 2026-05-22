@@ -1,0 +1,15 @@
+optConfig:
+  optIn: true
+action: issue
+
+groups:
+  - name: require-checkout
+    repos:
+      - name: "health"
+    rules:
+      - name: checkout-required
+        method: require
+        requireAll: true
+        mustPass: true
+        actions:
+          - name: "actions/checkout"
