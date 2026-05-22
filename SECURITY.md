@@ -18,9 +18,11 @@ Use GitHub's private vulnerability reporting:
 
 👉 [Report a vulnerability](https://github.com/strangeflavoured/health/security/advisories/new)
 
-This creates a private advisory visible only to the repository owner. You will
-receive an acknowledgement within **48 hours** and a resolution or status update
-within **7 days**.
+This creates a private advisory visible only to the repository owner.
+When a security vulnerability is confirmed and a fix is released, a GitHub Security Advisory
+will be published at https://github.com/strangeflavoured/health/security/advisories.
+The advisory will include a CVE if applicable and a description of the vulnerability,
+affected versions, and fix.
 
 ## Scope
 
@@ -36,10 +38,18 @@ in scope:
 Out of scope: third-party dependencies (report those to the relevant upstream
 project), and the development-only local setup with mock credentials.
 
-When a security vulnerability is confirmed and a fix is released, a GitHub Security Advisory
-will be published at https://github.com/strangeflavoured/health/security/advisories.
-The advisory will include a CVE if applicable and a description of the vulnerability,
-affected versions, and fix.
+## Verifying releases
+
+Each release publishes SHA-256 checksums in `checksums.sha256`. Verify with:
+
+```sh
+sha256sum -c checksums.sha256
+```
+
+## Support policy
+
+Only the latest release receives security updates.
+Older releases are unsupported and will not receive patches.
 
 ## Automated Security Scanning
 
