@@ -69,6 +69,11 @@ jobs:
           </html>
           EOF
 
+      - name: Attest docs artifact
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-path: ./dist/_site
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
