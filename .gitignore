@@ -1,7 +1,9 @@
 .*
-!/.gitignore
+!.gitignore
 !/.github
 !.prettierrc
+!.yamlfmt
+!.yamllint
 
 *__pycache__/
 *.zip
