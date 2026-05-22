@@ -1,14 +1,136 @@
 header:
   expiration-date: '2027-01-01'
-  last-reviewed: '2026-01-01'
-  project-url: https://github.com/strangeflavoured/health
+  last-reviewed: '2026-05-22'
+  last-updated: '2026-05-22'
+  url: https://raw.githubusercontent.com/strangeflavoured/health/main/security-insights.yml
   schema-version: 2.0.0
 
-project-lifecycle:
-  status: active
+project:
+  name: health
+  homepage: https://github.com/strangeflavoured/health
 
-vulnerability-reporting:
-  accepts-vulnerability-reports: false
+  administrators:
+    - name: strangeflavoured
+      primary: true
+
+  vulnerability-reporting:
+    reports-accepted: true
+    policy: https://github.com/strangeflavoured/health/blob/main/SECURITY.md
+
+repository:
+  url: https://github.com/strangeflavoured/health
+  status: active
+  bug-fixes-only: false
+  accepts-change-request: true
+  accepts-automated-change-request: true
+
+  documentation:
+    contributing-guide: https://github.com/strangeflavoured/health/blob/main/CONTRIBUTING.md
+    security-policy: https://github.com/strangeflavoured/health/blob/main/SECURITY.md
+
+  license:
+    url: https://github.com/strangeflavoured/health/blob/main/LICENSE
+    expression: MIT
+
+  release:
+    automated-pipeline: true
+    changelog: https://github.com/strangeflavoured/health/releases/tag/{version}
+
+  security:
+    champions:
+      - name: strangeflavoured
+        primary: true
+
+    tools:
+      # --- SAST ---
+      - name: github/codeql-action
+        type: SAST
+        version: v4.35.5
+        rulesets:
+          - security-and-quality
+        comment: >
+          Scans Python, JavaScript/TypeScript, and GitHub Actions workflow files.
+          Runs on push to main, pull requests targeting main, and weekly schedule.
+          Results uploaded to Security > Code Scanning via SARIF.
+        integration:
+          ci: true
+          adhoc: false
+          release: false
+        results:
+          ci:
+            name: CodeQL SARIF
+            predicate-uri: https://docs.github.com/en/code-security/code-scanning
+            location: https://github.com/strangeflavoured/health/security/code-scanning
+
+      - name: ossf/scorecard-action
+        type: SAST
+        version: v2.4.3
+        comment: >
+          Runs OpenSSF Scorecard checks on push to main, pull requests targeting
+          main, and weekly schedule. Results published to the OSSF API and uploaded
+          to Security > Code Scanning via SARIF.
+        integration:
+          ci: true
+          adhoc: false
+          release: false
+        results:
+          ci:
+            name: Scorecard SARIF
+            predicate-uri: https://api.scorecard.dev
+            location: https://github.com/strangeflavoured/health/security/code-scanning
+
+      - name: pre-commit (ruff)
+        type: SAST
+        comment: >
+          pre-commit hooks including ruff (linter/formatter) run on every pull
+          request and push to main via the pre-commit CI workflow. Also enforced
+          locally via pre-commit install.
+        integration:
+          ci: true
+          adhoc: true
+          release: false
+
+      # --- SCA ---
+      - name: google/osv-scanner-action
+        type: SCA
+        version: v2.3.8
+        comment: >
+          Scans all dependency manifests recursively for known vulnerabilities
+          from the OSV database. Runs on push, pull requests targeting main, and
+          weekly schedule. Results uploaded to Security > Code Scanning via SARIF.
+        integration:
+          ci: true
+          adhoc: false
+          release: false
+        results:
+          ci:
+            name: OSV Scanner SARIF
+            predicate-uri: https://google.github.io/osv-scanner
+            location: https://github.com/strangeflavoured/health/security/code-scanning
+
+      - name: Renovate
+        type: SCA
+        comment: >
+          Renovate manages dependency updates for npm, GitHub Actions, Dockerfiles,
+          and pre-commit hooks. Vulnerability alerts are enabled. Minor and patch
+          updates are automerged. Major updates require manual approval. Scheduled
+          weekly on Mondays 02:00-05:00 UTC.
+        integration:
+          ci: true
+          adhoc: false
+          release: false
+
+      - name: Dependabot
+        type: SCA
+        comment: >
+          Dependabot is configured to monitor github-actions, pip (root, /backend,
+          /docs), Docker, and npm ecosystems on a weekly schedule.
+          open-pull-requests-limit is set to 0 — Dependabot performs vulnerability
+          monitoring but Renovate handles the actual update PRs.
+        integration:
+          ci: false
+          adhoc: false
+          release: false
 
 annotations:
   - annotation: not-applicable
