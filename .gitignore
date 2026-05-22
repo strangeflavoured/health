@@ -4,6 +4,7 @@
 !.prettierrc
 !.yamlfmt
 !.yamllint
+!.allstar
 
 *__pycache__/
 *.zip

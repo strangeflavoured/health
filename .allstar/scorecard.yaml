@@ -1,0 +1,13 @@
+optConfig:
+  optIn: true
+action: issue
+threshold: 7
+checks:
+  - Pinned-Dependencies
+  - Token-Permissions
+  - Dangerous-Workflow
+  - Branch-Protection
+  - Vulnerabilities
+  - Dependency-Update-Tool
+upload:
+  sarif: true

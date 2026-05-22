@@ -1,0 +1,20 @@
+optConfig:
+  optIn: true
+action: issue
+enforceDefault: true
+requireApproval: true
+blockForce: true
+enforceOnAdmins: true
+requireSignedCommits: true
+requireStatusChecks:
+  - context: "CodeQL Advanced / Analyze (actions)"
+  - context: "CodeQL Advanced / Analyze (javascript)"
+  - context: "CodeQL Advanced / Analyze (python)"
+  - context: "docker-stack / Ran Docker Stack Integration"
+  - context: "OSV Scan / osv-scan"
+  - context: "pre-commit / Passed pre-commit"
+  - context: "Requirements Maintenance / Ran Dependency Analysis"
+  - context: "Scorecard / scorecard"
+  - context: "Run Scripts Tests / Passed Scripts Tests"
+  - context: "Build Sphinx Docs / Built Docs"
+  - context: "Run Tests / Passed Tests"
