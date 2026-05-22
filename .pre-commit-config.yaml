@@ -7,7 +7,6 @@ repos:
       - id: check-merge-conflict
       - id: end-of-file-fixer
       - id: trailing-whitespace
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.13
     hooks:
@@ -19,37 +18,42 @@ repos:
           - --fix
           - --show-fixes
       - id: ruff-format
-
   - repo: https://github.com/jendrikseipp/vulture
     rev: v2.16
     hooks:
       - id: vulture
-
   - repo: https://github.com/fpgmaas/deptry
     rev: 0.25.1
     hooks:
       - id: deptry
         language: system
         entry: .venv/bin/deptry .
-
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.11.0
     hooks:
       - id: shellcheck
-        args: [ "--severity=warning" ]
-
+        args: ["--severity=warning"]
   - repo: https://github.com/scop/pre-commit-shfmt
     rev: v3.13.1-1
     hooks:
       - id: shfmt
-        args: [ "-i", "2", "-ci" ]
-
+        args: ["-i", "2", "-ci"]
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.19.0
+    hooks:
+      - id: yamlfmt
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [--format, parsable, --strict]
   - repo: local
     hooks:
       - id: eslint
         name: ESLint (frontend)
         language: node
-        entry: bash -c 'cd frontend && npx eslint --no-warn-ignored --max-warnings 0 .'
+        entry: >-
+          bash -c 'cd frontend && npx eslint --no-warn-ignored --max-warnings 0 .'
         files: ^frontend/.*\.(ts|tsx)$
         pass_filenames: false
         additional_dependencies:
@@ -57,24 +61,21 @@ repos:
           - eslint-plugin-jsdoc
           - "@typescript-eslint/eslint-plugin"
           - "@typescript-eslint/parser"
-
       - id: prettier
         name: prettier
         language: node
         entry: npx prettier
-        args: [ --write ]
+        args: [--write]
         files: \.(js|jsx|ts|tsx|css|json|md)$
-        types: [ file ]
+        types: [file]
         additional_dependencies:
           - prettier
-
       - id: npm-audit
         name: npm audit (frontend)
         language: node
         entry: bash -c 'cd frontend && npm audit --audit-level=moderate'
         files: ^frontend/package.*\.json$
         pass_filenames: false
-
       - id: compile-requirements
         name: Recompile requirements (.in → .txt)
         entry: scripts/compile-requirements.sh
@@ -83,16 +84,14 @@ repos:
         pass_filenames: false
         require_serial: true
         stages: [pre-commit]
-
       - id: djlint
         name: Jinja template formatting (docs)
         language: python
         entry: djlint
-        args: [ --reformat ]
+        args: [--reformat]
         files: \.html$
         additional_dependencies:
           - djlint
-
       - id: sphinx-lint
         name: RST lint (docs)
         language: python
@@ -100,7 +99,6 @@ repos:
         files: \.rst$
         additional_dependencies:
           - sphinx-lint
-
       - id: typecheck
         name: TypeScript type check
         language: node
