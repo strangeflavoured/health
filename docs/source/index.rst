@@ -7,6 +7,15 @@ HealthAnalyser Documentation
 ============================
 
 .. toctree::
+   :hidden:
+   :maxdepth: 1
+   :caption: Project
+
+   changelog
+   contributing
+   maintainers
+
+.. toctree::
    :maxdepth: 2
    :hidden:
    :caption: Notes:
@@ -25,7 +34,6 @@ HealthAnalyser Documentation
    src/modules
    backend/modules
    react_autodoc/index
-
 
 .. include:: ../../README.md
    :parser: myst_parser.sphinx_
