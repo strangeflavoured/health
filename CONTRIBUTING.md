@@ -26,6 +26,21 @@ unpleasant will not be accepted.
 
 ---
 
+## Permissions policy
+
+New contributors are granted read access by default.
+Write or admin access is only granted after at least one merged PR
+and review by an existing maintainer.
+
+---
+
+## Testing policy
+
+All significant changes MUST include new or updated tests.
+PRs without test coverage for changed functionality will not be merged.
+
+---
+
 ## Reporting Issues
 
 Search existing issues before opening a new one. When filing a bug, include:
