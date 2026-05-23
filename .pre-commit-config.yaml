@@ -21,7 +21,7 @@ repos:
       - id: gitlint
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.13
+    rev: v0.15.14
     hooks:
       - id: ruff-check
         args:
@@ -50,12 +50,12 @@ repos:
         args: ["-i", "2", "-ci"]
 
   - repo: https://github.com/google/yamlfmt
-    rev: v0.19.0
+    rev: v0.21.0
     hooks:
       - id: yamlfmt
 
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.35.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         args: [--format, parsable, --strict]
