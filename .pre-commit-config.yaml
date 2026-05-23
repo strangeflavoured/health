@@ -12,11 +12,11 @@ repos:
       - id: check-shebang-scripts-are-executable
       - id: check-symlinks
       - id: check-toml
-      - id: check-vcs-permanlinks
+      - id: check-vcs-permalinks
       - id: check-xml
       - id: check-yaml
       - id: debug-statements
-      - id: detect-private-key
+      - id: detect-private-keys
       - id: double-quote-string-fixer
       - id: end-of-file-fixer
       - id: no-commit-to-branch
