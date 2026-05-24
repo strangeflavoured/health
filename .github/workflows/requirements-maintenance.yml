@@ -113,7 +113,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/reports"
           deptry . --verbose \
-            --json-output "$RUNNER_TEMP/reports/deptry.json" \
+            --json-output "$RUNNER_TEMP/reports/deptry.json"
           deptry --version
 
       - name: Check for newer versions
