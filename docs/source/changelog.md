@@ -1,2 +1,3 @@
-.. include:: ../../CHANGELOG.md
-:parser: myst*parser.sphinx*
+```{include} ../../CHANGELOG.md
+
+```

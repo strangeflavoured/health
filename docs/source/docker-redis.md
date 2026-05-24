@@ -56,11 +56,11 @@ docker stats health-redis
 docker inspect --format='{{json .State.Health}}' $(docker compose ps -q redis) | jq
 ```
 
-## Container stoppen / entfernen
+## Stop / remove containers
 
 ```bash
-./scripts/compose-wrapper.sh down redis redisinsight          # stoppt Container, Volume bleibt erhalten
-./scripts/compose-wrapper.sh down -v redis redisinsight       # stoppt Container UND löscht das Volume (Datenverlust!)
+./scripts/compose-wrapper.sh down redis redisinsight          # stop containers, keep the volume
+./scripts/compose-wrapper.sh down -v redis redisinsight       # stop containers AND delete the volume (data loss!)
 ```
 
 ---

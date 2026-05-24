@@ -1,2 +1,3 @@
-.. include:: ../../MAINTAINERS.md
-:parser: myst*parser.sphinx*
+```{include} ../../MAINTAINERS.md
+
+```

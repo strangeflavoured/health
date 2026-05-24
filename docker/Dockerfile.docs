@@ -32,5 +32,8 @@ COPY --chown=health:health ./docs ./docs
 COPY --chown=health:health ./README.md .
 COPY --chown=health:health ./frontend/src ./frontend/src
 COPY --chown=health:health ./backend/apps ./backend/apps
+COPY --chown=health:health ./CHANGELOG.md .
+COPY --chown=health:health ./CONTRIBUTING.md .
+COPY --chown=health:health ./MAINTAINERS.md .
 
 ENTRYPOINT ["make", "-C", "docs", "clean", "html"]

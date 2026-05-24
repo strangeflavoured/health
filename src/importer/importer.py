@@ -80,7 +80,24 @@ class HealthDataImporter:
         out_file: str = "export.feather",
         failures_file: str = "upload_failures.json",
     ) -> None:
+        """Initialise the importer and resolve its working paths.
 
+        Args:
+            connection: Redis client used for all TimeSeries writes.
+            data_dir: Directory (relative to ``working_dir``) holding the Apple
+                Health export and where intermediate/output files are written.
+            in_file: Name of the Apple Health export archive within ``data_dir``.
+            working_dir: Base directory the other paths are resolved against.
+                Defaults to the current working directory.
+            out_file: Name of the cached Feather DataFrame written under
+                ``data_dir``.
+            failures_file: Name of the JSON file used to persist per-row upload
+                failures so retries survive across runs.
+
+        Raises:
+            FileNotFoundError: If ``data_dir`` does not exist.
+
+        """
         base = Path.cwd() if working_dir is None else Path(working_dir)
 
         self.data_dir: Path = base / data_dir
@@ -343,6 +360,12 @@ class HealthDataImporter:
         return df
 
     def _update_failures_file(self) -> None:
+        """Persist or clear the failures file to match in-memory state.
+
+        Writes :attr:`failures` to disk when any failures are recorded, and
+        deletes the file when the list is empty so a clean run leaves no stale
+        failures behind.
+        """
         if self.failures:
             self._write_failures_file(self.failures)
         else:

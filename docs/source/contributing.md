@@ -1,2 +1,3 @@
-.. include:: ../../CONTRIBUTING.md
-:parser: myst*parser.sphinx*
+```{include} ../../CONTRIBUTING.md
+
+```

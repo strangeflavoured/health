@@ -1,6 +1,13 @@
 """Category Type model classes.
 
 Provides HKCategoryTypeIdentifierRegistry to public API.
+
+Each ``HKCategoryTypeIdentifier*`` class is a thin, generated stub mirroring one
+Apple HealthKit ``HKCategoryTypeIdentifier``. The nested ``Values`` enum encodes
+the categorical values Apple defines for that identifier; the class name is the
+canonical identifier and per-identifier semantics follow Apple's official
+HealthKit documentation. See :mod:`model.base` for the shared base class and
+grouping definitions.
 """
 
 from enum import Enum

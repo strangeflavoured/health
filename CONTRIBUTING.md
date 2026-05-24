@@ -7,6 +7,8 @@ an issue before starting significant new work so we can discuss fit.
 ## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
+- [Permissions Policy](#permissions-policy)
+- [Testing Policy](#testing-policy)
 - [Reporting Issues](#reporting-issues)
 - [Security Vulnerabilities](#security-vulnerabilities)
 - [Development Setup](#development-setup)
@@ -19,12 +21,16 @@ an issue before starting significant new work so we can discuss fit.
 
 ---
 
+(code-of-conduct)=
+
 ## Code of Conduct
 
 Be respectful. Contributions that are hostile, dismissive, or otherwise
 unpleasant will not be accepted.
 
 ---
+
+(permissions-policy)=
 
 ## Permissions policy
 
@@ -34,12 +40,16 @@ and review by an existing maintainer.
 
 ---
 
+(testing-policy)=
+
 ## Testing policy
 
 All significant changes MUST include new or updated tests.
 PRs without test coverage for changed functionality will not be merged.
 
 ---
+
+(reporting-issues)=
 
 ## Reporting Issues
 
@@ -52,6 +62,8 @@ Search existing issues before opening a new one. When filing a bug, include:
 
 ---
 
+(security-vulnerabilities)=
+
 ## Security Vulnerabilities
 
 Do not open a public issue for security vulnerabilities. Use GitHub's private
@@ -59,9 +71,11 @@ advisory reporting instead:
 
 👉 [Report a vulnerability](https://github.com/strangeflavoured/health/security/advisories/new)
 
-See [SECURITY.md](SECURITY.md) for the full policy.
+See [SECURITY.md](https://github.com/strangeflavoured/health/blob/main/SECURITY.md) for the full policy.
 
 ---
+
+(development-setup)=
 
 ## Development Setup
 
@@ -104,17 +118,18 @@ Certificates and Redis ACL credentials are managed via `pass`. Run the helper
 script to materialise secrets onto a tmpfs before starting:
 
 ```bash
-./scripts/start.sh
-docker compose -f docker/compose.yml up
+./scripts/compose-wrapper.sh up
 ```
 
 Stop and clean up:
 
 ```bash
-./scripts/stop.sh
+./scripts/compose-wrapper.sh down
 ```
 
 ---
+
+(making-changes)=
 
 ## Making Changes
 
@@ -127,6 +142,8 @@ Stop and clean up:
   test locally before pushing.
 
 ---
+
+(testing)=
 
 ## Testing
 
@@ -182,6 +199,8 @@ to run it manually in most cases.
 
 ---
 
+(dependency-management)=
+
 ## Dependency Management
 
 Dependencies are managed with `pip-compile` (hashed output) and Renovate.
@@ -229,6 +248,8 @@ Do not use mutable tags (`@v4`, `@main`) in workflow files.
 
 ---
 
+(commit-style)=
+
 ## Commit Style
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
@@ -253,6 +274,8 @@ The summary should be lowercase, imperative mood, no trailing period, under
 
 ---
 
+(pull-request-process)=
+
 ## Pull Request Process
 
 1. Ensure all CI checks pass before requesting review.
@@ -267,6 +290,8 @@ The summary should be lowercase, imperative mood, no trailing period, under
    to the integration test workflow.
 
 ---
+
+(ci-checks)=
 
 ## CI Checks
 
