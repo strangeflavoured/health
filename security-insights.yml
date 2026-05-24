@@ -1,6 +1,6 @@
 header:
-  last-reviewed: '2026-05-22'
-  last-updated: '2026-05-22'
+  last-reviewed: '2026-05-24'
+  last-updated: '2026-05-24'
   url: https://raw.githubusercontent.com/strangeflavoured/health/main/security-insights.yml
   schema-version: 2.0.0
 
@@ -9,19 +9,29 @@ project:
   homepage: https://github.com/strangeflavoured/health
 
   administrators:
-    - name: strangeflavoured
+    - name: github:strangeflavoured
       primary: true
 
+  repositories:
+    - name: Health Analyser
+      comment: Primary repository
+      url: https://github.com/strangeflavoured/health
+
   vulnerability-reporting:
-    reports-accepted: true
+    bug-bounty-available: false
     policy: https://github.com/strangeflavoured/health/blob/main/SECURITY.md
+    reports-accepted: true
 
 repository:
-  url: https://github.com/strangeflavoured/health
-  status: active
-  bug-fixes-only: false
-  accepts-change-request: true
   accepts-automated-change-request: true
+  accepts-change-request: true
+  bug-fixes-only: false
+  status: active
+  url: https://github.com/strangeflavoured/health
+
+  core-team:
+    - name: github:strangeflavoured
+      primary: true
 
   documentation:
     contributing-guide: https://github.com/strangeflavoured/health/blob/main/CONTRIBUTING.md
@@ -34,8 +44,15 @@ repository:
   release:
     automated-pipeline: true
     changelog: https://github.com/strangeflavoured/health/releases/tag/{version}
+    distribution-points:
+      - uri: https://github.com/strangeflavoured/health/releases
+        comment: GitHub Releases
 
   security:
+    assessments:
+      self:
+        comment: Self-assessed security posture
+
     champions:
       - name: strangeflavoured
         primary: true
@@ -77,6 +94,7 @@ repository:
             name: Scorecard SARIF
             predicate-uri: https://api.scorecard.dev
             location: https://github.com/strangeflavoured/health/security/code-scanning
+        rulesets: ["default"]
 
       - name: pre-commit (ruff)
         type: SAST
@@ -88,6 +106,7 @@ repository:
           ci: true
           adhoc: true
           release: false
+        rulesets: []
 
       # --- SCA ---
       - name: google/osv-scanner-action
@@ -106,6 +125,7 @@ repository:
             name: OSV Scanner SARIF
             predicate-uri: https://google.github.io/osv-scanner
             location: https://github.com/strangeflavoured/health/security/code-scanning
+        rulesets: []
 
       - name: Renovate
         type: SCA
@@ -118,6 +138,7 @@ repository:
           ci: true
           adhoc: false
           release: false
+        rulesets: []
 
       - name: Dependabot
         type: SCA
@@ -130,3 +151,4 @@ repository:
           ci: false
           adhoc: false
           release: false
+        rulesets: []
