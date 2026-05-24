@@ -107,6 +107,7 @@ jobs:
       - name: Run pre-commit (push)
         if: github.event_name == 'push'
         env:
+          SKIP: no-commit-to-branch
           BASE_SHA: ${{ github.event.before }}
           HEAD_SHA: ${{ github.event.after }}
         run: |
