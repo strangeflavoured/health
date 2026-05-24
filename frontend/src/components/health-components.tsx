@@ -1,8 +1,3 @@
-// Temporary until design-system.jsx is converted to .tsx
-declare module "./design-system" {
-  export function GlobalStyles(): React.ReactElement;
-}
-
 import React, { useState, useEffect } from "react";
 
 /* ============================================================
@@ -35,12 +30,11 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ style }: ThemeToggleProps): React.ReactElement {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-    setTheme(prefersDark ? "dark" : "light");
-  }, []);
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light"
+  );
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -536,126 +530,3 @@ export function VitalsTable<T extends Record<string, unknown>>({
   );
 }
 
-/* ============================================================
-   DEMO — remove in production
-   ============================================================ */
-
-import { GlobalStyles } from "./design-system";
-
-interface VitalRow extends Record<string, unknown> {
-  initials:    string;
-  name:        string;
-  vital:       string;
-  reading:     string;
-  status:      HealthStatus;
-  statusLabel: string;
-  seen:        string;
-  color:       string;
-}
-
-const ico = (d: string): React.ReactElement => (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d={d} />
-  </svg>
-);
-
-const DEMO_ROWS: VitalRow[] = [
-  { initials: "AM", name: "Anna Müller",    vital: "Heart rate",     reading: "112 bpm",    status: "elevated", statusLabel: "Elevated", seen: "2m",      color: "var(--accent)" },
-  { initials: "JR", name: "Jonas Richter",  vital: "SpO₂",           reading: "88 %",       status: "critical", statusLabel: "Critical", seen: "now",     color: "#14a3b0"        },
-  { initials: "SB", name: "Sofia Bauer",    vital: "Glucose",        reading: "5.4 mmol/L", status: "normal",   statusLabel: "Normal",   seen: "14m",     color: "#2c9466"        },
-  { initials: "LW", name: "Liam Wagner",    vital: "Blood pressure", reading: "96/61",      status: "low",      statusLabel: "Low",      seen: "31m",     color: "#8a6fd0"        },
-];
-
-const DEMO_COLUMNS: Column<VitalRow>[] = [
-  {
-    key: "name", label: "Patient",
-    render: (r) => (
-      <span style={{ display: "flex", alignItems: "center", gap: 12, fontWeight: 600 }}>
-        <Avatar initials={r.initials} color={r.color} /> {r.name}
-      </span>
-    ),
-  },
-  { key: "vital",   label: "Vital"     },
-  { key: "reading", label: "Reading",   align: "right" },
-  { key: "status",  label: "Status",    render: (r) => <StatusPill status={r.status}>{r.statusLabel}</StatusPill> },
-  { key: "seen",    label: "Last seen", align: "right" },
-];
-
-export default function HealthDashboardDemo(): React.ReactElement {
-  return (
-    <>
-      <GlobalStyles />
-      <div style={{ background: "var(--bg)", minHeight: "100vh", color: "var(--text)", fontFamily: "var(--font-body)" }}>
-        <AppShell
-          sidebar={
-            <Sidebar
-              brand={
-                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 8px 24px" }}>
-                  <span style={{ width: 34, height: 34, display: "grid", placeItems: "center", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff" }}>
-                    {ico("M3 12h3l2-5 4 13 2.5-8H21")}
-                  </span>
-                  <div>
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 20, lineHeight: 1 }}>Vitalis</div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--muted)", marginTop: 3 }}>Health Cloud</div>
-                  </div>
-                </div>
-              }
-              footer={<ThemeToggle style={{ width: "100%" }} />}
-            >
-              <NavGroup label="Overview">
-                <NavItem icon={ico("M3 12h4l2-6 4 12 2-6h6")} active>Dashboard</NavItem>
-                <NavItem icon={ico("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2")}>Patients</NavItem>
-              </NavGroup>
-              <NavGroup label="Monitoring">
-                <NavItem icon={ico("M3 17l6-6 4 4 7-8")}>Trends</NavItem>
-                <NavItem icon={ico("M10.3 3.5a2 2 0 0 1 3.4 0l8 13.5a2 2 0 0 1-1.7 3H4a2 2 0 0 1-1.7-3z")} badge={3}>Alerts</NavItem>
-              </NavGroup>
-            </Sidebar>
-          }
-          topbar={
-            <Topbar
-              eyebrow="Live · 12s ago"
-              title="Patient" titleItalic="Overview"
-              actions={
-                <>
-                  <ThemeToggle />
-                  <button style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-body)", fontWeight: 500, fontSize: 14, padding: "9px 18px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer" }}>
-                    {ico("M12 5v14M5 12h14")} New reading
-                  </button>
-                </>
-              }
-            />
-          }
-        >
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(212px, 1fr))", gap: 16, marginBottom: 32 }}>
-            <MetricTile
-              icon={ico("M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z")}
-              label="Heart rate" value="72" unit="bpm"
-              status={{ kind: "normal", label: "Normal" }}
-              delta={<Delta dir="down" since="vs last hr">4</Delta>}
-            />
-            <MetricTile
-              icon={ico("M12 22a8 8 0 0 0 8-8c0-3.5-3-7-8-12C7 7 4 10.5 4 14a8 8 0 0 0 8 8z")}
-              label="Blood pressure" value="118" unit="/76"
-              status={{ kind: "normal", label: "Optimal" }}
-            />
-            <MetricTile
-              icon={ico("M12 7v5l3 2")}
-              label="SpO₂" value="98" unit="%"
-              status={{ kind: "normal", label: "Normal" }}
-              delta={<Delta dir="up" since="vs am">1</Delta>}
-            />
-            <MetricTile
-              icon={ico("M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z")}
-              label="Sleep" value="6" unit="h 02m"
-              status={{ kind: "elevated", label: "Below target" }}
-              delta={<Delta dir="down">58m</Delta>}
-            />
-          </div>
-
-          <VitalsTable<VitalRow> columns={DEMO_COLUMNS} rows={DEMO_ROWS} />
-        </AppShell>
-      </div>
-    </>
-  );
-}
