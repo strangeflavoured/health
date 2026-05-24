@@ -6,7 +6,6 @@ RUN apk add --no-cache util-linux openssl git curl
 
 RUN git clone --depth=1 --branch v0.3.0 https://github.com/bats-core/bats-support /usr/local/lib/bats-support \
  && git clone --depth=1 --branch v0.3.0 https://github.com/bats-core/bats-assert  /usr/local/lib/bats-assert
-ENV BATS_LIB_PATH=/usr/local/lib
 
 RUN curl -fsSL "https://github.com/FiloSottile/mkcert/releases/download/v1.4.4/mkcert-v1.4.4-linux-amd64" \
     -o /usr/local/bin/mkcert \
