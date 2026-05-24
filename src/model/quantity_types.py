@@ -1,6 +1,13 @@
 """Quantity Type model classes.
 
 Provides HKQuantityTypeIdentifierRegistry to public API.
+
+Each ``HKQuantityTypeIdentifier*`` class is a thin, generated stub mirroring one
+Apple HealthKit ``HKQuantityTypeIdentifier``. Per-identifier semantics (units,
+aggregation style, grouping) follow Apple's official HealthKit documentation and
+are encoded as class attributes rather than prose docstrings; the class name is
+the canonical identifier. See :mod:`model.base` for the shared base class and
+grouping definitions.
 """
 
 from types import MappingProxyType

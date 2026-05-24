@@ -29,6 +29,15 @@ HealthAnalyser Documentation
 .. toctree::
    :hidden:
    :maxdepth: 2
+   :caption: Security & CI:
+
+   Security <security>
+   Threat model <threat-model>
+   CI/CD workflows <ci-cd>
+
+.. toctree::
+   :hidden:
+   :maxdepth: 2
    :caption: API References:
 
    src/modules

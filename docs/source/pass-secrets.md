@@ -125,19 +125,13 @@ Update `.gitignore`:
 !gpg-public.asc
 ```
 
-### 1.8 Optionally configure passwordless sudo for tmpfs
+### 1.8 tmpfs location (no sudo required)
 
-To avoid entering your sudo password on every startup, add a targeted sudoers rule:
-
-```bash
-sudo visudo -f /etc/sudoers.d/health-tmpfs
-```
-
-Add:
-
-```
-user ALL=(ALL) NOPASSWD: /bin/mount -t tmpfs *, /bin/umount /run/health-secrets, /bin/rm -rf /run/health-secrets, /bin/mkdir -p /run/health-secrets, /bin/chown * /run/health-secrets
-```
+`compose-wrapper.sh` materialises secrets onto the per-user tmpfs that Linux
+already mounts at `/dev/shm`, using a directory named
+`/dev/shm/health-secrets-$(id -u)` with mode `0700`. Because `/dev/shm` is
+user-writable, no `sudo`, `mount`, or sudoers rule is needed; the wrapper
+creates the directory on `up` and removes it on `down`.
 
 ---
 
@@ -146,7 +140,7 @@ user ALL=(ALL) NOPASSWD: /bin/mount -t tmpfs *, /bin/umount /run/health-secrets,
 ### Starting the stack
 
 ```bash
-./scripts/compose-wrapper.sh compose -d redis
+./scripts/compose-wrapper.sh up -d redis
 ```
 
 The GPG agent prompts for your key passphrase on the first decryption after login. Subsequent runs within the same session are served from the agent cache without re-prompting.
@@ -182,7 +176,7 @@ After rotation, restart the affected service to pick up the new value:
 
 ```bash
 ./scripts/compose-wrapper.sh down
-./scripts/compose-wrapper up -d redis
+./scripts/compose-wrapper.sh up -d redis
 ```
 
 If the store is git-backed, push the rotation:
@@ -211,7 +205,7 @@ Then restart the affected service:
 
 ```bash
 ./scripts/compose-wrapper.sh down
-./scripts/compose-wrapper up -d redis
+./scripts/compose-wrapper.sh up -d redis
 ```
 
 ### Adding a new secret
@@ -267,4 +261,4 @@ gpgconf --reload gpg-agent
 
 ### Reboot behaviour
 
-The tmpfs at is cleared on reboot — this is intentional. After rebooting, run `./scripts/compose-wrapper.sh` as normal; it will re-create the tmpfs and decrypt fresh from the pass store.
+The tmpfs at `/dev/shm/health-secrets-$(id -u)` is cleared on reboot — this is intentional. After rebooting, run `./scripts/compose-wrapper.sh` as normal; it will re-create the tmpfs and decrypt fresh from the pass store.

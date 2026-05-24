@@ -32,7 +32,7 @@ Add `.env` file to repo root:
 touch .env && chmod 600 .env
 ```
 
-Add the necessary contents, see [.env-example](.env-example). You can find the location of the CA certificate by running
+Add the necessary contents (`REDIS_HOST`, `REDIS_PORT`, `REDIS_CERTS_DIR`, etc.). You can find the location of the CA certificate by running
 
 ```bash
 mkcert -CAROOT
@@ -47,8 +47,8 @@ source .env
 Generate TLS certificates for infrastructure and app client:
 
 ```bash
-bash scripts/generate_certificate.sh $(mkcert -CAROOT) $REDIS_CERTS_DIR
-bash scripts/generate_certificate.sh --client app $(mkcert -CAROOT) $REDIS_CERTS_DIR
+bash scripts/generate_certificates.sh $(mkcert -CAROOT) $REDIS_CERTS_DIR
+bash scripts/generate_certificates.sh --client app $(mkcert -CAROOT) $REDIS_CERTS_DIR
 ```
 
 [Set up pass](pass-secrets.md) and add certificates and keys:
@@ -87,7 +87,7 @@ Instead of using `docker compose` directly, always run
 so `pass` secrets are injected. Similarly, to stop the services run
 
 ```bash
-./scripts/stop.sh down [service...]
+./scripts/compose-wrapper.sh down [service...]
 ```
 
 This will remove the tmpfs. See also [docker cheatsheet](docker-redis.md).
@@ -141,8 +141,8 @@ mkdir -p ./output && sudo chown 1000:1000 ./output
 Run `import_to_redis.py` in sandbox to upload the data to Redis:
 
 ```bash
-./scripts/compse-wrapper.sh up -d redis
-./scripts/compse-wrapper.sh build -f compose.yml sandbox
+./scripts/compose-wrapper.sh up -d redis
+./scripts/compose-wrapper.sh build sandbox
 ./scripts/compose-wrapper.sh run --rm sandbox import_to_redis.py
 ```
 

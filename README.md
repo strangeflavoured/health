@@ -15,4 +15,4 @@ Playing around with Apple Health data. Get started [here](https://strangeflavour
 
 ---
 
-Contribute [here](CONTRIBUTING.md)
+Contribute [here](https://github.com/strangeflavoured/health/blob/main/CONTRIBUTING.md)
