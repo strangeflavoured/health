@@ -5,4 +5,4 @@ contrib=CC1,CT1
 line-length=100
 
 [contrib-title-conventional-commits]
-types=fix,feat,chore,docs,style,refactor,perf,test,new,update,lint
+types=fix,feat,chore,docs,style,refactor,perf,test,new,update,lint,remove
