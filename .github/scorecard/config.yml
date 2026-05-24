@@ -4,9 +4,19 @@ annotations:
     reasons:
       - reason: not-applicable
         comment: >
-          Three elevated permissions are intentional and unavoidable:
+          Three elevated permissions in CI jobs are intentional and unavoidable:
           (1) checks:write and pull-requests:write are required by dorny/test-reporter to publish
           JUnit test results as PR checks, isolated to the scripts and tests workflows.
           (2) security-events:write is required to upload SARIF to GitHub Code Scanning, isolated to
           the OSV Scanner job.
           GitHub Actions does not support step-level permissions.
+
+      - reason: not-applicable
+        comment: >
+          The release workflow's deploy job requires id-token: write and attestations: write
+          so that actions/attest-build-provenance can obtain a short-lived Sigstore OIDC
+          certificate and write provenance attestations for the docs artifact, SBOM, and
+          OpenVEX document. This permission is scoped to the deploy job only, which is
+          itself gated behind the "release" GitHub environment (required reviewers +
+          deployment tag rules). It will be superseded by slsa-framework/slsa-github-generator
+          when the project upgrades to SLSA Build Level 3 — see the tracking issue.
