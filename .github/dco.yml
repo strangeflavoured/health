@@ -1,3 +1,9 @@
 allowMemberCommits: false
 allowRemediationCommits:
   individual: true
+ignoreCommits:
+  authorEmailPatterns:
+    - "deps-bot\\[bot\\]@users\\.noreply\\.github\\.com"
+    - "release-health\\[bot\\]@users\\.noreply\\.github\\.com"
+    - "renovate\\[bot\\]@users\\.noreply\\.github\\.com"
+    - "dependabot\\[bot\\]@users\\.noreply\\.github\\.com"
