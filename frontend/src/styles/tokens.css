@@ -1,0 +1,116 @@
+/* Fonts: DM Serif Display (display) · DM Sans (body) · DM Mono (mono/data) */
+
+:root {
+  /* ===== Core palette (template names) — LIGHT ============================= */
+  --bg:        #f7f6f2;   /* warm paper */
+  --surface:   #ffffff;
+  --surface2:  #f0efe9;
+  --border:    #e2e0d8;
+  --text:      #1a1916;
+  --muted:     #8a8880;
+
+  /* Accent — trustworthy blue, tuned to sit on warm paper.
+     Template original: --accent:#00e5cc; --accent-dk:#009e8e; (teal) */
+  --accent:    #2f6fe6;
+  --accent-dk: #1f52bd;
+  --accent-bg: rgba(47, 111, 230, 0.08);
+
+  /* ===== Typography (template names) ====================================== */
+  --font-display: "DM Serif Display", Georgia, "Times New Roman", serif;
+  --font-body:    "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    "DM Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* ===== Shape (template names) =========================================== */
+  --r: 8px;
+  --max-w: 860px;
+
+  /* ===== Spacing scale (added) ============================================ */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px;
+
+  /* ===== Health-status semantics (added) ==================================
+     Tuned to harmonize with warm paper, not cold clinical blue/white.
+     Each: foreground - soft background - hairline border. */
+  --ok-fg:   #2c9466;  --ok-bg:   rgba(52, 176, 122, 0.12);  --ok-bd:   rgba(52, 176, 122, 0.34);
+  --warn-fg: #c0801b;  --warn-bg: rgba(214, 145, 28, 0.13);  --warn-bd: rgba(214, 145, 28, 0.36);
+  --crit-fg: #cf4040;  --crit-bg: rgba(207, 64, 64, 0.11);   --crit-bd: rgba(207, 64, 64, 0.32);
+  --info-fg: var(--accent-dk); --info-bg: var(--accent-bg);  --info-bd: rgba(47, 111, 230, 0.30);
+
+  /* ===== Chart palette (added) — warm-leaning, colourblind-aware order ===== */
+  --chart-1: var(--accent);
+  --chart-2: #2c9466;   /* green   */
+  --chart-3: #c0801b;   /* amber   */
+  --chart-4: #8a6fd0;   /* violet  */
+  --chart-5: #14a3b0;   /* teal    */
+  --chart-6: #cf4040;   /* red     */
+
+  /* ===== Elevation (added) — restrained; template favours borders ========= */
+  --shadow-sm: 0 1px 2px rgba(26, 25, 22, 0.05);
+  --shadow-md: 0 6px 24px rgba(26, 25, 22, 0.08);
+
+  /* ===== Numerals: tabular + lining for aligned data ====================== */
+  --num: "tnum" 1, "lnum" 1;
+
+  color-scheme: light;
+}
+
+/* ===== DARK — template's media-query default, scoped so the toggle wins ==== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #111110;
+    --surface:   #1c1c1a;
+    --surface2:  #242422;
+    --border:    #2e2e2b;
+    --text:      #eeecea;
+    --muted:     #8f8e88;
+
+    --accent:    #6d9bff;
+    --accent-dk: #9bbcff;
+    --accent-bg: rgba(109, 155, 255, 0.10);
+
+    --ok-fg:   #4ec793;  --ok-bg:   rgba(78, 199, 147, 0.13);  --ok-bd:   rgba(78, 199, 147, 0.32);
+    --warn-fg: #e0a73f;  --warn-bg: rgba(224, 167, 63, 0.13);  --warn-bd: rgba(224, 167, 63, 0.34);
+    --crit-fg: #f07070;  --crit-bg: rgba(240, 112, 112, 0.13); --crit-bd: rgba(240, 112, 112, 0.32);
+    --info-fg: var(--accent-dk); --info-bg: var(--accent-bg);  --info-bd: rgba(109, 155, 255, 0.30);
+
+    --chart-1: #6d9bff; --chart-2: #4ec793; --chart-3: #e0a73f;
+    --chart-4: #ab93f0; --chart-5: #35c2cf; --chart-6: #f07070;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.5);
+
+    color-scheme: dark;
+  }
+}
+
+/* ===== DARK — explicit manual toggle (overrides system either way) ======== */
+:root[data-theme="dark"] {
+  --bg:        #111110;
+  --surface:   #1c1c1a;
+  --surface2:  #242422;
+  --border:    #2e2e2b;
+  --text:      #eeecea;
+  --muted:     #8f8e88;
+
+  --accent:    #6d9bff;
+  --accent-dk: #9bbcff;
+  --accent-bg: rgba(109, 155, 255, 0.10);
+
+  --ok-fg:   #4ec793;  --ok-bg:   rgba(78, 199, 147, 0.13);  --ok-bd:   rgba(78, 199, 147, 0.32);
+  --warn-fg: #e0a73f;  --warn-bg: rgba(224, 167, 63, 0.13);  --warn-bd: rgba(224, 167, 63, 0.34);
+  --crit-fg: #f07070;  --crit-bg: rgba(240, 112, 112, 0.13); --crit-bd: rgba(240, 112, 112, 0.32);
+  --info-fg: var(--accent-dk); --info-bg: var(--accent-bg);  --info-bd: rgba(109, 155, 255, 0.30);
+
+  --chart-1: #6d9bff; --chart-2: #4ec793; --chart-3: #e0a73f;
+  --chart-4: #ab93f0; --chart-5: #35c2cf; --chart-6: #f07070;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
