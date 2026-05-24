@@ -12,7 +12,7 @@ requireStatusChecks:
   - context: "CodeQL Advanced / Analyze (python)"
   - context: "docker-stack / Ran Docker Stack Integration"
   - context: "OSV Scan / osv-scan"
-  - context: "pre-commit / Passed pre-commit"
+  - context: "pre-commit / Run pre-commit hooks"
   - context: "Requirements Maintenance / Ran Dependency Analysis"
   - context: "Scorecard / scorecard"
   - context: "Run Scripts Tests / Passed Scripts Tests"
