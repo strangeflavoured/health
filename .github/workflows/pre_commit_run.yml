@@ -64,7 +64,7 @@ jobs:
         with:
           key: pre-commit-${{ runner.os }}-py3.12-${{ hashFiles('.pre-commit-config.yaml') }}
           path: ~/.cache/pre-commit
-          
+
       - name: Install Requirements
         run: |
           pip install --require-hashes -r pip-requirements.txt
