@@ -139,7 +139,7 @@ jobs:
         env:
           ALL_FILES: "${{ inputs.all_files }}"
         run: |
-          if [ "$ALL_FILES" = "true" ]; then
+          if [ "$ALL_FILES" == "true" ]; then
             echo "Running on all files..."
             pre-commit run --all-files
           else
