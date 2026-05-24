@@ -1,5 +1,4 @@
 header:
-  expiration-date: '2027-01-01'
   last-reviewed: '2026-05-22'
   last-updated: '2026-05-22'
   url: https://raw.githubusercontent.com/strangeflavoured/health/main/security-insights.yml
@@ -131,15 +130,3 @@ repository:
           ci: false
           adhoc: false
           release: false
-
-annotations:
-  - annotation: not-applicable
-    finding-refs:
-      - type: github
-        value: Token-Permissions
-    text: >
-      Three elevated permissions are intentional and unavoidable:
-      (1) checks:write and pull-requests:write are required by dorny/test-reporter to publish
-      JUnit test results as PR checks, isolated to the scripts and tests workflows.
-      (2) security-events:write is required to upload SARIF to GitHub Code Scanning, isolated to the OSV Scanner job.
-      GitHub Actions does not support step-level permissions.
