@@ -1,0 +1,193 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap");
+
+/* ---------- Map Furo variables -> template tokens (LIGHT) -------------------*/
+body {
+  --font-stack: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-stack--headings: "DM Serif Display", Georgia, serif;
+  --font-stack--monospace: "DM Mono", ui-monospace, monospace;
+
+  /* Accent — template original teal: #00e5cc / #009e8e */
+  --vitalis-accent:    #2f6fe6;
+  --vitalis-accent-dk: #1f52bd;
+
+  --color-brand-primary: var(--vitalis-accent-dk);
+  --color-brand-content: var(--vitalis-accent-dk);
+  --color-brand-visited: #6a4fd0;
+
+  --color-background-primary: #f7f6f2;     /* warm paper */
+  --color-background-secondary: #f0efe9;
+  --color-background-hover: rgba(47,111,230,0.06);
+  --color-background-hover--transparent: rgba(47,111,230,0.04);
+  --color-background-border: #e2e0d8;
+
+  --color-foreground-primary: #1a1916;
+  --color-foreground-secondary: #56544d;
+  --color-foreground-muted: #8a8880;
+  --color-foreground-border: #e2e0d8;
+
+  --color-sidebar-background: #ffffff;
+  --color-sidebar-background-border: #e2e0d8;
+  --color-sidebar-link-text: #56544d;
+  --color-sidebar-link-text--top-level: #1a1916;
+  --color-sidebar-item-background--current: rgba(47,111,230,0.08);
+  --color-sidebar-item-background--hover: var(--color-background-secondary);
+  --color-sidebar-search-background: #ffffff;
+  --color-sidebar-search-border: #e2e0d8;
+
+  --color-code-background: #f0efe9;
+  --color-code-foreground: #1a1916;
+  --color-inline-code-background: rgba(47,111,230,0.08);
+
+  --color-highlight-on-target: rgba(214,145,28,0.16);
+
+  --color-admonition-title-background--note: rgba(47,111,230,0.10);
+  --color-admonition-title--note: #1f52bd;
+  --color-admonition-title-background--tip: rgba(52,176,122,0.12);
+  --color-admonition-title--tip: #2c9466;
+  --color-admonition-title-background--warning: rgba(214,145,28,0.14);
+  --color-admonition-title--warning: #c0801b;
+  --color-admonition-title-background--danger: rgba(207,64,64,0.12);
+  --color-admonition-title--danger: #cf4040;
+  --color-admonition-title-background--caution: rgba(207,64,64,0.10);
+  --color-admonition-title--caution: #cf4040;
+}
+
+/* ---------- DARK (both Furo dark mechanisms) --------------------------------*/
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) {
+    --vitalis-accent: #6d9bff; --vitalis-accent-dk: #9bbcff;
+    --color-brand-primary: #9bbcff; --color-brand-content: #9bbcff; --color-brand-visited: #b9a8ff;
+    --color-background-primary: #111110;
+    --color-background-secondary: #1c1c1a;
+    --color-background-hover: rgba(109,155,255,0.12);
+    --color-background-border: #2e2e2b;
+    --color-foreground-primary: #eeecea;
+    --color-foreground-secondary: #c8c6c1;
+    --color-foreground-muted: #8f8e88;
+    --color-foreground-border: #2e2e2b;
+    --color-sidebar-background: #1c1c1a;
+    --color-sidebar-background-border: #2e2e2b;
+    --color-sidebar-link-text: #c8c6c1;
+    --color-sidebar-link-text--top-level: #eeecea;
+    --color-sidebar-item-background--current: rgba(109,155,255,0.14);
+    --color-sidebar-item-background--hover: #242422;
+    --color-sidebar-search-background: #1c1c1a;
+    --color-sidebar-search-border: #2e2e2b;
+    --color-code-background: #161614;
+    --color-code-foreground: #c8c6c1;
+    --color-inline-code-background: rgba(109,155,255,0.14);
+    --color-admonition-title--note: #9bbcff;
+    --color-admonition-title--tip: #4ec793;
+    --color-admonition-title--warning: #e0a73f;
+    --color-admonition-title--danger: #f07070;
+  }
+}
+body[data-theme="dark"] {
+  --vitalis-accent: #6d9bff; --vitalis-accent-dk: #9bbcff;
+  --color-brand-primary: #9bbcff; --color-brand-content: #9bbcff; --color-brand-visited: #b9a8ff;
+  --color-background-primary: #111110;
+  --color-background-secondary: #1c1c1a;
+  --color-background-hover: rgba(109,155,255,0.12);
+  --color-background-border: #2e2e2b;
+  --color-foreground-primary: #eeecea;
+  --color-foreground-secondary: #c8c6c1;
+  --color-foreground-muted: #8f8e88;
+  --color-foreground-border: #2e2e2b;
+  --color-sidebar-background: #1c1c1a;
+  --color-sidebar-background-border: #2e2e2b;
+  --color-sidebar-link-text: #c8c6c1;
+  --color-sidebar-link-text--top-level: #eeecea;
+  --color-sidebar-item-background--current: rgba(109,155,255,0.14);
+  --color-sidebar-item-background--hover: #242422;
+  --color-sidebar-search-background: #1c1c1a;
+  --color-sidebar-search-border: #2e2e2b;
+  --color-code-background: #161614;
+  --color-code-foreground: #c8c6c1;
+  --color-inline-code-background: rgba(109,155,255,0.14);
+  --color-admonition-title--note: #9bbcff;
+  --color-admonition-title--tip: #4ec793;
+  --color-admonition-title--warning: #e0a73f;
+  --color-admonition-title--danger: #f07070;
+}
+
+/* ---------- Headings: DM Serif Display, with italic-accent support ----------*/
+article h1, article h2, article h3, article h4,
+.sidebar-brand-text {
+  font-family: var(--font-stack--headings);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+article h1 { font-size: 2.4rem; line-height: 1.1; padding-bottom: 0.3em; }
+article h2 { font-size: 1.6rem; margin-top: 2.4rem; }
+article h3 { font-family: var(--font-stack); font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em; }
+/* Wrap a word in *...* -> <em> in RST/MD to get the signature italic accent */
+article h1 em, article h2 em { font-style: italic; color: var(--color-brand-primary); }
+
+/* Brand wordmark */
+.sidebar-brand-text { font-size: 1.25rem; }
+
+/* Section-label feel for the sidebar caption (mono, tracked) */
+.sidebar-tree .caption-text {
+  font-family: var(--font-stack--monospace);
+  font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase;
+}
+
+/* Search box: square-ish to match editorial inputs, accent focus */
+.sidebar-search-container { border-radius: 8px; overflow: hidden; }
+.sidebar-search { border-radius: 8px; }
+.sidebar-search:focus { box-shadow: inset 0 0 0 1px var(--vitalis-accent); }
+
+/* Sidebar links: rounded, current = accent tint + hairline */
+.sidebar-tree .reference { border-radius: 6px; transition: background 0.15s ease, color 0.15s ease; }
+.sidebar-tree .current-page > .reference { font-weight: 600; box-shadow: inset 0 0 0 1px rgba(47,111,230,0.22); }
+
+/* Code blocks: hairline border, soft radius, mono everywhere */
+.highlight {
+  border-radius: 8px; border: 1px solid var(--color-background-border);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(26,25,22,0.05));
+}
+.highlight pre { padding: 16px 18px; font-family: var(--font-stack--monospace); font-size: 0.84rem; line-height: 1.75; }
+code.literal {
+  border-radius: 4px; padding: 1px 6px; font-size: 0.86em;
+  background: var(--color-inline-code-background); color: var(--color-brand-content);
+  font-feature-settings: "tnum" 1;
+}
+
+/* Admonitions: editorial — left accent rail, flat fill */
+.admonition, div.admonition {
+  border-radius: 8px; border: 1px solid var(--color-background-border);
+  border-left-width: 2.5px; box-shadow: none;
+}
+.admonition > .admonition-title {
+  font-family: var(--font-stack--monospace); font-weight: 500;
+  font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase;
+}
+
+/* API / object signatures (autodoc) -> accent-railed mono card */
+dl.py.class > dt, dl.py.function > dt, dl.py.method > dt, dl.std > dt {
+  border-radius: 6px; background: var(--color-inline-code-background);
+  border-left: 2.5px solid var(--color-brand-primary);
+  font-family: var(--font-stack--monospace);
+}
+
+/* Tables: hairline, mono uppercase header (matches dashboard) */
+table.docutils {
+  border-radius: 8px; overflow: hidden; border: 1px solid var(--color-background-border);
+  border-collapse: separate; border-spacing: 0;
+}
+table.docutils thead th {
+  background: var(--color-background-secondary);
+  font-family: var(--font-stack--monospace); font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.68rem;
+}
+
+/* Primary CTA link helper (add class="vitalis-cta" to a link/role) */
+.vitalis-cta {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 9px 18px; border-radius: 8px; font-family: var(--font-stack);
+  font-weight: 500; text-decoration: none; color: #fff !important;
+  background: var(--vitalis-accent);
+}
+.vitalis-cta:hover { background: var(--vitalis-accent-dk); }
+
+.theme-toggle { border-radius: 8px; }
