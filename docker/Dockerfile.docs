@@ -36,14 +36,13 @@ COPY --chown=health:health ./frontend/package.json ./frontend/package-lock.json 
 RUN --mount=type=cache,target=/home/health/.npm,uid=1000,gid=1000 \
     cd frontend && npm ci --ignore-scripts
 
-COPY --chown=health:health ./CHANGELOG.md .
-COPY --chown=health:health ./CONTRIBUTING.md .
-COPY --chown=health:health ./MAINTAINERS.md .
-COPY --chown=health:health ./ROADMAP.md .
-COPY --chown=health:health ./CODE_OF_CONDUCT.md .
+COPY --chown=health:health ./CHANGELOG.md ./CONTRIBUTING.md ./MAINTAINERS.md ./ROADMAP.md ./CODE_OF_CONDUCT.md ./
 
 COPY --chown=health:health ./frontend/src ./frontend/src
 COPY --chown=health:health ./backend/apps ./backend/apps
 COPY --chown=health:health ./docs ./docs
+
+ARG SPHINX_RELEASE_BUILD=""
+ENV SPHINX_RELEASE_BUILD=${SPHINX_RELEASE_BUILD}
 
 ENTRYPOINT ["make", "-C", "docs", "clean", "html"]

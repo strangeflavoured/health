@@ -1,3 +1,7 @@
+variable "SPHINX_RELEASE_BUILD" {
+  default = ""
+}
+
 group "default" {
   targets = ["infra", "dev", "tests", "docs", "sandbox"]
 }
@@ -88,6 +92,9 @@ target "bats-test" {
 
 
 target "docs" {
+  args = {
+    SPHINX_RELEASE_BUILD = SPHINX_RELEASE_BUILD
+  }
   context    = "."
   dockerfile = "docker/Dockerfile.docs"
   tags       = ["health-docs"]

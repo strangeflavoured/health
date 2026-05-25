@@ -16,6 +16,9 @@ on:
       upload-artifact:
         default: false
         type: boolean
+      release-build:
+        default: false
+        type: boolean
     outputs:
       artifact-id:
         description: "ID of the uploaded docs artifact"
@@ -85,6 +88,8 @@ jobs:
           files: docker/docker-bake.hcl
           load: true
           targets: docs
+          set: |
+            docs.args.SPHINX_RELEASE_BUILD=${{ inputs.release-build && '1' || '' }}
 
       - name: Fetch badge snapshots
         if: inputs.upload-artifact == true

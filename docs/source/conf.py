@@ -3,6 +3,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import json
+import os
 import pathlib
 import sys
 
@@ -22,6 +23,9 @@ sys.path.insert(0, str(_ROOT / "backend"))
 sys.path.insert(0, str(pathlib.Path(__file__).parent / "_ext"))
 with open(_ROOT / "versions.json") as f:
     __version__ = json.load(f)["latest"]
+
+# Exclude dev-only content when building release docs
+root_doc = "index_release" if os.environ.get("SPHINX_RELEASE_BUILD") else "index"
 
 # – Project information —————————————————–
 project = "HealthAnalyser"
