@@ -10,32 +10,20 @@ on:
       - published
 permissions: {}
 
-env:
-  IS_RELEASE_RUN: >-
-    ${{
-      github.event_name == 'release' ||
-      (github.event_name == 'workflow_dispatch' &&
-       startsWith(github.ref, 'refs/tags/v') &&
-       inputs.deploy_to_pages == 'true')
-    }}
-
 jobs:
   pre-release-scan:
     name: Pre-release security scan
     permissions:
       contents: read
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
-
       - name: Secret scan
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: OSV scan
         uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
         with:
@@ -48,6 +36,12 @@ jobs:
     with:
       upload-artifact: true
 
+  build-release-docs:
+    uses: ./.github/workflows/sphinx.yml
+    with:
+      upload-artifact: true
+      release-build: true
+
   generate-sbom:
     name: Generate SBOM
     permissions:
@@ -55,7 +49,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       artifact-id: ${{ steps.upload.outputs.artifact-id }}
-
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
@@ -64,7 +57,6 @@ jobs:
         with:
           format: cyclonedx-json
           output-file: sbom.cyclonedx.json
-
       - name: Upload SBOM artifact
         id: upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -81,16 +73,13 @@ jobs:
     outputs:
       artifact-id: ${{ steps.upload.outputs.artifact-id }}
       filename: ${{ steps.generate.outputs.filename }}
-
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Install vexctl
         env:
-          # renovate: datasource=github-releases depName=openvex/vexctl
           VEXCTL_VERSION: "0.2.6"
         run: GOBIN=/usr/local/bin go install github.com/openvex/vexctl@v${VEXCTL_VERSION}
-
       - name: Generate VEX document
         id: generate
         env:
@@ -100,22 +89,9 @@ jobs:
           PRODUCT_PURL="pkg:github/${REPO}@${TAG}"
           DOC_ID="https://github.com/${REPO}/releases/tag/${TAG}/vex"
           OUTFILE="release-${TAG}.openvex.json"
-
           if compgen -G ".vex/*.vex.json" > /dev/null 2>&1; then
-            # Triage files exist — merge them into a release-specific document.
-            # Each file under .vex/ is a single-statement OpenVEX document
-            # maintained by the security team. vexctl merge deduplicates and
-            # re-timestamps the combined document.
-            echo "Merging $(ls .vex/*.vex.json | wc -l) triage file(s) into ${OUTFILE}..."
-            vexctl merge \
-              --product "${PRODUCT_PURL}" \
-              --output "${OUTFILE}" \
-              .vex/*.vex.json
+            vexctl merge --product "${PRODUCT_PURL}" --output "${OUTFILE}" .vex/*.vex.json
           else
-            # No triage files yet. Create a minimal document that identifies
-            # the product at this release. Statements are added after release
-            # as CVEs are triaged; the next release will include them.
-            echo "No triage files found — creating skeleton document ${OUTFILE}..."
             python3 - <<PYEOF
           import json, datetime, os
           doc = {
@@ -132,11 +108,7 @@ jobs:
               f.write("\n")
           PYEOF
           fi
-
-          echo "Contents of ${OUTFILE}:"
-          cat "${OUTFILE}"
           echo "filename=${OUTFILE}" >> "$GITHUB_OUTPUT"
-
       - name: Upload VEX artifact
         id: upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -145,30 +117,231 @@ jobs:
           path: ${{ steps.generate.outputs.filename }}
           retention-days: 90
 
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: [build-docs, pre-release-scan, generate-sbom, generate-vex]
-    if: |
-      always() &&
-      needs.build-docs.result == 'success' &&
-      (needs.pre-release-scan.result  == 'success' || needs.pre-release-scan.result  == 'skipped') &&
-      (needs.generate-sbom.result     == 'success' || needs.generate-sbom.result     == 'skipped') &&
-      (needs.generate-vex.result      == 'success' || needs.generate-vex.result      == 'skipped')
+  build-images:
+    name: Build and push Docker images
+    needs: [pre-release-scan]
     runs-on: ubuntu-latest
-    environment: release
-
     permissions:
-      attestations: write # actions/attest-build-provenance
-      contents: write # gh-pages deploy + changelog commit + gh release upload
-      id-token: write # actions/attest-build-provenance (Sigstore OIDC)
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    outputs:
+      compose-artifact-id: ${{ steps.upload-compose.outputs.artifact-id }}
 
     steps:
-      - name: Download built docs
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate bake image targets
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - << 'EOF'
+          import yaml, json, os, sys
+
+          tag  = os.environ["TAG"]
+          repo = os.environ["REPO"]
+          reg  = "ghcr.io"
+
+          with open("compose.yaml") as f:
+              compose = yaml.safe_load(f)
+
+          targets = {}
+          for svc, cfg in compose.get("services", {}).items():
+              if "build" not in cfg or svc not in ["redis-init", "redis", "backend", "frontend", "sandbox"]:
+                  continue
+              base = f"{reg}/{repo}/{svc}"
+              targets[svc] = {
+                  context: ".",
+                  dockerfile: f"docker/Dockerfile.{svc}",
+                  "tags": [
+                      f"{base}:{tag}",
+                      f"{base}:latest",
+                  ]
+              }
+              if svc in ["frontend", "backend"]:
+                  targets[svc]["target"] = "prod"
+              if svc == "docs-compiler":
+                  targets[svc]["args"] = {
+                    "SPHINX_RELEASE_BUILD": True
+                  }
+
+          if not targets:
+              print("No services with build: context found — nothing to push.", file=sys.stderr)
+              sys.exit(1)
+
+          with open("bake-images.json", "w") as f:
+              json.dump({"target": targets}, f, indent=2)
+
+          print(json.dumps({"target": targets}, indent=2))
+          EOF
+
+      - name: Extract metadata (labels + additional tags)
+        id: meta
+        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=sha-
+
+      - name: Build and push (bake)
+        id: bake
+        uses: docker/bake-action@6614cfa25eff9a0b2b2697efb0b6159e7680d584 # v7.2.0
+        with:
+          files: |
+            ./compose.yaml
+            ./bake-images.json
+            ${{ steps.meta.outputs.bake-file }}
+          push: true
+          set: |
+            *.platform=linux/amd64,linux/arm64
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+
+      - name: Get manifest digest
+        id: digest
+        run: |
+          echo "digest=$(docker buildx imagetools inspect \
+            ghcr.io/${{ github.repository }}/your-service:${{ github.ref_name }} \
+            --format '{{json .Manifest.Digest}}')" >> $GITHUB_OUTPUT
+
+      # One block per service that has a build: context in compose.yaml.
+      # Attestation is pushed into the registry alongside the image layers.
+      # Duplicate and rename these steps to match your actual service names.
+      - name: Attest redis-init image
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-name: ghcr.io/${{ github.repository }}/redis-init
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest redis image
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-name: ghcr.io/${{ github.repository }}/redis
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest backend image
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-name: ghcr.io/${{ github.repository }}/backend
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest frontend image
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-name: ghcr.io/${{ github.repository }}/frontend
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest sandbox image
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-name: ghcr.io/${{ github.repository }}/sandbox
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          push-to-registry: true
+
+      - name: Generate release compose
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - << 'EOF'
+          import yaml, json, os
+
+          tag  = os.environ["TAG"]
+          repo = os.environ["REPO"]
+          reg  = "ghcr.io"
+
+          with open("compose.yaml") as f:
+              compose = yaml.safe_load(f)
+
+          with open("bake-images.json") as f:
+              built = set(json.load(f)["target"].keys())
+
+          for svc, cfg in compose.get("services", {}).items():
+              if svc in built:
+                  cfg["image"] = f"{reg}/{repo}/{svc}:{tag}"
+                  cfg.pop("build", None)
+
+          with open("compose.release.yaml", "w") as f:
+              yaml.dump(compose, f, default_flow_style=False, sort_keys=False)
+
+          print("compose.release.yaml written.")
+          EOF
+
+      - name: Upload compose artifact
+        id: upload-compose
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: compose-${{ github.ref_name }}
+          path: compose.release.yaml
+          retention-days: 90
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs:
+      - build-docs
+      - build-release-docs
+      - build-images
+      - pre-release-scan
+      - generate-sbom
+      - generate-vex
+    if: |
+      always() &&
+      needs.build-docs.result        == 'success' &&
+      needs.build-release-docs.result == 'success' &&
+      needs.build-images.result       == 'success' &&
+      (needs.pre-release-scan.result == 'success' || needs.pre-release-scan.result == 'skipped') &&
+      (needs.generate-sbom.result    == 'success' || needs.generate-sbom.result    == 'skipped') &&
+      (needs.generate-vex.result     == 'success' || needs.generate-vex.result     == 'skipped')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Download built docs (full — for Pages)
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           artifact-ids: ${{ needs.build-docs.outputs.artifact-id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: ./dist
+
+      - name: Download release docs (truncated — for release attachment)
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build-release-docs.outputs.artifact-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./dist-release
+
+      - name: Download release compose
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.build-images.outputs.compose-artifact-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./compose-release
 
       - name: Download SBOM
         if: needs.generate-sbom.result == 'success'
@@ -197,7 +370,6 @@ jobs:
             cp -r ./dist/badges/. ./publish/$REF_NAME/badges/
           fi
           mv ./dist/versions.json ./publish/versions.json
-
           cat > ./publish/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
@@ -211,6 +383,13 @@ jobs:
           </body>
           </html>
           EOF
+
+      - name: Package release docs
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd ./dist-release/_site
+          zip -r "../../docs-${TAG}.zip" .
 
       - name: Attest docs artifact
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
@@ -237,7 +416,7 @@ jobs:
           publish_dir: ./publish
           keep_files: true
 
-      - name: Attach SBOM and VEX to release
+      - name: Attach release assets
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -249,12 +428,17 @@ jobs:
               "./sbom/sbom.cyclonedx.json#SBOM (CycloneDX JSON)" \
               --clobber
           fi
-
           if [ -n "$VEX_FILENAME" ] && [ -f "./vex/${VEX_FILENAME}" ]; then
             gh release upload "$TAG" \
               "./vex/${VEX_FILENAME}#Security advisories (OpenVEX)" \
               --clobber
           fi
+          gh release upload "$TAG" \
+            "./compose-release/compose.release.yaml#Docker Compose (release)" \
+            --clobber
+          gh release upload "$TAG" \
+            "./docs-${TAG}.zip#Documentation (offline)" \
+            --clobber
 
       - name: Generate app token for changelog commit
         id: app-token
@@ -293,7 +477,6 @@ jobs:
           git config user.name  "$APP_SLUG[bot]"
           git config user.email "$APP_SLUG[bot]@users.noreply.github.com"
           git add CHANGELOG.md
-          # Exit cleanly if nothing changed (e.g. empty release body)
           git diff --cached --quiet && exit 0
           git commit -m "chore: update changelog for ${TAG}"
           git push
