@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+import pandas as pd
+
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -220,6 +222,28 @@ class BatchFailure:
 #: failure.  Used as the element type of the failures list returned by
 #: :meth:`~HealthDataImporter._load` and stored on the importer instance.
 UploadFailure = RowFailure | BatchFailure
+
+
+def count_failures(failures: list[UploadFailure], df: pd.DataFrame) -> int:
+    """Count the number of failed data rows.
+
+    Args:
+        failures: List of :class:`UploadFailure` instances.
+        df: Pandas DataFrame of input data.
+
+    Returns:
+        Total number of data rows that failed to upload.
+
+    """
+    n = 0
+    for f in failures:
+        if isinstance(f, RowFailure):
+            n += 1
+        elif isinstance(f, BatchFailure):
+            n += df["type"].value_counts()[f.data_type]
+        else:
+            raise TypeError(f"Unknown failure type {f!r}.")
+    return n
 
 
 # ---------------------------------------------------------------------------

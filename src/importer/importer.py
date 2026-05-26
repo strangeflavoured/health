@@ -33,6 +33,7 @@ from .response import (
     DuplicatePolicy,
     RowFailure,
     UploadFailure,
+    count_failures,
     failures_from_json,
     failures_to_json,
 )
@@ -166,7 +167,7 @@ class HealthDataImporter:
             logger.warning(
                 "%s.etl incomplete: %d of %d datapoints failed to upload.",
                 self.__class__,
-                len(self.failures),
+                count_failures(self.failures, df),
                 len(df),
             )
 
@@ -245,15 +246,15 @@ class HealthDataImporter:
         retry_df = df[df["type"].isin(type_selectors) | df.index.isin(row_selectors)]
 
         r = self.connection
-        n_before = len(self.failures)
+        n_before = count_failures(self.failures, df)
         self.failures = _load(df=retry_df, r=r, duplicate_policy=DuplicatePolicy.FIRST)
 
-        n_resolved = n_before - len(self.failures)
+        n_after = count_failures(self.failures, df)
         logger.info(
             "retry_failed complete: %d/%d failure(s) resolved, %d remaining.",
-            n_resolved,
+            n_before - n_after,
             n_before,
-            len(self.failures),
+            n_after,
         )
 
         if persist_failures:
@@ -303,7 +304,7 @@ class HealthDataImporter:
             logger.warning(
                 "%s.update incomplete: %d of %d datapoints failed to upload.",
                 self.__class__,
-                len(self.failures),
+                count_failures(self.failures, df),
                 len(df),
             )
 
@@ -466,8 +467,8 @@ def _load(
     failures: list[UploadFailure] = []
 
     for data_type in df["type"].unique():
-        logger.info("Uploading batch for type: %s", data_type)
         batch_df = df[df["type"] == data_type]
+        logger.info("Uploading %i rows for type: %s", len(batch_df), data_type)
 
         try:
             row_failures = upload_batch(

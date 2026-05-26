@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+import pandas as pd
 import pytest
 
 from src.importer.response import (
@@ -11,6 +12,7 @@ from src.importer.response import (
     DuplicatePolicy,
     RowFailure,
     UploadFailure,
+    count_failures,
     failures_from_json,
     failures_to_json,
 )
@@ -129,6 +131,28 @@ class TestBatchFailure:
         f = BatchFailure(data_type="HR", error="Fehler: Verbindung getrennt 🔌")
         d = f.to_dict()
         assert "🔌" in d["error"]
+
+
+class TestCountFailures:
+    df = pd.DataFrame({"type": ["a", "b", "c", "a", "a"]})
+
+    def test_handles_empty(self):
+        failures = []
+        n = count_failures(failures, self.df)
+        assert n == 0
+
+    def test_counts_correctly(self):
+        failures = [
+            RowFailure("c", 2, "something", None),
+            BatchFailure("a", "something"),
+        ]
+        n = count_failures(failures, self.df)
+        assert n == 4
+
+    def test_raises_type_error_on_wrong_input_types(self):
+        failures = [object]
+        with pytest.raises(TypeError, match="Unknown failure type"):
+            count_failures(failures, self.df)
 
 
 # ---------------------------------------------------------------------------
