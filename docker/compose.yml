@@ -95,7 +95,6 @@ services:
       REDIS_ARGS: >-
         --tls-port 6380
         --port 0
-        --tls-protocols "TLSv1.2 TLSv1.3"
         --tls-auth-clients yes
         --tls-ca-cert-file /run/secrets/ca.pem
         --tls-cert-file /run/secrets/server.pem
