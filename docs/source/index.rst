@@ -27,6 +27,7 @@ HealthAnalyser Documentation
    Dev tools <dev-tools>
    Dev workflow <dev-workflow>
    Pass secrets <pass-secrets>
+   Creating a Release <cutting-a-release>
 
 .. toctree::
    :hidden:
