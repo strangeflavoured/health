@@ -23,6 +23,7 @@ When a security vulnerability is confirmed and a fix is released, a GitHub Secur
 will be published at https://github.com/strangeflavoured/health/security/advisories.
 The advisory will include a CVE if applicable and a description of the vulnerability,
 affected versions, and fix.
+Reporters will be credited in the published advisory unless they request otherwise.
 
 ## Scope
 
