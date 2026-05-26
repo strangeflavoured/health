@@ -468,40 +468,50 @@ def _load(
 
     for data_type in df["type"].unique():
         batch_df = df[df["type"] == data_type]
-        logger.info("Uploading %i rows for type: %s", len(batch_df), data_type)
+        n = len(batch_df)
+        logger.info("Uploading %i rows for type: %s", n, data_type)
 
-        try:
-            row_failures = upload_batch(
-                rts,
-                batch_df,
-                duplicate_policy=duplicate_policy,
-            )
+        # batches of 500
+        step = 500
+        for i in range(0, n, step):
+            j = i + step
+            if j > n:
+                j = n
 
-            if row_failures:
-                logger.warning(
-                    "Type %s batch: %d/%d row(s) failed.",
-                    data_type,
-                    len(row_failures),
-                    len(batch_df),
+            _df = batch_df.iloc[i:j]
+
+            try:
+                row_failures = upload_batch(
+                    rts,
+                    _df,
+                    duplicate_policy=duplicate_policy,
                 )
 
-                failures.extend(row_failures)
-        except IndexError as exc:
-            batch_failure = BatchFailure(data_type=data_type, error=str(exc))
-            logger.exception(
-                "Could not resolve failures for type '%s': %s",
-                data_type,
-                batch_failure,
-            )
-            failures.append(batch_failure)
+                if row_failures:
+                    logger.warning(
+                        "Type %s batch: %d/%d row(s) failed.",
+                        data_type,
+                        len(row_failures),
+                        len(_df),
+                    )
+                    failures.extend(row_failures)
 
-        except redis.RedisError as exc:
-            batch_failure = BatchFailure(data_type=data_type, error=str(exc))
-            logger.exception(
-                "Entire batch for type '%s' failed: %s",
-                data_type,
-                batch_failure,
-            )
-            failures.append(batch_failure)
+            except IndexError as exc:
+                batch_failure = BatchFailure(data_type=data_type, error=str(exc))
+                logger.exception(
+                    "Could not resolve failures for type '%s': %s",
+                    data_type,
+                    batch_failure,
+                )
+                failures.append(batch_failure)
+
+            except redis.RedisError as exc:
+                batch_failure = BatchFailure(data_type=data_type, error=str(exc))
+                logger.exception(
+                    "Entire batch for type '%s' failed: %s",
+                    data_type,
+                    batch_failure,
+                )
+                failures.append(batch_failure)
 
     return failures
