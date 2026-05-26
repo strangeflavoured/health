@@ -29,6 +29,7 @@ from redis.commands.timeseries import TimeSeries
 from .parser import parse_apple_health
 from .pipeline import upload_batch
 from .response import (
+    BATCH_SIZE,
     BatchFailure,
     DuplicatePolicy,
     RowFailure,
@@ -234,16 +235,17 @@ class HealthDataImporter:
         df = self._extract(write_feather=False, no_cache=False)
         transform(df)
 
-        type_selectors: list[str] = []
         row_selectors: list = []
         for f in self.failures:
             match f:
-                case BatchFailure(data_type=t):
-                    type_selectors.append(t)
+                case BatchFailure(data_type=t, batch_nr=n):
+                    row_selectors.extend(
+                        df[df["type"] == t].index[n * BATCH_SIZE : (n + 1) * BATCH_SIZE]
+                    )
                 case RowFailure(row_index=i):
                     row_selectors.append(i)
 
-        retry_df = df[df["type"].isin(type_selectors) | df.index.isin(row_selectors)]
+        retry_df = df[df.index.isin(row_selectors)]
 
         r = self.connection
         n_before = count_failures(self.failures, df)
@@ -438,8 +440,8 @@ def _load(
     """Batch-upload all records to Redis TimeSeries.
 
     Each unique ``type`` is uploaded in its own pipeline transaction
-    so that a failure in one type does not abort the others. Returns
-    a list of ``UploadFailure`` objects.
+    in a batch size of 500, so that a failure in one type does not
+    abort the others. Returns a list of ``UploadFailure`` objects.
 
     Args:
         df: Transformed health records.
@@ -471,10 +473,10 @@ def _load(
         n = len(batch_df)
         logger.info("Uploading %i rows for type: %s", n, data_type)
 
-        # batches of 500
-        step = 500
-        for i in range(0, n, step):
-            j = i + step
+        # upload in batches of BATCH_SIZE
+        for i in range(0, n, BATCH_SIZE):
+            logger.info("Batch %i of %i", i // BATCH_SIZE + 1, n // BATCH_SIZE + 1)
+            j = i + BATCH_SIZE
             if j > n:
                 j = n
 
@@ -497,7 +499,9 @@ def _load(
                     failures.extend(row_failures)
 
             except IndexError as exc:
-                batch_failure = BatchFailure(data_type=data_type, error=str(exc))
+                batch_failure = BatchFailure(
+                    data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
+                )
                 logger.exception(
                     "Could not resolve failures for type '%s': %s",
                     data_type,
@@ -506,7 +510,9 @@ def _load(
                 failures.append(batch_failure)
 
             except redis.RedisError as exc:
-                batch_failure = BatchFailure(data_type=data_type, error=str(exc))
+                batch_failure = BatchFailure(
+                    data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
+                )
                 logger.exception(
                     "Entire batch for type '%s' failed: %s",
                     data_type,

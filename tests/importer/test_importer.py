@@ -139,7 +139,7 @@ class TestFailuresFile:
     def test_write_and_read_roundtrip(self, importer):
         failures = [
             RowFailure("HR", 0, start_error="dup"),
-            BatchFailure("Steps", "err"),
+            BatchFailure("Steps", 0, "err"),
         ]
         importer._write_failures_file(failures)
         restored = importer._read_failures_file()
@@ -158,7 +158,7 @@ class TestFailuresFile:
         importer._delete_failures_file()
 
     def test_update_failures_file_writes_when_failures_exist(self, importer):
-        importer.failures = [BatchFailure("HR", "err")]
+        importer.failures = [BatchFailure("HR", 0, "err")]
         importer._update_failures_file()
         assert importer.failures_file.exists()
 
@@ -273,7 +273,7 @@ class TestLoad:
         m.assert_called_once()
 
     def test_read_failures_file_returns_correct_types(self, importer):
-        failures = [RowFailure("HR", 5, start_error="e"), BatchFailure("Steps", "t")]
+        failures = [RowFailure("HR", 5, start_error="e"), BatchFailure("Steps", 0, "t")]
         importer._write_failures_file(failures)
         restored = importer._read_failures_file()
         assert isinstance(restored[0], RowFailure)
@@ -321,7 +321,7 @@ class TestEtl:
 
     def test_etl_stores_failures(self, importer):
         df = _make_transformed_df()
-        failures = [BatchFailure("HR", "err")]
+        failures = [BatchFailure("HR", 0, "err")]
         with (
             patch.object(importer, "_extract", return_value=df),
             patch("src.importer.importer.transform"),
@@ -400,7 +400,7 @@ class TestUpdate:
 
     def test_update_stores_failures(self, importer):
         df = _make_transformed_df()
-        failures = [BatchFailure("HR", "err")]
+        failures = [BatchFailure("HR", 0, "err")]
         with (
             patch.object(importer, "_extract", return_value=df),
             patch("src.importer.importer.transform"),
@@ -469,7 +469,7 @@ class TestRetryFailed:
 
     def test_retry_batch_failures_whole_type_loaded(self, importer):
         df = _make_transformed_df(type_val="HR", n=3)
-        self._write_failures(importer, [BatchFailure("HR", "conn lost")])
+        self._write_failures(importer, [BatchFailure("HR", 0, "conn lost")])
         with (
             patch.object(importer, "_extract", return_value=df),
             patch("src.importer.importer.transform"),

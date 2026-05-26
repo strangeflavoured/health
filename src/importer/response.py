@@ -157,6 +157,7 @@ class BatchFailure:
     Attributes:
         data_type: The ``data_type`` column value for this batch, e.g.
             ``"HKQuantityTypeIdentifierHeartRate"``.
+        batch_nr: The number of the batch of the data_type that failed.
         error: Human-readable message from the
             :class:`~redis.exceptions.RedisError` that was raised.
 
@@ -168,6 +169,7 @@ class BatchFailure:
     """
 
     data_type: str
+    batch_nr: int
     error: str
 
     def __str__(self) -> str:
@@ -177,23 +179,29 @@ class BatchFailure:
              String in the form BatchFailure(data_type=..., errors=[...]).
 
         """
-        return f"BatchFailure(data_type={self.data_type!r}, error={self.error!r})"
+        return (
+            f"BatchFailure(data_type={self.data_type!r}, "
+            f"batch_nr={self.batch_nr!r}, "
+            f"error={self.error!r})"
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a JSON-compatible dictionary.
 
         Returns:
-            A plain ``dict`` with keys ``kind``, ``data_type``, and ``error``.
+            A plain ``dict`` with keys ``kind``, ``data_type``,
+            ``batch_nr``, and ``error``.
 
         Example::
 
             BatchFailure("HR", "timeout").to_dict()
-            # → {"kind": "batch", "data_type": "HR", "error": "timeout"}
+            # → {"kind": "batch", "data_type": "HR", "batch_nr: 2, "error": "timeout"}
 
         """
         return {
             "kind": "batch",
             "data_type": self.data_type,
+            "batch_nr": self.batch_nr,
             "error": self.error,
         }
 
@@ -202,18 +210,20 @@ class BatchFailure:
         """Deserialise from a dictionary produced by :meth:`to_dict`.
 
         Args:
-            d: Dictionary with ``data_type`` and ``error`` keys.
+            d: Dictionary with ``data_type``, ``batch_nr`` and ``error`` keys.
 
         Returns:
             A :class:`BatchFailure` instance.
 
         Example::
 
-            BatchFailure.from_dict({"data_type": "HR", "error": "timeout"})
+            BatchFailure.from_dict({"data_type": "HR", "batch_nr": 2,
+                "error": "timeout"})
 
         """
         return cls(
             data_type=d["data_type"],
+            batch_nr=d["batch_nr"],
             error=d["error"],
         )
 
@@ -222,6 +232,9 @@ class BatchFailure:
 #: failure.  Used as the element type of the failures list returned by
 #: :meth:`~HealthDataImporter._load` and stored on the importer instance.
 UploadFailure = RowFailure | BatchFailure
+
+# batch size of redis uploads
+BATCH_SIZE = 500
 
 
 def count_failures(failures: list[UploadFailure], df: pd.DataFrame) -> int:
@@ -240,7 +253,11 @@ def count_failures(failures: list[UploadFailure], df: pd.DataFrame) -> int:
         if isinstance(f, RowFailure):
             n += 1
         elif isinstance(f, BatchFailure):
-            n += df["type"].value_counts()[f.data_type]
+            n += len(
+                df[df["type"] == f.data_type].index[
+                    f.batch_nr * BATCH_SIZE : (f.batch_nr + 1) * BATCH_SIZE
+                ]
+            )
         else:
             raise TypeError(f"Unknown failure type {f!r}.")
     return n

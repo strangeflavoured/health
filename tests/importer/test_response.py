@@ -105,30 +105,35 @@ class TestRowFailure:
 
 class TestBatchFailure:
     def test_str_output(self):
-        f = BatchFailure(data_type="HR", error="Connection reset")
+        f = BatchFailure(data_type="HR", batch_nr=1, error="Connection reset")
         s = str(f)
         assert "HR" in s
+        assert "1" in s
         assert "Connection reset" in s
 
     def test_to_dict_structure(self):
-        f = BatchFailure(data_type="Steps", error="timeout")
+        f = BatchFailure(data_type="Steps", batch_nr=3, error="timeout")
         d = f.to_dict()
         assert d["kind"] == "batch"
         assert d["data_type"] == "Steps"
+        assert d["batch_nr"] == 3
         assert d["error"] == "timeout"
 
     def test_from_dict_roundtrip(self):
-        original = BatchFailure(data_type="Calories", error="auth failed")
+        original = BatchFailure(data_type="Calories", batch_nr=0, error="auth failed")
         restored = BatchFailure.from_dict(original.to_dict())
         assert restored.data_type == original.data_type
+        assert restored.batch_nr == original.batch_nr
         assert restored.error == original.error
 
     def test_empty_error_string(self):
-        f = BatchFailure(data_type="HR", error="")
+        f = BatchFailure(data_type="HR", batch_nr=0, error="")
         assert f.error == ""
 
     def test_unicode_in_error(self):
-        f = BatchFailure(data_type="HR", error="Fehler: Verbindung getrennt 🔌")
+        f = BatchFailure(
+            data_type="HR", batch_nr=111, error="Fehler: Verbindung getrennt 🔌"
+        )
         d = f.to_dict()
         assert "🔌" in d["error"]
 
@@ -144,7 +149,7 @@ class TestCountFailures:
     def test_counts_correctly(self):
         failures = [
             RowFailure("c", 2, "something", None),
-            BatchFailure("a", "something"),
+            BatchFailure("a", 0, "something"),
         ]
         n = count_failures(failures, self.df)
         assert n == 4
@@ -164,7 +169,7 @@ class TestFailuresJson:
     def _sample_failures(self) -> list[UploadFailure]:
         return [
             RowFailure("HR", 0, start_error="dup"),
-            BatchFailure("Steps", "timeout"),
+            BatchFailure("Steps", 0, "timeout"),
             RowFailure("Weight", 99, end_error="overflow"),
         ]
 
@@ -213,7 +218,7 @@ class TestFailuresJson:
         assert restored[9999].row_index == 9999
 
     def test_pretty_printed_output(self):
-        text = failures_to_json([BatchFailure("HR", "err")])
+        text = failures_to_json([BatchFailure("HR", 3, "err")])
         assert "\n" in text
 
     def test_invalid_json_raises(self):
@@ -246,11 +251,11 @@ class TestFailuresJson:
             failures_to_json([f])
 
     def test_batch_failure_to_dict_return_type(self):
-        assert isinstance(BatchFailure("HR", "e").to_dict(), dict)
+        assert isinstance(BatchFailure("HR", 7, "e").to_dict(), dict)
 
     def test_from_dict_missing_error_raises(self):
         with pytest.raises(KeyError):
-            BatchFailure.from_dict({"data_type": "HR"})
+            BatchFailure.from_dict({"data_type": "HR", "batch_nr": 3})
 
     def test_output_is_str(self):
         assert isinstance(failures_to_json(self._sample_failures()), str)
@@ -261,7 +266,7 @@ class TestFailuresJson:
         )
 
     def test_pretty_printed_output_uses_indent_2(self):
-        text = failures_to_json([BatchFailure("HR", "err")])
+        text = failures_to_json([BatchFailure("HR", 1, "err")])
         assert "  " in text
 
     def test_non_dict_entry_raises(self):
