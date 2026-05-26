@@ -12,6 +12,9 @@ project:
     - name: github:strangeflavoured
       primary: true
 
+  documentation:
+    signature-verification: https://github.com/strangeflavoured/health/blob/main/SECURITY.md#verifying-releases
+
   repositories:
     - name: Health Analyser
       comment: Primary repository
@@ -19,7 +22,7 @@ project:
 
   vulnerability-reporting:
     bug-bounty-available: false
-    policy: https://github.com/strangeflavoured/health/blob/main/SECURITY.md
+    policy: https://github.com/strangeflavoured/health/blob/main/SECURITY.md#reporting-a-vulnerability
     reports-accepted: true
 
 repository:
