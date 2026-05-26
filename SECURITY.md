@@ -41,12 +41,7 @@ project), and the development-only local setup with mock credentials.
 ## Verifying releases
 
 Releases are produced by the workflow https://github.com/strangeflavoured/health/blob/main/.github/workflows/release.yml
-and signed via actions/attest-build-provenance (Sigstore), verifiable with gh attestation verify.
-Each release publishes SHA-256 checksums in `checksums.sha256`. Verify with:
-
-```sh
-sha256sum -c checksums.sha256
-```
+and signed via actions/attest-build-provenance (Sigstore), verifiable with `gh attestation verify`.
 
 ## Support policy
 
