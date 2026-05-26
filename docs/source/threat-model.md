@@ -67,3 +67,57 @@ out of scope rather than assumed-secure.
 | No end-user authentication yet        | Medium     | High     | Restrict exposure to localhost/Tailscale; documented as out-of-scope until added | Accepted  |
 | Loss of the GPG key                   | Low        | Critical | Offline encrypted backup of the private key (see pass-secrets)                   | Mitigated |
 | Host compromise exposes tmpfs secrets | Low        | High     | Single-user trusted host; tmpfs wiped on `down`/reboot                           | Accepted  |
+
+## Assurance Case
+
+This section presents the project's assurance case: an explicit, top-level
+argument for why HealthAnalyser is adequately secure for its intended use,
+together with the evidence that supports it. It complements the threat analysis
+above by stating the overarching claim and showing how the individual
+mitigations combine to support it.
+
+### Top-level claim
+
+> Under the stated trust assumptions — a single user operating on a trusted host
+> or private network — HealthAnalyser adequately protects locally stored
+> personal health information (PHI) against unauthorised disclosure, tampering,
+> and supply-chain compromise.
+
+The claim is deliberately scoped. It does **not** assert security for a
+multi-tenant or internet-exposed deployment; that configuration is out of scope
+(see [Scope](#scope) and [Out of scope](#out-of-scope)) and would require
+end-user authentication that the project does not yet implement.
+
+### Supporting arguments and evidence
+
+The top-level claim is decomposed into sub-claims, each backed by a specific
+control and its evidence.
+
+| Sub-claim                                   | Argument                                                                                                                                                                   | Evidence                                                                                               |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| PHI is not disclosed in transit             | All access to the storage layer is over mutual TLS; the non-TLS port is disabled and the `default` Redis user is disabled.                                                 | [Security: Transport security and access control](security.md); Redis mTLS configuration in `docker/`. |
+| PHI access is least-privilege               | Redis ACL users are scoped to minimal command sets over the `HK*` keyspace; credentials are hashed, never stored in plaintext.                                             | [Security: Transport security and access control](security.md); ACL generation in the compose wrapper. |
+| Secrets do not persist or leak              | Local secrets live only in a GPG-backed `pass` store and are materialised to a `0700` tmpfs mounted read-only into containers; never passed via environment variables.     | [Security: Secrets handling](security.md); [Secrets Management with `pass`](pass-secrets.md).          |
+| Malicious input cannot subvert ingest       | Apple Health exports are parsed with `defusedxml` (XXE-resistant) and validated for size and structure before any write.                                                   | [Attack surface](#attack-surface) table; `data_check` and `parser` in `src/`.                          |
+| Dependencies are not a silent attack vector | Requirements are hash-pinned and installed with `--require-hashes`; Actions and base images are pinned by SHA/digest; CodeQL, OSV-Scanner, and Scorecard run continuously. | [Security: Supply-chain assurance](security.md); [CI/CD Workflows](ci-cd.md).                          |
+| Releases are attributable and verifiable    | Release tags are signed (annotated) and release artifacts carry Sigstore build-provenance attestations.                                                                    | [Cutting a release](cutting-a-release.md); `release.yml`.                                              |
+| The development pipeline cannot be hijacked | `GITHUB_TOKEN` is read-only with minimal per-job escalation; forked PRs cannot read secrets; Allstar guards dangerous workflow patterns.                                   | [Security: Repository hardening](security.md); [CI/CD Workflows](ci-cd.md).                            |
+
+### Accepted residual risks
+
+The assurance case is bounded by the risks accepted in
+[Known risks and accepted mitigations](#known-risks-and-accepted-mitigations).
+The most significant are the absence of end-user authentication (mitigated by
+restricting exposure to localhost/Tailscale and documenting it as out of scope)
+and the single-maintainer bus factor (mitigated by an offline-encrypted backup
+of the GPG key). These are conscious trade-offs appropriate to a single-user
+personal project, not unaddressed gaps.
+
+### Confidence and limitations
+
+This is a self-assessed assurance case maintained by the sole maintainer; it has
+not been independently audited. Its validity is contingent on the trust
+assumptions holding — in particular, that the host machine and the maintainer's
+GPG key remain uncompromised. Should the project's scope expand toward
+multi-user or public deployment, this assurance case must be revisited before
+the top-level claim can be relied upon.
