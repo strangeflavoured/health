@@ -39,6 +39,7 @@ repository:
   documentation:
     contributing-guide: https://github.com/strangeflavoured/health/blob/main/CONTRIBUTING.md
     security-policy: https://github.com/strangeflavoured/health/blob/main/SECURITY.md
+    dependency-management-policy: https://github.com/strangeflavoured/health/blob/main/CONTRIBUTING.md
 
   license:
     url: https://github.com/strangeflavoured/health/blob/main/LICENSE
