@@ -80,7 +80,7 @@ def _add_row_to_pipeline(
         pipe.execute(raise_on_error=False)
 
     """
-    labels = {"sourceName": row.sourceName, "unit": row.unit}
+    labels = {"sourceName": row.sourceName, "unit": row.unit, "identifier": row.type}
     common: dict[str, Any] = {
         "labels": labels,
         "duplicate_policy": duplicate_policy.value,
