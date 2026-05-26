@@ -13,6 +13,7 @@ HealthAnalyser Documentation
 
    changelog
    contributing
+   code-of-conduct
    maintainers
 
 .. toctree::
