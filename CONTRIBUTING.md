@@ -25,8 +25,9 @@ an issue before starting significant new work so we can discuss fit.
 
 ## Code of Conduct
 
-Be respectful. Contributions that are hostile, dismissive, or otherwise
-unpleasant will not be accepted.
+This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md) adapted from the
+Contributor Covenant. By participating, you are expected to uphold it. Report
+unacceptable behaviour as described in that document.
 
 ---
 
