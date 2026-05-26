@@ -176,7 +176,7 @@ services:
       resources:
         limits:
           cpus: "1.0"
-          memory: 4G
+          memory: 6G
         reservations:
           cpus: "0.10"
           memory: 64M
