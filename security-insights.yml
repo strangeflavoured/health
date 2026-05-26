@@ -51,6 +51,11 @@ repository:
     distribution-points:
       - uri: https://github.com/strangeflavoured/health/releases
         comment: GitHub Releases
+    attestations:
+      - name: Build provenance
+        predicate-uri: https://slsa.dev/provenance/v1
+        location: https://github.com/strangeflavoured/health/releases
+        comment: SLSA provenance generated via actions/attest-build-provenance on each release.
 
   security:
     assessments:
