@@ -14,6 +14,7 @@ HealthAnalyser Documentation
    changelog
    contributing
    code-of-conduct
+   roadmap
    maintainers
 
 .. toctree::
