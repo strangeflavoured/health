@@ -28,8 +28,8 @@ def docker_redis_connect(acl_user: str = "app") -> redis.Redis:
 
     mtls_kwargs = {
         "ssl": True,
-        "ssl_certfile": f"/run/secrets/{acl_user}.pem",
-        "ssl_keyfile": f"/run/secrets/{acl_user}.key",
+        "ssl_certfile": "/run/secrets/app.pem",
+        "ssl_keyfile": "/run/secrets/app.key",
         "ssl_ca_certs": "/run/secrets/ca.pem",
         "ssl_check_hostname": True,
         "ssl_cert_reqs": ssl_module.CERT_REQUIRED,
