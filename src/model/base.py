@@ -80,7 +80,7 @@ class BodyMeasurements(HKGroup):  # noqa: D101
 
 
 class Fitness(HKGroup):  # noqa: D101
-    group = "body_measurements"
+    group = "fitness"
 
 
 class ReproductiveHealth(HKGroup):  # noqa: D101
