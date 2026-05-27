@@ -14,7 +14,7 @@ import logging
 import pandas as pd
 
 from ..model import CATEGORICAL_IDENTIFIER_MAPS
-from ..model.base import MissingUnit
+from ..model.base import HKGroup, MissingUnit
 from .data_check import KNOWN_CATEGORY_TYPE_VIOLATIONS, check_export_data
 
 logger = logging.getLogger(__name__)
@@ -57,6 +57,7 @@ def transform(df: pd.DataFrame) -> None:
     df["value"] = df["value"].astype("float64")
     df["startDate"] = _timestamps_to_unix(df["startDate"])
     df["endDate"] = _timestamps_to_unix(df["endDate"])
+    df["group"] = df["type"].map(HKGroup.map_members())
 
 
 def _drop_null_values(df: pd.DataFrame) -> None:

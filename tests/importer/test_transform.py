@@ -428,3 +428,21 @@ class TestTransform:
         transform(df)
         assert "creationDate" in df.columns
         pd.testing.assert_series_equal(df["creationDate"], original_creationDate)
+
+    def test_transform_colums(self):
+        df = self._make_full_df()
+        transform(df)
+
+        expected = {
+            "creationDate",
+            "device",
+            "endDate",
+            "group",
+            "sourceName",
+            "sourceVersion",
+            "startDate",
+            "type",
+            "unit",
+            "value",
+        }
+        assert expected == set(df.columns)
