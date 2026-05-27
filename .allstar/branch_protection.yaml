@@ -3,8 +3,11 @@ optConfig:
 action: issue
 enforceDefault: true
 requireApproval: true
+requireApprovalCount: 1
 blockForce: true
 enforceOnAdmins: true
+dismissStaleReviews: false
+requireUpToDateBranch: true
 requireSignedCommits: true
 requireStatusChecks:
   - context: "CodeQL Advanced / Analyze (actions)"
