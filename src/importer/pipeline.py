@@ -80,14 +80,27 @@ def _add_row_to_pipeline(
         pipe.execute(raise_on_error=False)
 
     """
-    labels = {"sourceName": row.sourceName, "unit": row.unit, "identifier": row.type}
     common: dict[str, Any] = {
-        "labels": labels,
         "duplicate_policy": duplicate_policy.value,
         "value": row.value,
     }
-    pipe.add(key=f"{row.type}:start", timestamp=row.startDate, **common)
-    pipe.add(key=f"{row.type}:end", timestamp=row.endDate, **common)
+
+    labels = {"sourceName": row.sourceName, "unit": row.unit, "identifier": row.type}
+    start_labels = labels | {"start": "true"}
+    end_labels = labels | {"end": "true"}
+
+    pipe.add(
+        key=f"{row.type}:start",
+        timestamp=row.startDate,
+        labels=start_labels,
+        **common,
+    )
+    pipe.add(
+        key=f"{row.type}:end",
+        timestamp=row.endDate,
+        labels=end_labels,
+        **common,
+    )
 
 
 def _resolve_failures(
