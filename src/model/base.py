@@ -5,7 +5,7 @@ Provides HK_GROUPS registry to public API .
 
 from enum import Enum
 from types import MappingProxyType
-from typing import Any
+from typing import Any, Self
 
 # ---------------------------------------------------------------------------
 # Sentinel
@@ -74,6 +74,23 @@ class HKMiscTypeIdentifier(HKIdentifier):
 class HKGroup:  # noqa: D101
     group: str
 
+    @classmethod
+    def get_members(cls) -> list[type[Self]]:
+        """Return subclasses of this class."""
+        return cls.__subclasses__()
+
+    @classmethod
+    def map_members(cls) -> dict[str, str]:
+        """Return a mapping of subclasses names of this class to their group."""
+        if hasattr(cls, "group"):
+            return {member.__name__: cls.group for member in cls.get_members()}
+        else:
+            return {
+                name: group
+                for member in cls.get_members()
+                for name, group in member.map_members().items()
+            }
+
 
 class BodyMeasurements(HKGroup):  # noqa: D101
     group = "body_measurements"
@@ -132,7 +149,7 @@ class Other(HKGroup):  # noqa: D101
 # ---------------------------------------------------------------------------
 
 HK_GROUPS: MappingProxyType[str, Any] = MappingProxyType(
-    {group.__name__: group for group in HKGroup.__subclasses__()}
+    {group.__name__: group for group in HKGroup.get_members()}
 )
 
 

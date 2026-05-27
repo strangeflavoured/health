@@ -6,9 +6,27 @@ import pytest
 
 from src.model.base import (
     HK_GROUPS,
+    BodyMeasurements,
+    Diving,
+    Fitness,
+    Hearing,
     HKCategoryTypeIdentifier,
+    HKGroup,
     HKQuantityTypeIdentifier,
+    LabTestResults,
+    Mindfulness,
     MissingUnit,
+    Mobility,
+    Nutrition,
+    Other,
+    ReproductiveHealth,
+    Symptoms,
+    UVExposure,
+    VitalSigns,
+)
+from src.model.category_types import (
+    HKCategoryTypeIdentifierHandwashingEvent,
+    HKCategoryTypeIdentifierToothbrushingEvent,
 )
 
 
@@ -72,6 +90,49 @@ class TestHKGroups:
     def test_mapping_is_immutable(self):
         with pytest.raises(TypeError):
             HK_GROUPS["NewGroup"] = object()  # type: ignore[index]
+
+    def test_get_members(self):
+        expected = {
+            BodyMeasurements,
+            Fitness,
+            ReproductiveHealth,
+            Hearing,
+            VitalSigns,
+            LabTestResults,
+            Mobility,
+            Nutrition,
+            UVExposure,
+            Diving,
+            Mindfulness,
+            Symptoms,
+            Other,
+        }
+        actual = HKGroup.get_members()
+        assert expected == set(actual)
+
+    def test_get_members_works_for_subclasses(self):
+        expected = {
+            HKCategoryTypeIdentifierHandwashingEvent,
+            HKCategoryTypeIdentifierToothbrushingEvent,
+        }
+        actual = Other.get_members()
+        assert expected == set(actual)
+
+    def test_map_members(self):
+        out = HKGroup.map_members()
+        assert isinstance(out, dict)
+        assert len(out) == 192
+        for k, v in out.items():
+            assert isinstance(k, str)
+            assert isinstance(v, str)
+
+    def test_map_members_works_for_subclasses(self):
+        expected = {
+            "HKCategoryTypeIdentifierHandwashingEvent": "other",
+            "HKCategoryTypeIdentifierToothbrushingEvent": "other",
+        }
+        actual = Other.map_members()
+        assert expected == actual
 
 
 class TestRegistryCompleteness:
