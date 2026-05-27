@@ -45,6 +45,7 @@ class _HealthRow(Protocol):
     value: Any
     startDate: Any  # noqa: N815
     endDate: Any  # noqa: N815
+    group: str
 
 
 def _add_row_to_pipeline(
@@ -85,7 +86,12 @@ def _add_row_to_pipeline(
         "value": row.value,
     }
 
-    labels = {"sourceName": row.sourceName, "unit": row.unit, "identifier": row.type}
+    labels = {
+        "sourceName": row.sourceName,
+        "unit": row.unit,
+        "identifier": row.type,
+        "group": row.group,
+    }
     start_labels = labels | {"start": "true"}
     end_labels = labels | {"end": "true"}
 
