@@ -160,7 +160,7 @@ def _resolve_failures(
         row_failures.append(failure)
 
         logger.info(
-            "Row %s (type=%s startDate=%s endDate=%s) failed — %s",
+            "\tRow %s (type=%s startDate=%s endDate=%s) failed — %s",
             idx,
             row.Index,
             df.loc[idx, "startDate"],

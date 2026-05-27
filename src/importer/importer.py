@@ -468,14 +468,17 @@ def _load(
     rts: TimeSeries = r.ts()
     failures: list[UploadFailure] = []
 
-    for data_type in df["type"].unique():
+    data_types = df["type"].unique()
+    logger.info(f"Found {len(data_types)} data types.")
+    for data_type in data_types:
         batch_df = df[df["type"] == data_type]
         n = len(batch_df)
-        logger.info("Uploading %i rows for type: %s", n, data_type)
+        logger.info(
+            "%s: Uploading %i rows in %i batches.", data_type, n, n // BATCH_SIZE + 1
+        )
 
         # upload in batches of BATCH_SIZE
         for i in range(0, n, BATCH_SIZE):
-            logger.info("Batch %i of %i", i // BATCH_SIZE + 1, n // BATCH_SIZE + 1)
             j = i + BATCH_SIZE
             if j > n:
                 j = n
@@ -491,8 +494,8 @@ def _load(
 
                 if row_failures:
                     logger.warning(
-                        "Type %s batch: %d/%d row(s) failed.",
-                        data_type,
+                        "\tBatch %i: %d/%d row(s) failed.",
+                        i // BATCH_SIZE + 1,
                         len(row_failures),
                         len(_df),
                     )
@@ -503,8 +506,8 @@ def _load(
                     data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
                 )
                 logger.exception(
-                    "Could not resolve failures for type '%s': %s",
-                    data_type,
+                    "\tBatch %i: Could not resolve failures:\n\t\t%s",
+                    i // BATCH_SIZE + 1,
                     batch_failure,
                 )
                 failures.append(batch_failure)
@@ -514,8 +517,8 @@ def _load(
                     data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
                 )
                 logger.exception(
-                    "Entire batch for type '%s' failed: %s",
-                    data_type,
+                    "\tBatch %i: Entire batch failed:\n\t\t%s",
+                    i // BATCH_SIZE + 1,
                     batch_failure,
                 )
                 failures.append(batch_failure)
