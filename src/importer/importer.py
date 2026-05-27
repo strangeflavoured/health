@@ -220,7 +220,7 @@ class HealthDataImporter:
 
         """
         logger.warning(
-            "Starting retry_failed.\nThis will only"
+            "Starting retry_failed.\n\tThis will only"
             " produce correct results if feather file"
             " has not changed since previous run."
         )
