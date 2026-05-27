@@ -136,7 +136,7 @@ class TestGroupClasses:
     def test_fitness_group(self):
         from src.model.base import Fitness
 
-        assert Fitness.group == "body_measurements"
+        assert Fitness.group == "fitness"
 
     def test_reproductive_health_group(self):
         from src.model.base import ReproductiveHealth
