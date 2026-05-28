@@ -24,8 +24,6 @@ _RECORD_COLUMNS = (
     "endDate",
     "creationDate",
     "value",
-    "files",
-    "meta",
 )
 
 _CORRELATION_COLUMNS = (
