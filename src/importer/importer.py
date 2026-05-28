@@ -354,13 +354,15 @@ class HealthDataImporter:
             )
 
         logger.info("Converting ZIP export to Feather format...")
-        df = parse_apple_health(zip_path=self.zip_file)
+        record_df, correlation_df, workout_df, activity_df = parse_apple_health(
+            zip_path=self.zip_file
+        )
 
         if write_feather:
             logger.info("Writing Feather cache to %s", self.output_file)
-            df.to_feather(self.output_file)
+            record_df.to_feather(self.output_file)
 
-        return df
+        return record_df
 
     def _update_failures_file(self) -> None:
         """Persist or clear the failures file to match in-memory state.
