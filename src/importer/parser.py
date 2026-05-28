@@ -77,10 +77,17 @@ def parse_apple_health(zip_path: str | Path) -> pd.DataFrame:
         zipfile.ZipFile(zip_path) as zf,
         zf.open("apple_health_export/export.xml") as f,
     ):
-        for _event, elem in ETree.iterparse(f, events=("end",)):
-            if elem.tag == "Record":
-                rows.append({col: elem.attrib.get(col) for col in _COLUMNS})
-                elem.clear()
+        root = None
+        for event, elem in ETree.iterparse(f, events=("start", "end")):
+            if event == "start" and root is None:
+                root = elem
+            elif event == "end":
+                match elem.tag:
+                    case "Record":
+                        rows.append({col: elem.attrib.get(col) for col in _COLUMNS})
+                    case _:
+                        continue
+                root.clear()
 
     df = pd.DataFrame(rows)
 
