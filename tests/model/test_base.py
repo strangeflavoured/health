@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from src.model import HKTypeIdentifierRegistry
 from src.model.base import (
     HK_GROUPS,
     BodyMeasurements,
@@ -121,7 +122,7 @@ class TestHKGroups:
     def test_map_members(self):
         out = HKGroup.map_members()
         assert isinstance(out, dict)
-        assert len(out) == 192
+        assert len(out) == 190
         for k, v in out.items():
             assert isinstance(k, str)
             assert isinstance(v, str)
@@ -265,3 +266,9 @@ class TestGroupClasses:
 
         for k in HKQuantityTypeIdentifierRegistry:
             assert k.startswith("HKQuantityTypeIdentifier"), k
+
+
+class TestHKTypeIdentifierRegistryUnitAttribute:
+    def test_all_identifiers_have_unit(self):
+        for _, cls in HKTypeIdentifierRegistry.items():
+            assert hasattr(cls, "unit")

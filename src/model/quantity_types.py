@@ -19,719 +19,709 @@ from .base import HK_GROUPS, HKQuantityTypeIdentifier
 class HKQuantityTypeIdentifierBodyMassIndex(
     HKQuantityTypeIdentifier, HK_GROUPS["BodyMeasurements"]
 ):
-    pass
+    unit = "count"
 
 
 class HKQuantityTypeIdentifierBodyFatPercentage(
     HKQuantityTypeIdentifier, HK_GROUPS["BodyMeasurements"]
 ):
-    pass
+    unit = "%"
 
 
 class HKQuantityTypeIdentifierHeight(
     HKQuantityTypeIdentifier, HK_GROUPS["BodyMeasurements"]
 ):
-    pass
+    unit = "cm"
 
 
 class HKQuantityTypeIdentifierBodyMass(
     HKQuantityTypeIdentifier, HK_GROUPS["BodyMeasurements"]
 ):
-    pass
+    unit = "kg"
 
 
 class HKQuantityTypeIdentifierLeanBodyMass(
     HKQuantityTypeIdentifier, HK_GROUPS["BodyMeasurements"]
 ):
-    pass
+    unit = "kg"
 
 
 class HKQuantityTypeIdentifierWaistCircumference(
     HKQuantityTypeIdentifier, HK_GROUPS["BodyMeasurements"]
 ):
-    pass
+    unit = "cm"
 
 
 class HKQuantityTypeIdentifierStepCount(HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]):
-    pass
+    unit = "count"
 
 
 class HKQuantityTypeIdentifierDistanceWalkingRunning(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km"
 
 
 class HKQuantityTypeIdentifierDistanceCycling(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km"
 
 
 class HKQuantityTypeIdentifierDistanceWheelchair(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km"
 
 
 class HKQuantityTypeIdentifierDistanceSwimming(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "m"
 
 
 class HKQuantityTypeIdentifierDistanceDownhillSnowSports(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km"
 
 
 class HKQuantityTypeIdentifierDistanceCrossCountrySkiing(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km"
 
 
 class HKQuantityTypeIdentifierDistancePaddleSports(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km"
 
 
 class HKQuantityTypeIdentifierDistanceRowing(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km"
 
 
 class HKQuantityTypeIdentifierDistanceSkatingSports(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km"
 
 
 class HKQuantityTypeIdentifierFlightsClimbed(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
-
-
-class HKQuantityTypeIdentifierNikeFuel(HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]):
-    pass
+    unit = "count"
 
 
 class HKQuantityTypeIdentifierPushCount(HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]):
-    pass
+    unit = "count"
 
 
 class HKQuantityTypeIdentifierSwimmingStrokeCount(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "count"
 
 
 class HKQuantityTypeIdentifierBasalEnergyBurned(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "kcal"
 
 
 class HKQuantityTypeIdentifierActiveEnergyBurned(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "kcal"
 
 
 class HKQuantityTypeIdentifierAppleExerciseTime(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "min"
 
 
 class HKQuantityTypeIdentifierAppleMoveTime(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "min"
 
 
 class HKQuantityTypeIdentifierAppleStandTime(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "min"
 
 
 class HKQuantityTypeIdentifierVO2Max(HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]):
-    pass
+    unit = "mL/min·kg"
 
 
 class HKQuantityTypeIdentifierRunningSpeed(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km/hr"
 
 
 class HKQuantityTypeIdentifierRunningPower(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "W"
 
 
 class HKQuantityTypeIdentifierRunningGroundContactTime(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "ms"
 
 
 class HKQuantityTypeIdentifierRunningStrideLength(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "m"
 
 
 class HKQuantityTypeIdentifierRunningVerticalOscillation(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "cm"
 
 
 class HKQuantityTypeIdentifierCyclingSpeed(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km/hr"
 
 
 class HKQuantityTypeIdentifierCyclingPower(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "W"
 
 
 class HKQuantityTypeIdentifierCyclingCadence(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "rpm"
 
 
 class HKQuantityTypeIdentifierCyclingFunctionalThresholdPower(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "W"
 
 
 class HKQuantityTypeIdentifierCrossCountrySkiingSpeed(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km/hr"
 
 
 class HKQuantityTypeIdentifierPaddleSportsSpeed(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km/hr"
 
 
 class HKQuantityTypeIdentifierRowingSpeed(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "km/hr"
 
 
 class HKQuantityTypeIdentifierPhysicalEffort(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "kcal/hr·kg"
 
 
 class HKQuantityTypeIdentifierWorkoutEffortScore(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "appleEffortScore"
 
 
 class HKQuantityTypeIdentifierEstimatedWorkoutEffortScore(
     HKQuantityTypeIdentifier, HK_GROUPS["Fitness"]
 ):
-    pass
+    unit = "appleEffortScore"
 
 
 class HKQuantityTypeIdentifierBasalBodyTemperature(
     HKQuantityTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
 ):
-    pass
+    unit = "degC"
 
 
 class HKQuantityTypeIdentifierEnvironmentalAudioExposure(
     HKQuantityTypeIdentifier, HK_GROUPS["Hearing"]
 ):
-    pass
+    unit = "dBASPL"
 
 
 class HKQuantityTypeIdentifierHeadphoneAudioExposure(
     HKQuantityTypeIdentifier, HK_GROUPS["Hearing"]
 ):
-    pass
+    unit = "dBASPL"
 
 
 class HKQuantityTypeIdentifierEnvironmentalSoundReduction(
     HKQuantityTypeIdentifier, HK_GROUPS["Hearing"]
 ):
-    pass
+    unit = "dBASPL"
 
 
 class HKQuantityTypeIdentifierHeartRate(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "count/min"
 
 
 class HKQuantityTypeIdentifierRestingHeartRate(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "count/min"
 
 
 class HKQuantityTypeIdentifierWalkingHeartRateAverage(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
-
-
-class HKQuantityTypeIdentifierHeartRateVariabilitySdnn(
-    HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
-):
-    pass
+    unit = "count/min"
 
 
 class HKQuantityTypeIdentifierHeartRateRecoveryOneMinute(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "count/min"
 
 
 class HKQuantityTypeIdentifierHeartRateVariabilitySDNN(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "ms"
 
 
 class HKQuantityTypeIdentifierAtrialFibrillationBurden(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "%"
 
 
 class HKQuantityTypeIdentifierOxygenSaturation(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "%"
 
 
 class HKQuantityTypeIdentifierBloodPressureSystolic(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "mmHg"
 
 
 class HKQuantityTypeIdentifierBloodPressureDiastolic(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "mmHg"
 
 
 class HKQuantityTypeIdentifierRespiratoryRate(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "count/min"
 
 
 class HKQuantityTypeIdentifierBodyTemperature(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "degC"
 
 
 class HKQuantityTypeIdentifierAppleSleepingWristTemperature(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "degC"
 
 
 class HKQuantityTypeIdentifierAppleSleepingBreathingDisturbances(
     HKQuantityTypeIdentifier, HK_GROUPS["VitalSigns"]
 ):
-    pass
+    unit = "count"
 
 
 class HKQuantityTypeIdentifierBloodGlucose(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "mmol<180.1558800000541>/L"
 
 
 class HKQuantityTypeIdentifierBloodAlcoholContent(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "%"
 
 
 class HKQuantityTypeIdentifierPeripheralPerfusionIndex(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "%"
 
 
 class HKQuantityTypeIdentifierForcedVitalCapacity(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "L"
 
 
 class HKQuantityTypeIdentifierForcedExpiratoryVolume1(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "L"
 
 
 class HKQuantityTypeIdentifierPeakExpiratoryFlowRate(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "L/min"
 
 
 class HKQuantityTypeIdentifierInhalerUsage(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "count"
 
 
 class HKQuantityTypeIdentifierNumberOfTimesFallen(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "count"
 
 
 class HKQuantityTypeIdentifierElectrodermalActivity(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "mcS"
 
 
 class HKQuantityTypeIdentifierInsulinDelivery(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "IU"
 
 
 class HKQuantityTypeIdentifierNumberOfAlcoholicBeverages(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    pass
+    unit = "count"
 
 
 class HKQuantityTypeIdentifierWalkingSpeed(
     HKQuantityTypeIdentifier, HK_GROUPS["Mobility"]
 ):
-    pass
+    unit = "km/hr"
 
 
 class HKQuantityTypeIdentifierWalkingStepLength(
     HKQuantityTypeIdentifier, HK_GROUPS["Mobility"]
 ):
-    pass
+    unit = "cm"
 
 
 class HKQuantityTypeIdentifierWalkingAsymmetryPercentage(
     HKQuantityTypeIdentifier, HK_GROUPS["Mobility"]
 ):
-    pass
+    unit = "%"
 
 
 class HKQuantityTypeIdentifierWalkingDoubleSupportPercentage(
     HKQuantityTypeIdentifier, HK_GROUPS["Mobility"]
 ):
-    pass
+    unit = "%"
 
 
 class HKQuantityTypeIdentifierAppleWalkingSteadiness(
     HKQuantityTypeIdentifier, HK_GROUPS["Mobility"]
 ):
-    pass
+    unit = "%"
 
 
 class HKQuantityTypeIdentifierSixMinuteWalkTestDistance(
     HKQuantityTypeIdentifier, HK_GROUPS["Mobility"]
 ):
-    pass
+    unit = "m"
 
 
 class HKQuantityTypeIdentifierStairAscentSpeed(
     HKQuantityTypeIdentifier, HK_GROUPS["Mobility"]
 ):
-    pass
+    unit = "m/s"
 
 
 class HKQuantityTypeIdentifierStairDescentSpeed(
     HKQuantityTypeIdentifier, HK_GROUPS["Mobility"]
 ):
-    pass
+    unit = "m/s"
 
 
 class HKQuantityTypeIdentifierDietaryEnergyConsumed(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "kcal"
 
 
 class HKQuantityTypeIdentifierDietaryFatTotal(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "g"
 
 
 class HKQuantityTypeIdentifierDietaryFatPolyunsaturated(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "g"
 
 
 class HKQuantityTypeIdentifierDietaryFatMonounsaturated(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "g"
 
 
 class HKQuantityTypeIdentifierDietaryFatSaturated(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "g"
 
 
 class HKQuantityTypeIdentifierDietaryCholesterol(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietarySodium(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryCarbohydrates(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "g"
 
 
 class HKQuantityTypeIdentifierDietaryFiber(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "g"
 
 
 class HKQuantityTypeIdentifierDietarySugar(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "g"
 
 
 class HKQuantityTypeIdentifierDietaryProtein(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "g"
 
 
 class HKQuantityTypeIdentifierDietaryVitaminA(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mcg"
 
 
 class HKQuantityTypeIdentifierDietaryVitaminB6(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryVitaminB12(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mcg"
 
 
 class HKQuantityTypeIdentifierDietaryVitaminC(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryVitaminD(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mcg"
 
 
 class HKQuantityTypeIdentifierDietaryVitaminE(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryVitaminK(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mcg"
 
 
 class HKQuantityTypeIdentifierDietaryCalcium(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryIron(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryThiamin(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryRiboflavin(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryNiacin(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryFolate(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mcg"
 
 
 class HKQuantityTypeIdentifierDietaryBiotin(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mcg"
 
 
 class HKQuantityTypeIdentifierDietaryPantothenicAcid(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryPhosphorus(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryIodine(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mcg"
 
 
 class HKQuantityTypeIdentifierDietaryMagnesium(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryZinc(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietarySelenium(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mcg"
 
 
 class HKQuantityTypeIdentifierDietaryCopper(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryManganese(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryChromium(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mcg"
 
 
 class HKQuantityTypeIdentifierDietaryMolybdenum(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mcg"
 
 
 class HKQuantityTypeIdentifierDietaryChloride(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryPotassium(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryCaffeine(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mg"
 
 
 class HKQuantityTypeIdentifierDietaryWater(
     HKQuantityTypeIdentifier, HK_GROUPS["Nutrition"]
 ):
-    pass
+    unit = "mL"
 
 
 class HKQuantityTypeIdentifierUVExposure(
     HKQuantityTypeIdentifier, HK_GROUPS["UVExposure"]
 ):
-    pass
+    unit = "count"
 
 
 class HKQuantityTypeIdentifierUnderwaterDepth(
     HKQuantityTypeIdentifier, HK_GROUPS["Diving"]
 ):
-    pass
+    unit = "m"
 
 
 class HKQuantityTypeIdentifierWaterTemperature(
     HKQuantityTypeIdentifier, HK_GROUPS["Diving"]
 ):
-    pass
+    unit = "degC"
 
 
 class HKQuantityTypeIdentifierTimeInDaylight(
     HKQuantityTypeIdentifier, HK_GROUPS["Mindfulness"]
 ):
-    pass
+    unit = "min"
 
 
 # ---------------------------------------------------------------------------

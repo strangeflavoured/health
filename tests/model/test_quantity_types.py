@@ -30,7 +30,7 @@ from src.model.quantity_types import (
 
 class TestRegistry:
     def test_registry_is_not_empty(self):
-        assert len(HKQuantityTypeIdentifierRegistry) > 50
+        assert len(HKQuantityTypeIdentifierRegistry) == 119
 
     def test_registry_is_immutable(self):
         with pytest.raises(TypeError):
