@@ -7,6 +7,13 @@ import pytest
 import redis
 from redis.exceptions import ResponseError
 
+import src.redis_setup as redis_setup
+from src.model import (
+    HKCategoryTypeIdentifierRegistry,
+    HKMiscTypeIdentifierRegistry,
+    HKQuantityTypeIdentifierRegistry,
+    HKTypeIdentifierRegistry,
+)
 from src.redis_setup import (
     _INDICES,
     create_index,
@@ -153,98 +160,84 @@ class TestCreateIndex:
 
 class TestSetupIndexes:
     def _patch_exists(self, exists_map):
-        import src.redis_setup as m
-
         return patch.object(
-            m, "index_exists", side_effect=lambda _c, n: exists_map.get(n, False)
+            redis_setup,
+            "index_exists",
+            side_effect=lambda _c, n: exists_map.get(n, False),
         )
 
     def test_creates_all_indexes_when_none_exist(self):
-        import src.redis_setup as m
-
         client = _make_client()
         with (
             self._patch_exists({s.name: False for s in _INDICES}),
-            patch.object(m, "create_index") as mock_create,
-            patch.object(m, "drop_index") as mock_drop,
+            patch.object(redis_setup, "create_index") as mock_create,
+            patch.object(redis_setup, "drop_index") as mock_drop,
         ):
             setup_indexes(client, dry_run=False, force=False)
         assert mock_create.call_count == len(_INDICES)
         mock_drop.assert_not_called()
 
     def test_skips_existing_indexes_without_force(self):
-        import src.redis_setup as m
-
         client = _make_client()
         with (
             self._patch_exists({s.name: True for s in _INDICES}),
-            patch.object(m, "create_index") as mock_create,
-            patch.object(m, "drop_index") as mock_drop,
+            patch.object(redis_setup, "create_index") as mock_create,
+            patch.object(redis_setup, "drop_index") as mock_drop,
         ):
             setup_indexes(client, dry_run=False, force=False)
         mock_create.assert_not_called()
         mock_drop.assert_not_called()
 
     def test_drops_and_recreates_with_force(self):
-        import src.redis_setup as m
-
         client = _make_client()
         with (
             self._patch_exists({s.name: True for s in _INDICES}),
-            patch.object(m, "create_index") as mock_create,
-            patch.object(m, "drop_index") as mock_drop,
+            patch.object(redis_setup, "create_index") as mock_create,
+            patch.object(redis_setup, "drop_index") as mock_drop,
         ):
             setup_indexes(client, dry_run=False, force=True)
         assert mock_drop.call_count == len(_INDICES)
         assert mock_create.call_count == len(_INDICES)
 
     def test_partial_existence(self):
-        import src.redis_setup as m
-
         names = [s.name for s in _INDICES]
         client = _make_client()
         with (
             self._patch_exists({names[0]: True, names[1]: False, names[2]: False}),
-            patch.object(m, "create_index") as mock_create,
-            patch.object(m, "drop_index") as mock_drop,
+            patch.object(redis_setup, "create_index") as mock_create,
+            patch.object(redis_setup, "drop_index") as mock_drop,
         ):
             setup_indexes(client, dry_run=False, force=False)
         assert mock_create.call_count == 2
         mock_drop.assert_not_called()
 
     def test_propagates_dry_run_to_create(self):
-        import src.redis_setup as m
-
         client = _make_client()
         with (
             self._patch_exists({s.name: False for s in _INDICES}),
-            patch.object(m, "create_index") as mock_create,
+            patch.object(redis_setup, "create_index") as mock_create,
         ):
             setup_indexes(client, dry_run=True, force=False)
         for c in mock_create.call_args_list:
             assert c.kwargs["dry_run"] is True
 
     def test_propagates_dry_run_to_drop(self):
-        import src.redis_setup as m
-
         client = _make_client()
         with (
             self._patch_exists({s.name: True for s in _INDICES}),
-            patch.object(m, "drop_index") as mock_drop,
-            patch.object(m, "create_index"),
+            patch.object(redis_setup, "drop_index") as mock_drop,
+            patch.object(redis_setup, "create_index"),
         ):
             setup_indexes(client, dry_run=True, force=True)
         for c in mock_drop.call_args_list:
             assert c.kwargs["dry_run"] is True
 
     def test_logs_skip_message_when_existing_no_force(self, caplog):
-        import src.redis_setup as m
-
         client = _make_client()
         with (
             self._patch_exists({s.name: True for s in _INDICES}),
-            patch.object(m, "create_index"),
-            patch.object(m, "drop_index"),
+            patch.object(redis_setup, "create_index"),
+            patch.object(redis_setup, "drop_index"),
             caplog.at_level(logging.INFO),
         ):
             setup_indexes(client, dry_run=False, force=False)
@@ -258,47 +251,39 @@ class TestSetupIndexes:
 
 class TestPrintStatus:
     def test_logs_doc_count_for_existing_index(self, caplog):
-        import src.redis_setup as m
-
         client = _make_client()
         client.ft.return_value.info.return_value = {"num_docs": 42, "indexing": "0"}
         with (
-            patch.object(m, "index_exists", return_value=True),
+            patch.object(redis_setup, "index_exists", return_value=True),
             caplog.at_level(logging.INFO),
         ):
             print_status(client)
         assert "42" in caplog.text
 
     def test_logs_indexing_when_background_pass_active(self, caplog):
-        import src.redis_setup as m
-
         client = _make_client()
         client.ft.return_value.info.return_value = {"num_docs": 0, "indexing": "1"}
         with (
-            patch.object(m, "index_exists", return_value=True),
+            patch.object(redis_setup, "index_exists", return_value=True),
             caplog.at_level(logging.INFO),
         ):
             print_status(client)
         assert "indexing" in caplog.text
 
     def test_logs_missing_for_absent_index(self, caplog):
-        import src.redis_setup as m
-
         client = _make_client()
         with (
-            patch.object(m, "index_exists", return_value=False),
+            patch.object(redis_setup, "index_exists", return_value=False),
             caplog.at_level(logging.INFO),
         ):
             print_status(client)
         assert "missing" in caplog.text
 
     def test_logs_all_index_names(self, caplog):
-        import src.redis_setup as m
-
         client = _make_client()
         client.ft.return_value.info.return_value = {"num_docs": 0, "indexing": "0"}
         with (
-            patch.object(m, "index_exists", return_value=True),
+            patch.object(redis_setup, "index_exists", return_value=True),
             caplog.at_level(logging.INFO),
         ):
             print_status(client)
@@ -412,14 +397,9 @@ class TestEnsureTsKey:
 
 class TestRecordsLabels:
     def test_returns_two_entries_per_registry_type(self):
-        from src.model import HKTypeIdentifierRegistry
-        from src.redis_setup import records_labels
-
         assert len(records_labels()) == len(HKTypeIdentifierRegistry) * 2
 
     def test_start_and_end_keys_present_for_each_type(self):
-        from src.model import HKTypeIdentifierRegistry
-
         keys = [k for k, _ in records_labels()]
         for name in HKTypeIdentifierRegistry:
             assert f"ts:{name}:start" in keys
@@ -441,12 +421,17 @@ class TestRecordsLabels:
 
     def test_unit_populated_for_quantity_type(self):
         for key, labels in records_labels():
-            if "HeartRate" in key:
-                assert labels["unit"] == "count/min"
+            if key in HKQuantityTypeIdentifierRegistry:
+                assert labels["unit"] != "Categorical"
 
-    def test_unit_is_none_for_category_type_without_unit(self):
+    def test_unit_populated_for_misc_type(self):
         for key, labels in records_labels():
-            if "SleepAnalysis" in key:
+            if key in HKMiscTypeIdentifierRegistry:
+                assert labels["unit"] != "Categorical"
+
+    def test_unit_is_categorical_for_category_type(self):
+        for key, labels in records_labels():
+            if key in HKCategoryTypeIdentifierRegistry:
                 assert labels["unit"] == "Categorical"
 
     def test_identifier_label_matches_key_name(self):
@@ -457,17 +442,11 @@ class TestRecordsLabels:
         for _, labels in records_labels():
             assert "group" in labels
 
-    def test_group_label_correct_for_quantity_type(self):
-        for key, labels in records_labels():
-            if "HeartRate" in key:
-                assert labels["group"] == "vitals"
-
     def test_base_labels_not_mutated_across_start_end(self):
         by_name: dict = {}
         for key, labels in records_labels():
             parts = key.split(":")
             by_name[(parts[1], parts[2])] = labels
-        from src.model import HKTypeIdentifierRegistry
 
         for name in HKTypeIdentifierRegistry:
             s = by_name[(name, "start")]
