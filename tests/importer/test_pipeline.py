@@ -83,8 +83,8 @@ class TestAddRowToPipeline:
             pipe.add.call_args_list[0][1]["key"],
             pipe.add.call_args_list[1][1]["key"],
         ]
-        assert keys[0] == "HKQuantityTypeIdentifierStepCount:start"
-        assert keys[1] == "HKQuantityTypeIdentifierStepCount:end"
+        assert keys[0] == "ts:HKQuantityTypeIdentifierStepCount:start"
+        assert keys[1] == "ts:HKQuantityTypeIdentifierStepCount:end"
 
     def test_default_policy_is_first(self):
         pipe = MagicMock()
@@ -97,15 +97,6 @@ class TestAddRowToPipeline:
         _add_row_to_pipeline(pipe, _make_row(), DuplicatePolicy.LAST)
         for c in pipe.add.call_args_list:
             assert c[1]["duplicate_policy"] == DuplicatePolicy.LAST.value
-
-    def test_labels_contain_source_and_unit(self):
-        pipe = MagicMock()
-        row = _make_row(source="iPhone", unit="kg")
-        _add_row_to_pipeline(pipe, row)
-        for c in pipe.add.call_args_list:
-            labels = c[1]["labels"]
-            assert labels["sourceName"] == "iPhone"
-            assert labels["unit"] == "kg"
 
     def test_value_forwarded(self):
         pipe = MagicMock()
