@@ -2,39 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-import types
-
 import pytest
-
-from src.model.base import MissingUnit
-
-# ---------------------------------------------------------------------------
-# Stub src.model before any test module imports src.redis_setup.
-# Module-level code here runs before pytest collection, so the
-# `from .model import HKTypeIdentifierRegistry` inside redis_setup.py
-# resolves to the fake registry at import time.
-# ---------------------------------------------------------------------------
-
-_FakeQuantityType = types.SimpleNamespace(unit="count/min", group="vitals")
-_FakeCategoryType = types.SimpleNamespace(
-    unit=MissingUnit.CATEGORICAL.value, group="sleep"
-)
-
-FAKE_REGISTRY = {
-    "HKQuantityTypeIdentifierHeartRate": _FakeQuantityType,
-    "HKCategoryTypeIdentifierSleepAnalysis": _FakeCategoryType,
-}
-
-stub = types.ModuleType("src.model")
-stub.HKTypeIdentifierRegistry = FAKE_REGISTRY
-stub.HKQuantityTypeIdentifierRegistry = FAKE_REGISTRY
-sys.modules["src.model"] = stub
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture(autouse=True)
