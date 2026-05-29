@@ -7,12 +7,14 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+import redis
 
 from src.importer.importer import HealthDataImporter, _load
 from src.importer.response import (
     BatchFailure,
     DuplicatePolicy,
     RowFailure,
+    failures_to_json,
 )
 
 # ---------------------------------------------------------------------------
@@ -199,11 +201,9 @@ class TestLoad:
         assert result == []
 
     def test_redis_error_creates_batch_failure(self, mock_redis):
-        import redis as redis_lib
-
         df = self._make_df()
         mock_redis.ts.return_value.pipeline.return_value.execute.side_effect = (
-            redis_lib.RedisError("conn lost")
+            redis.RedisError("conn lost")
         )
         result = _load(df, mock_redis)
         assert len(result) == 1
@@ -440,8 +440,6 @@ class TestUpdate:
 
 class TestRetryFailed:
     def _write_failures(self, importer, failures):
-        from src.importer.response import failures_to_json
-
         importer.failures_file.write_text(failures_to_json(failures), encoding="utf-8")
 
     def test_retry_raises_when_no_failures_file(self, importer):

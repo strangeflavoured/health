@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import time
 import xml
 import zipfile
 from pathlib import Path
@@ -666,8 +667,6 @@ class TestXXESecurity:
 
 class TestParserPerformance:
     def test_large_export_under_time_limit(self, tmp_path):
-        import time
-
         n = 100_000
         rows = "\n".join(
             f'<Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Watch" '

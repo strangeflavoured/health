@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -165,8 +166,6 @@ class TestResolveFailures:
 
     def test_large_batch_performance(self):
         """_resolve_failures on 10k rows should complete in under 5 seconds."""
-        import time
-
         n = 10_000
         df = _make_df(n)
         response = [i for i in range(n * 2)]
