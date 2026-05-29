@@ -235,7 +235,6 @@ class HealthDataImporter:
             return None
 
         df = self._extract(write_feather=False, no_cache=False)
-        transform(df)
 
         row_selectors: list = []
         for f in self.failures:
@@ -248,6 +247,7 @@ class HealthDataImporter:
                     row_selectors.append(i)
 
         retry_df = df[df.index.isin(row_selectors)]
+        transform(retry_df)
 
         r = self.connection
         n_before = count_failures(self.failures, df)
