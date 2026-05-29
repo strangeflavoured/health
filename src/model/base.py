@@ -33,6 +33,7 @@ class HKIdentifier:
 
     group: str
     identifier_type: str
+    unit: str
 
 
 class HKQuantityTypeIdentifier(HKIdentifier):
@@ -45,6 +46,7 @@ class HKCategoryTypeIdentifier(HKIdentifier):
     """Sentinel category identifier values."""
 
     identifier_type = "category"
+    unit = MissingUnit.CATEGORICAL.value
 
     class Values:
         """HK category identifier values :class:`Enum` template.
@@ -159,7 +161,7 @@ HK_GROUPS: MappingProxyType[str, Any] = MappingProxyType(
 
 
 class HKDataTypeSleepDurationGoal(HKMiscTypeIdentifier, Fitness):  # noqa: D101
-    pass
+    unit = "hr"
 
 
 # ---------------------------------------------------------------------------
