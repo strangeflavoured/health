@@ -231,7 +231,7 @@ def parse_apple_health(
 
                     case "Workout":
                         workout = {
-                            col: elem.attrib.get(col) for col in _CORRELATION_COLUMNS
+                            col: elem.attrib.get(col) for col in _WORKOUT_COLUMNS
                         }
 
                         activities = []
