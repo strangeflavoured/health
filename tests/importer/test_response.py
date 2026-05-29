@@ -244,8 +244,6 @@ class TestFailuresJson:
         assert isinstance(restored.row_index, int)
 
     def test_non_serialisable_row_index_raises(self):
-        import pandas as pd
-
         f = RowFailure(data_type="HR", row_index=pd.Timestamp("2024-01-01"))
         with pytest.raises(TypeError):
             failures_to_json([f])
