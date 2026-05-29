@@ -86,25 +86,14 @@ def _add_row_to_pipeline(
         "value": row.value,
     }
 
-    labels = {
-        "sourceName": row.sourceName,
-        "unit": row.unit,
-        "identifier": row.type,
-        "group": row.group,
-    }
-    start_labels = labels | {"start": "true"}
-    end_labels = labels | {"end": "true"}
-
     pipe.add(
-        key=f"{row.type}:start",
+        key=f"ts:{row.type}:start",
         timestamp=row.startDate,
-        labels=start_labels,
         **common,
     )
     pipe.add(
-        key=f"{row.type}:end",
+        key=f"ts:{row.type}:end",
         timestamp=row.endDate,
-        labels=end_labels,
         **common,
     )
 
@@ -168,7 +157,7 @@ def _resolve_failures(
         logger.info(
             "\tRow %s (type=%s startDate=%s endDate=%s) failed — %s",
             idx,
-            row.Index,
+            row.type,
             df.loc[idx, "startDate"],
             df.loc[idx, "endDate"],
             failure,
