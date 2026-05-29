@@ -26,6 +26,8 @@ import redis
 from pyarrow import feather
 from redis.commands.timeseries import TimeSeries
 
+from ..model import HKCategoryTypeIdentifierRegistry
+from ..redis_setup import ensure_ts_key
 from .parser import parse_apple_health
 from .pipeline import upload_batch
 from .response import (
@@ -477,6 +479,20 @@ def _load(
         n = len(batch_df)
         logger.info(
             "%s: Uploading %i rows in %i batches.", data_type, n, n // BATCH_SIZE + 1
+        )
+
+        # make sure labels exist
+        cls = HKCategoryTypeIdentifierRegistry[data_type]
+        base_labels: dict[str, str] = {
+            "unit": cls.unit,
+            "identifier": data_type,
+            "group": cls.group,
+        }
+        ensure_ts_key(
+            r, f"ts:{data_type}:start", labels=base_labels | {"event_type": "start"}
+        )
+        ensure_ts_key(
+            r, f"ts:{data_type}:end", labels=base_labels | {"event_type": "end"}
         )
 
         # upload in batches of BATCH_SIZE
