@@ -140,13 +140,19 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
 
 
 def _timestamps_to_unix(series: pd.Series) -> pd.Series:
-    """Convert a ``datetime64`` Series to Unix timestamps in whole seconds.
+    """Convert a date/time Series to Unix timestamps in whole seconds.
 
-    Divides the nanosecond epoch integer representation by 10⁹ using integer
-    floor division to avoid floating-point rounding errors.
+    Accepts both Apple Health timestamp strings
+    (e.g. ``"2024-01-01 00:00:00 +0100"``) and already-parsed
+    ``datetime64`` objects (tz-aware or tz-naive).  Uses
+    :func:`pandas.to_datetime` with ``utc=True`` to guarantee correct UTC
+    conversion regardless of the input timezone offset.
+
+    Integer floor division by 10⁹ avoids floating-point rounding errors.
 
     Args:
-        series: A ``datetime64[ns]`` pandas Series.
+        series: A pandas Series whose values are either Apple Health timestamp
+            strings or ``datetime64`` objects.
 
     Returns:
         An ``int64`` Series of Unix timestamps in **seconds**.
@@ -157,9 +163,9 @@ def _timestamps_to_unix(series: pd.Series) -> pd.Series:
         # unix_ts.dtype == int64
 
     """
-    return (
-        series.astype("datetime64[ns, UTC]").astype("int64") // 1_000_000_000
-    ).astype("int64")
+    return (pd.to_datetime(series, utc=True).astype("int64") // 1_000_000_000).astype(
+        "int64"
+    )
 
 
 def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
