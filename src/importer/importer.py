@@ -26,7 +26,7 @@ import redis
 from pyarrow import feather
 from redis.commands.timeseries import TimeSeries
 
-from ..model import HKCategoryTypeIdentifierRegistry
+from ..model import HKTypeIdentifierRegistry
 from ..redis_setup import ensure_ts_key
 from .parser import parse_apple_health
 from .pipeline import upload_batch
@@ -482,7 +482,7 @@ def _load(
         )
 
         # make sure labels exist
-        cls = HKCategoryTypeIdentifierRegistry[data_type]
+        cls = HKTypeIdentifierRegistry[data_type]
         base_labels: dict[str, str] = {
             "unit": cls.unit,
             "identifier": data_type,
