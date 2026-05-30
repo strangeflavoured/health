@@ -73,12 +73,10 @@ class TestAddRowToPipeline:
         assert pipe.add.call_count == 2
 
     def test_start_key_format(self):
+        """Keys must use the ``ts:<type>:start`` / ``ts:<type>:end`` format."""
         pipe = MagicMock()
         row = _make_row(type_val="HKQuantityTypeIdentifierStepCount")
         _add_row_to_pipeline(pipe, row)
-        calls = [  # noqa: F841
-            c[1]["key"] if "key" in c[1] else c[0][0] for c in pipe.add.call_args_list
-        ]
         keys = [
             pipe.add.call_args_list[0][1]["key"],
             pipe.add.call_args_list[1][1]["key"],
@@ -98,12 +96,33 @@ class TestAddRowToPipeline:
         for c in pipe.add.call_args_list:
             assert c[1]["duplicate_policy"] == DuplicatePolicy.LAST.value
 
+    def test_no_labels_in_pipe_add(self):
+        """Labels are managed via ensure_ts_key; TS.ADD must not carry them.
+
+        Passing labels on every TS.ADD is wasteful (Redis ignores them once
+        the key exists) and creates an inconsistency with the label schema
+        provisioned by :func:`src.redis_setup.ensure_ts_key`.
+        """
+
+    pipe = MagicMock()
+    row = _make_row(source="iPhone", unit="kg")
+    _add_row_to_pipeline(pipe, row)
+    for c in pipe.add.call_args_list:
+        assert "labels" not in c[1], (
+            "Labels should not be passed to TS.ADD; "
+            "use ensure_ts_key for key provisioning instead."
+        )
+
     def test_value_forwarded(self):
         pipe = MagicMock()
         row = _make_row(value=99.5)
         _add_row_to_pipeline(pipe, row)
         for c in pipe.add.call_args_list:
             assert c[1]["value"] == 99.5
+
+    def test_returns_none(self):
+        pipe = MagicMock()
+        assert _add_row_to_pipeline(pipe, _make_row()) is None
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +207,30 @@ class TestResolveFailures:
         failures = _resolve_failures([err, 1, 2, 3], df)
         assert failures[0].row_index == 10
 
+    def test_failure_log_uses_row_type_not_index(self):
+        """The log line must show the HK type string, not the DataFrame index.
+
+        Regression: an earlier version logged ``row.Index`` for the type
+        placeholder, which always emitted the integer row index.
+        """
+        df = pd.DataFrame(
+            {
+                "type": ["HKQuantityTypeIdentifierHeartRate"],
+                "sourceName": ["Watch"],
+                "unit": ["bpm"],
+                "value": [72.0],
+                "startDate": [1_000_000],
+                "endDate": [1_000_060],
+            }
+        )
+        err = ResponseError("TSDB: Duplicate")
+
+        with patch("src.importer.pipeline.logger") as mock_log:
+            _resolve_failures([err, 1], df)
+        # The second positional arg to logger.info is the type string.
+        log_call_args = mock_log.info.call_args[0]
+        assert "HKQuantityTypeIdentifierHeartRate" in str(log_call_args)
+
 
 # ---------------------------------------------------------------------------
 # upload_batch
@@ -252,10 +295,6 @@ class TestUploadBatch:
         pipe = MagicMock()
         _add_row_to_pipeline(pipe, _make_row(start=1_234_567_890, end=1_234_567_950))
         assert pipe.add.call_args_list[1][1]["timestamp"] == 1_234_567_950
-
-    def test_returns_none(self):
-        pipe = MagicMock()
-        assert _add_row_to_pipeline(pipe, _make_row()) is None
 
     def test_resolve_failures_return_type_is_list(self):
         assert isinstance(_resolve_failures([1, 2], _make_df(1)), list)
