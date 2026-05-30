@@ -1,7 +1,28 @@
 """Health Data Importer.
 
 Uploads Apple Health ``export.zip`` data to a local Redis TimeSeries database
-via an Extract → Transform → Load (ETL) pipeline.
+via an Extract → Transform → Load (ETL) pipeline.  Workouts, correlations,
+activity summaries, and GPS routes are additionally stored as Redis JSON
+documents so they can be queried through the RediSearch indexes provisioned by
+:mod:`src.redis_setup`.
+
+Cache format
+------------
+The five DataFrames are split across two serialisation formats to balance
+file size, performance, and code simplicity:
+
+* **Records, activities, routes** — Feather (Apache Arrow IPC).  These tables
+  contain only Arrow-native scalar types (strings, floats, ``datetime64``).
+  Feather's columnar layout and optional LZ4 compression produce the smallest
+  files and the fastest read/write for large row counts.
+
+* **Workouts, correlations** — pickle (``protocol=5``).  These tables carry
+  nested Python objects (dicts and lists) in their ``meta``, ``events``,
+  ``statistics``, ``route``, ``activities``, and ``records`` columns.  Pickle
+  serialises the Python object graph directly, avoiding the JSON
+  encode/decode step that Feather would require.  The tables are small (rarely
+  more than a few thousand rows), so pickle's larger per-file overhead is
+  inconsequential.
 
 Typical usage::
 
@@ -12,7 +33,7 @@ Typical usage::
         print(f)
 
     # Retry only the failed data points (can be called in a new session)
-    remaining = importer.retry_failed(df)
+    importer.retry_failed()
 
     # Overwrite existing data points with the latest values
     importer.update()
@@ -47,7 +68,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Document-upload helpers
+# Document-upload helpers (Workout / Correlation / ActivitySummary / Route)
 # ---------------------------------------------------------------------------
 
 
@@ -55,10 +76,16 @@ def _parse_hk_timestamp(value: str | None) -> int | None:
     """Convert an Apple Health date string to a Unix integer timestamp.
 
     Args:
-        value: Date string in Apple Health format, or ``None``.
+        value: Date string in Apple Health format
+            (e.g. ``"2024-01-01 00:00:00 +0000"``), or ``None``.
 
     Returns:
-        Unix timestamp in whole seconds, or ``None``.
+        Unix timestamp in whole seconds, or ``None`` if *value* is ``None``.
+
+    Example::
+
+        _parse_hk_timestamp("2024-01-01 00:00:00 +0000")  # → 1704067200
+        _parse_hk_timestamp(None)                          # → None
 
     """
     if value is None:
@@ -67,7 +94,18 @@ def _parse_hk_timestamp(value: str | None) -> int | None:
 
 
 def _sanitize_doc(doc: dict) -> dict:
-    """Replace ``float('nan')`` values with ``None`` for JSON-safe serialisation."""
+    """Replace ``float('nan')`` values with ``None`` for JSON-safe serialisation.
+
+    Redis's JSON module rejects ``NaN`` because it is not valid JSON.
+
+    Args:
+        doc: Arbitrary ``str → Any`` mapping, typically a row from a
+            DataFrame converted via ``.to_dict()``.
+
+    Returns:
+        A new dict with all ``float('nan')`` values replaced by ``None``.
+
+    """
     return {
         k: (None if isinstance(v, float) and math.isnan(v) else v)
         for k, v in doc.items()
@@ -82,9 +120,28 @@ def _load_documents(
 ) -> None:
     """Upload workout, correlation, and activity documents to Redis JSON.
 
-    Keys: ``workout:<startDate_unix>:<workoutActivityType>``,
-    ``correlation:<startDate_unix>:<type>``,
-    ``activity:<dateComponents>``.
+    Each document type is stored under a distinct key namespace:
+
+    * ``workout:<startDate_unix>:<workoutActivityType>``
+    * ``correlation:<startDate_unix>:<type>``
+    * ``activity:<dateComponents>``
+
+    String date fields are converted to Unix integer timestamps so the
+    RediSearch ``NumericField`` indexes defined in
+    :data:`src.redis_setup._INDICES` work correctly.  A ``metaKeys`` field is
+    added to workouts and correlations to support
+    ``TagField("$.metaKeys[*]", …)`` queries.  Activities receive a ``date``
+    integer field derived from ``dateComponents``.
+
+    This function is idempotent: re-running an import overwrites existing
+    documents at the same key.
+
+    Args:
+        workouts: Workout DataFrame.  May be empty.
+        correlations: Correlation DataFrame.  May be empty.
+        activities: ActivitySummary DataFrame.  May be empty.
+        r: Active Redis connection with the JSON module loaded.
+
     """
     n_workouts = n_correlations = n_activities = 0
 
@@ -99,27 +156,32 @@ def _load_documents(
             "endDate": end_ts,
             "metaKeys": list((rd.get("meta") or {}).keys()),
         }
-        r.json().set(f"workout:{start_ts}:{activity_type}", "$", doc)
+        key = f"workout:{start_ts}:{activity_type}"
+        r.json().set(key, "$", doc)
         n_workouts += 1
 
     for _, row in correlations.iterrows():
         rd = _sanitize_doc(row.to_dict())
         start_ts = _parse_hk_timestamp(rd.get("startDate"))
+        end_ts = _parse_hk_timestamp(rd.get("endDate"))
         corr_type = rd.get("type", "unknown")
         doc = {
             **rd,
             "startDate": start_ts,
-            "endDate": _parse_hk_timestamp(rd.get("endDate")),
+            "endDate": end_ts,
             "metaKeys": list((rd.get("meta") or {}).keys()),
         }
-        r.json().set(f"correlation:{start_ts}:{corr_type}", "$", doc)
+        key = f"correlation:{start_ts}:{corr_type}"
+        r.json().set(key, "$", doc)
         n_correlations += 1
 
     for _, row in activities.iterrows():
         rd = _sanitize_doc(row.to_dict())
         date_str = rd.get("dateComponents")
-        doc = {**rd, "date": _parse_hk_timestamp(date_str) if date_str else None}
-        r.json().set(f"activity:{date_str}", "$", doc)
+        date_ts = _parse_hk_timestamp(date_str) if date_str else None
+        doc = {**rd, "date": date_ts}
+        key = f"activity:{date_str}"
+        r.json().set(key, "$", doc)
         n_activities += 1
 
     logger.info(
@@ -138,13 +200,21 @@ def _upload_routes(
     """Upload GPS route trackpoints as Redis JSON documents.
 
     Groups the *routes* DataFrame by workout using the ``file`` column,
-    converts ``time`` (``datetime64[ns, UTC]``) to Unix integers, sanitises
-    NaN fields, and stores one document per workout under
-    ``route:<startDate_unix>:<workoutActivityType>``.
+    which matches the paths listed in ``workout["route"]["files"]``.  Each
+    workout's trackpoints are stored as a JSON document under
+    ``route:<startDate_unix>:<workoutActivityType>``, mirroring the workout
+    key pattern so the route can be retrieved by constructing the key from a
+    known workout.
+
+    The ``time`` column (``datetime64[ns, UTC]``) is converted to a Unix
+    integer timestamp before JSON serialisation.  All ``NaN`` float fields
+    are replaced with ``None`` via :func:`_sanitize_doc`.
 
     Args:
-        routes: Routes DataFrame from :func:`.parser.parse_apple_health_routes`.
-        workouts: Workout DataFrame — needed to map file paths to workout keys.
+        routes: Routes DataFrame produced by
+            :func:`.parser.parse_apple_health_routes`.  May be empty.
+        workouts: Workout DataFrame — needed to map file paths back to
+            workout keys.  May be empty.
         r: Active Redis connection with the JSON module loaded.
 
     """
@@ -171,6 +241,7 @@ def _upload_routes(
         trackpoints: list[dict] = []
         for _, tp in workout_routes.iterrows():
             tp_dict = tp.to_dict()
+            # Convert pandas Timestamp to Unix int
             t = tp_dict.get("time")
             if hasattr(t, "timestamp"):
                 tp_dict["time"] = int(t.timestamp())
@@ -179,17 +250,20 @@ def _upload_routes(
             trackpoints.append(_sanitize_doc(tp_dict))
 
         key = f"route:{start_ts}:{activity_type}"
-        r.json().set(
-            key,
-            "$",
-            {
-                "workoutKey": f"workout:{start_ts}:{activity_type}",
-                "trackpoints": trackpoints,
-            },
-        )
+        doc = {
+            "workoutKey": f"workout:{start_ts}:{activity_type}",
+            "trackpoints": trackpoints,
+        }
+        r.json().set(key, "$", doc)
         n_stored += 1
+        logger.debug("Stored route %s (%d trackpoints).", key, len(trackpoints))
 
     logger.info("Stored %d route(s).", n_stored)
+
+
+# ---------------------------------------------------------------------------
+# Public importer class
+# ---------------------------------------------------------------------------
 
 
 class HealthDataImporter:
@@ -205,20 +279,14 @@ class HealthDataImporter:
             files.
         in_file: Name of the Apple Health ZIP export inside *data_dir*.
         working_dir: Root directory; defaults to the current working directory.
-        out_file: Name of the Feather cache file written to *data_dir*.
+        out_file: Name of the Feather cache for the records DataFrame.
         failures_file: Name of the JSON file that persists upload failures
             between sessions.
 
-
     Example::
 
-        # Uses the conventional data/export.zip layout
         importer = HealthDataImporter(connection=redis_connect())
         importer.etl(write_feather=True)
-
-        # Non-standard layout
-        HealthDataImporter(data_dir="exports", in_file="2026-q1.zip",
-                           connection=redis_connect())
 
     """
 
@@ -240,8 +308,12 @@ class HealthDataImporter:
             in_file: Name of the Apple Health export archive within ``data_dir``.
             working_dir: Base directory the other paths are resolved against.
                 Defaults to the current working directory.
-            out_file: Name of the cached Feather DataFrame written under
-                ``data_dir``.
+            out_file: Name of the Feather cache file for the *records*
+                DataFrame (``export.feather`` by default).  Sibling cache
+                files are derived from this stem: ``*_activities.feather``
+                and ``*_routes.feather`` (Feather), plus ``*_workouts.pkl``
+                and ``*_correlations.pkl`` (pickle, for tables with nested
+                Python objects).
             failures_file: Name of the JSON file used to persist per-row upload
                 failures so retries survive across runs.
 
@@ -256,7 +328,16 @@ class HealthDataImporter:
             raise FileNotFoundError(f"Data directory {self.data_dir} does not exist.")
 
         self.zip_file: Path = self.data_dir / in_file
+        # Records feather (name supplied by caller)
         self.output_file: Path = self.data_dir / out_file
+        stem = self.output_file.stem
+        # Scalar-only tables → Feather (columnar, compact, fast for large row counts)
+        self.activities_file: Path = self.data_dir / f"{stem}_activities.feather"
+        self.routes_file: Path = self.data_dir / f"{stem}_routes.feather"
+        # Tables with nested Python objects → pickle (no encode/decode shim needed)
+        self.workouts_file: Path = self.data_dir / f"{stem}_workouts.pkl"
+        self.correlations_file: Path = self.data_dir / f"{stem}_correlations.pkl"
+
         self.failures_file: Path = self.data_dir / failures_file
         self.connection = connection
 
@@ -266,6 +347,7 @@ class HealthDataImporter:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
     def etl(
         self,
         *,
@@ -275,34 +357,23 @@ class HealthDataImporter:
     ) -> None:
         """Run the full Extract → Transform → Load pipeline.
 
-        Uses :class:`DuplicatePolicy.First` so that re-running the same export
-        never overwrites existing data points.  To overwrite, use
-        :meth:`update` instead.
-
-        When setting `persist_failures=True` any upload failures **overwrite**
-        :attr:`failures_file` so that :meth:`retry_failed` can be called in
-        another Python session::
-
-            importer.etl(persist_failures=True)
-            # failures are persisted at data/upload_failures.json and as
-            # instance attribute
-            if importer.failures:
-                importer.retry_failed(df)
+        Uploads health records to Redis TimeSeries and stores workouts,
+        correlations, activity summaries, and GPS routes as Redis JSON
+        documents.  Uses :class:`~.response.DuplicatePolicy.FIRST` for
+        TimeSeries writes so that re-running the same export never overwrites
+        existing data points.
 
         Args:
-            write_feather: Persist the parsed data as a Feather cache so that
-                subsequent runs skip the slow XML extraction step.
-            persist_failures: Persist a file that contains which data could not
-                be uploaded as a JSON file.
-            no_cache: If True, ignores pre-existing cache file and reads ZIP input.
+            write_feather: Persist all five DataFrames as Feather caches so
+                that subsequent runs skip the slow XML extraction step.
+            persist_failures: Write the failures JSON file so that
+                :meth:`retry_failed` can be called in another session.
+            no_cache: If ``True``, ignore any pre-existing Feather caches and
+                always read from the ZIP export.
 
         Raises:
-            FileNotFoundError: When neither the Feather cache nor the source
+            FileNotFoundError: When neither the Feather caches nor the source
                 ZIP can be found.
-            NotImplementedError: If ``NaN`` values are found in any column other
-                than ``unit``, indicating an unexpected schema change.
-            ValueError: If a row without a unit has a numeric ``value``; only
-                categorical string values are expected in that position.
 
         Example::
 
@@ -332,39 +403,24 @@ class HealthDataImporter:
     def retry_failed(self, *, persist_failures: bool = True) -> None:
         """Re-attempt uploading every data point recorded in :attr:`failures_file`.
 
-        Reads the failures JSON file written by the most recent :meth:`etl`,
-        :meth:`update`, or previous :meth:`retry_failed` call which **overwrites**
-        :attr:`failures`. This method can be called in a completely separate Python
-        session as long as the failures file and the Feather cache still exist::
-
-            # New session — no need to re-run etl()
-            importer = HealthDataImporter()
-            df = feather.read_feather("data/export.feather")
-            importer.retry_failed()
-
-        Retry behaviour:
-
-        Loads dataframe from `self.out_file` and finds entries that failed to upload,
-        and passes this subset to :meth:`_load`.
+        Loads the records DataFrame from the Feather cache (or re-parses from
+        the ZIP if the cache is absent), selects only the rows that previously
+        failed, and calls :func:`_load` on that subset.  Workouts,
+        correlations, activities, and routes are **not** re-uploaded; only
+        TimeSeries records are retried.
 
         After the retry:
 
-        * If **all** previously failed data points now succeed, the failures
-          file is **deleted**.
-        * If **some** failures remain, the file is **overwritten** with only
-          the still-failing entries.
+        * All failures resolved → failures file is deleted.
+        * Some failures remain → file is overwritten with only the
+          still-failing entries.
 
         Args:
-            persist_failures: Persist a file that contains which data could not
-                be uploaded as a JSON file.
+            persist_failures: Write the updated failures file after the retry.
 
-        Raises::
-            FileNotFoundError: When neither the Feather cache nor the source
-                ZIP can be found, or if :attr:`failures_file` does not exist.
-            NotImplementedError: If ``NaN`` values are found in any column other
-                than ``unit``, indicating an unexpected schema change.
-            ValueError: If a row without a unit has a numeric ``value``; only
-                categorical string values are expected in that position.
+        Raises:
+            FileNotFoundError: If :attr:`failures_file` does not exist, or if
+                neither the records Feather cache nor the ZIP can be found.
 
         Example::
 
@@ -379,13 +435,14 @@ class HealthDataImporter:
             " has not changed since previous run."
         )
 
-        # Always read from disk so the method works across sessions.
         self.failures = self._read_failures_file()
         if not self.failures:
             self._delete_failures_file()
             logger.warning("retry_failed: failures file is empty, nothing to retry.")
             return None
 
+        # Only records are needed — use the dedicated records-only loader so
+        # retry still works even if only the records feather exists.
         records = self._extract_records_only(no_cache=False)
 
         row_selectors: list = []
@@ -428,23 +485,15 @@ class HealthDataImporter:
     ) -> None:
         """Re-import the export, **overwriting** existing data points.
 
-        Identical to :meth:`etl` except it uses ``DuplicatePolicy.LAST``,
-        which means any timestamp that already exists in Redis is overwritten
-        with the new value rather than kept.
+        Identical to :meth:`etl` except it uses
+        :class:`~.response.DuplicatePolicy.LAST` for TimeSeries writes, and
+        all JSON documents (workouts, correlations, activities, routes) are
+        also overwritten.
 
         Args:
-            write_feather: Persist the parsed data as a Feather cache.
-            persist_failures: Persist a file that contains which data could not
-                be uploaded as a JSON file.
-            no_cache: If True, ignores pre-existing cache file and reads ZIP input.
-
-        Raises:
-            FileNotFoundError: When neither the Feather cache nor the source
-                ZIP can be found.
-            NotImplementedError: If ``NaN`` values are found in any column other
-                than ``unit``, indicating an unexpected schema change.
-            ValueError: If a row without a unit has a numeric ``value``; only
-                categorical string values are expected in that position.
+            write_feather: Persist all five DataFrames as Feather caches.
+            persist_failures: Write the failures JSON file.
+            no_cache: If ``True``, ignore any pre-existing Feather caches.
 
         Example::
 
@@ -479,89 +528,148 @@ class HealthDataImporter:
     # Private helpers
     # ------------------------------------------------------------------
 
+    def _all_caches_exist(self) -> bool:
+        """Return ``True`` if every Feather cache file is present on disk.
+
+        A partial cache (e.g. only the records feather from a pre-route run)
+        is treated as a cache miss so the full ZIP is re-parsed and all five
+        files are written together.
+
+        """
+        return all(
+            p.exists()
+            for p in (
+                self.output_file,
+                self.workouts_file,
+                self.correlations_file,
+                self.activities_file,
+                self.routes_file,
+            )
+        )
+
+    def _write_all_caches(
+        self,
+        records: pd.DataFrame,
+        correlations: pd.DataFrame,
+        workouts: pd.DataFrame,
+        activities: pd.DataFrame,
+        routes: pd.DataFrame,
+    ) -> None:
+        """Write all five DataFrames to their respective cache files.
+
+        Tables with scalar-only columns are written as Feather; tables that
+        carry nested Python objects (dicts / lists) are written as pickle so
+        no JSON encode/decode shim is required.
+
+        ================  ==========  ==========================================
+        File              Format      Rationale
+        ================  ==========  ==========================================
+        records           Feather     Millions of rows; columnar compression wins
+        activities        Feather     Scalar strings; small, fast either way
+        routes            Feather     Float + datetime columns; Arrow is optimal
+        workouts          pickle      Contains meta/events/statistics/route dicts
+        correlations      pickle      Contains meta/records dicts
+        ================  ==========  ==========================================
+
+        Args:
+            records: Health records DataFrame.
+            correlations: Correlation DataFrame (nested dicts/lists).
+            workouts: Workout DataFrame (nested dicts/lists).
+            activities: ActivitySummary DataFrame.
+            routes: GPS routes DataFrame.
+
+        """
+        logger.info("Writing caches to %s", self.data_dir)
+        records.to_feather(self.output_file)
+        activities.to_feather(self.activities_file)
+        routes.to_feather(self.routes_file)
+        workouts.to_pickle(self.workouts_file)
+        correlations.to_pickle(self.correlations_file)
+        logger.info("All caches written.")
+
+    def _read_all_caches(
+        self,
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Load all five DataFrames from their cache files.
+
+        Feather files are read with :func:`pyarrow.feather.read_feather`;
+        pickle files are read with :func:`pandas.read_pickle`.  No
+        encode/decode step is required — the complex Python objects in the
+        workout and correlation DataFrames are restored directly by pickle.
+
+        Returns:
+            5-tuple of ``(records, correlations, workouts, activities, routes)``.
+
+        """
+        logger.info("All caches found; skipping XML conversion.")
+
+        return (
+            feather.read_feather(self.output_file),
+            pd.read_pickle(self.correlations_file),  # noqa: S301
+            pd.read_pickle(self.workouts_file),  # noqa: S301
+            feather.read_feather(self.activities_file),
+            feather.read_feather(self.routes_file),
+        )
+
     def _extract(
         self, *, write_feather: bool, no_cache: bool
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        """Parse the Apple Health export and return four DataFrames.
+        """Parse the Apple Health export and return all five DataFrames.
 
-        When reading from the Feather cache only records are available; the
-        other three DataFrames are returned empty.
+        Loads from the Feather caches when *all five* cache files exist and
+        ``no_cache`` is ``False``; otherwise parses the ZIP export.  Routes
+        are collected by reading the ``route["files"]`` field of each workout
+        and calling :func:`.parser.parse_apple_health_routes`.
 
         Args:
-            write_feather: Write a Feather cache file for the records DataFrame.
-            no_cache: If ``True``, bypass the Feather cache.
+            write_feather: Write all five Feather cache files after parsing.
+            no_cache: If ``True``, always parse from the ZIP even when caches
+                exists.
 
         Returns:
-            4-tuple ``(records, correlations, workouts, activities)``.
+            5-tuple ``(records, correlations, workouts, activities, routes)``.
 
         Raises:
-            FileNotFoundError: When neither the Feather cache nor the ZIP can
-                be found.
+            FileNotFoundError: When the Feather caches are absent or incomplete
+                *and* the ZIP export cannot be found.
 
         """
         logger.info("Extracting export data...")
-        if self.output_file.exists() and not no_cache:
-            logger.info("Feather cache found; skipping XML conversion.")
-            return (
-                feather.read_feather(self.output_file),
-                pd.DataFrame(),
-                pd.DataFrame(),
-                pd.DataFrame(),
-                pd.DataFrame(),
-            )
+        if not no_cache and self._all_caches_exist():
+            return self._read_all_caches()
 
         if not self.zip_file.exists():
             raise FileNotFoundError(
                 f"No export file found. Expected one of:\n"
-                f"  {self.output_file}\n"
+                f"  {self.output_file}  (+ sibling caches)\n"
                 f"  {self.zip_file}"
             )
 
-        logger.info("Converting ZIP export to Feather format...")
+        logger.info("Parsing ZIP export...")
         record_df, correlation_df, workout_df, activity_df = parse_apple_health(
             zip_path=self.zip_file
         )
 
-        if write_feather:
-            logger.info("Writing Feather cache to %s", self.output_file)
-            record_df.to_feather(self.output_file)
-
+        # Collect route file paths from workouts and parse all at once.
         routes_df = self._parse_routes(workout_df)
+
+        if write_feather:
+            self._write_all_caches(
+                record_df, correlation_df, workout_df, activity_df, routes_df
+            )
+
         return record_df, correlation_df, workout_df, activity_df, routes_df
-
-    def _parse_routes(self, workout_df: pd.DataFrame) -> pd.DataFrame:
-        """Parse GPS routes from workouts that carry a route file reference.
-
-        Args:
-            workout_df: Workout DataFrame from :func:`.parser.parse_apple_health`.
-
-        Returns:
-            Routes DataFrame, or an empty DataFrame when no routes are present.
-
-        """
-        if workout_df.empty or "route" not in workout_df.columns:
-            return pd.DataFrame()
-
-        route_paths: list[str] = [
-            path
-            for route in workout_df["route"].dropna()
-            if isinstance(route, dict)
-            for path in (route.get("files") or [])
-        ]
-        if not route_paths:
-            return pd.DataFrame()
-
-        logger.info("Parsing %d GPX route file(s)...", len(route_paths))
-        return parse_apple_health_routes(self.zip_file, paths=route_paths)
 
     def _extract_records_only(self, *, no_cache: bool) -> pd.DataFrame:
         """Load only the records DataFrame, preferring the Feather cache.
 
-        Used by :meth:`retry_failed` so a retry run succeeds even when only
-        the records Feather file exists.
+        Unlike :meth:`_extract`, this method succeeds as long as the *records*
+        Feather file exists, even when the other four caches are absent.  It is
+        used exclusively by :meth:`retry_failed` so that a retry run never
+        requires the full ZIP to be present.
 
         Args:
-            no_cache: If ``True``, bypass the Feather cache.
+            no_cache: If ``True``, bypass the Feather cache and parse from ZIP.
 
         Returns:
             The raw health records DataFrame.
@@ -573,23 +681,54 @@ class HealthDataImporter:
         """
         logger.info("Extracting records data...")
         if not no_cache and self.output_file.exists():
+            logger.info("Records Feather cache found; loading records.")
             return feather.read_feather(self.output_file)
+
         if not self.zip_file.exists():
             raise FileNotFoundError(
                 f"No export file found. Expected one of:\n"
                 f"  {self.output_file}\n"
                 f"  {self.zip_file}"
             )
+
+        logger.info("Parsing records from ZIP export...")
         record_df, _, _, _ = parse_apple_health(zip_path=self.zip_file)
         return record_df
 
-    def _update_failures_file(self) -> None:
-        """Persist or clear the failures file to match in-memory state.
+    def _parse_routes(self, workout_df: pd.DataFrame) -> pd.DataFrame:
+        """Parse GPS routes from all workouts that carry a route reference.
 
-        Writes :attr:`failures` to disk when any failures are recorded, and
-        deletes the file when the list is empty so a clean run leaves no stale
-        failures behind.
+        Collects every unique GPX path listed in ``workout["route"]["files"]``
+        and delegates a single call to
+        :func:`.parser.parse_apple_health_routes`.
+
+        Args:
+            workout_df: Workout DataFrame as returned by
+                :func:`.parser.parse_apple_health`.
+
+        Returns:
+            Routes DataFrame, or an empty DataFrame when no workouts have a
+            route.
+
         """
+        if workout_df.empty or "route" not in workout_df.columns:
+            return pd.DataFrame()
+
+        route_paths: list[str] = [
+            path
+            for route in workout_df["route"].dropna()
+            if isinstance(route, dict)
+            for path in (route.get("files") or [])
+        ]
+
+        if not route_paths:
+            return pd.DataFrame()
+
+        logger.info("Parsing %d GPX route file(s)...", len(route_paths))
+        return parse_apple_health_routes(self.zip_file, paths=route_paths)
+
+    def _update_failures_file(self) -> None:
+        """Persist or clear the failures file to match in-memory state."""
         if self.failures:
             self._write_failures_file(self.failures)
         else:
@@ -598,30 +737,15 @@ class HealthDataImporter:
     def _write_failures_file(self, failures: list[UploadFailure]) -> None:
         """Serialise *failures* and write them to :attr:`failures_file`.
 
-        Overwrites any existing file so the file always reflects the current state.
-
         Args:
-            failures: List of :class:`~models.UploadFailure` objects to
-                persist.
-
-        Example::
-
-            importer._write_failures_file(importer.failures)
+            failures: List of :class:`~.response.UploadFailure` objects.
 
         """
         self.failures_file.write_text(failures_to_json(failures), encoding="utf-8")
         logger.info("Wrote %d failure(s) to %s", len(failures), self.failures_file)
 
     def _delete_failures_file(self) -> None:
-        """Delete :attr:`failures_file` if it exists.
-
-        Called after a fully successful load or a fully successful retry to
-        ensure no stale file misleads a future :meth:`retry_failed` call.
-
-        Example::
-
-            importer._delete_failures_file()
-        """
+        """Delete :attr:`failures_file` if it exists."""
         if self.failures_file.exists():
             self.failures_file.unlink()
             logger.info("Deleted failures file %s (all resolved).", self.failures_file)
@@ -630,15 +754,10 @@ class HealthDataImporter:
         """Read and deserialise the failures file.
 
         Returns:
-            List of :class:`~models.UploadFailure` objects.
+            List of :class:`~.response.UploadFailure` objects.
 
         Raises:
             FileNotFoundError: If :attr:`failures_file` does not exist.
-            ValueError: If the file contains an unrecognised ``kind`` value.
-
-        Example::
-
-            failures = importer._read_failures_file()
 
         """
         if not self.failures_file.exists():
@@ -660,26 +779,21 @@ def _load(
 ) -> list[UploadFailure]:
     """Batch-upload all records to Redis TimeSeries.
 
-    Each unique ``type`` is uploaded in its own pipeline transaction
-    in a batch size of 500, so that a failure in one type does not
-    abort the others. Returns a list of ``UploadFailure`` objects.
+    Each unique ``type`` is uploaded in its own pipeline in batches of
+    :data:`~.response.BATCH_SIZE` rows.  Before the first batch for each type,
+    :func:`~src.redis_setup.ensure_ts_key` provisions the ``:start`` / ``:end``
+    keys with metadata labels derived from the transformed DataFrame's ``unit``
+    and ``group`` columns.
 
     Args:
-        df: Transformed health records.
+        df: Transformed health records DataFrame.  Must have ``type``,
+            ``unit``, and ``group`` columns.
         r: Active Redis connection.
-        duplicate_policy: :class:`~DuplicatePolicy.FIRST` (default, used by
-            :meth:`~HealthDataImporter.etl` and
-            :meth:`~HealthDataImporter.retry_failed`)
-            or :class:`~DuplicatePolicy.LAST` (used by
-            :meth:`~HealthDataImporter.update`).
+        duplicate_policy: Write-conflict strategy for ``TS.ADD``.
 
     Returns:
-        A new list of UploadFailure objects. Empty if all data points
-        were successfully uploaded.
-
-    Example::
-
-        failures = importer._load(df, importer.connection, DuplicatePolicy.LAST)
+        List of :class:`~.response.UploadFailure` objects; empty on full
+        success.
 
     """
     logger.info(
@@ -712,13 +826,8 @@ def _load(
             r, f"ts:{data_type}:end", labels=base_labels | {"event_type": "end"}
         )
 
-        # upload in batches of BATCH_SIZE
         for i in range(0, n, BATCH_SIZE):
-            j = i + BATCH_SIZE
-            if j > n:
-                j = n
-
-            _df = batch_df.iloc[i:j]
+            _df = batch_df.iloc[i : i + BATCH_SIZE]
 
             try:
                 row_failures = upload_batch(
