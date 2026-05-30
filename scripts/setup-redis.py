@@ -1,5 +1,6 @@
 """Provision RediSearch indexes and TimeSeries labels for the Apple Health dataset."""
 
+import argparse
 import logging
 
 import redis
@@ -14,8 +15,23 @@ from src.redis_setup import (
 )
 
 if __name__ == "__main__":
-    dry_run = True
-    force = False
+    parser = argparse.ArgumentParser(
+        description="Provision RediSearch indexes and TimeSeries labels."
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Apply changes (default is dry-run).",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force index setup when supported.",
+    )
+    args = parser.parse_args()
+
+    dry_run = not args.execute
+    force = args.force
 
     configure_logging(__file__)
     logger = logging.getLogger(__name__)
