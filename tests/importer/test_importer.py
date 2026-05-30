@@ -9,7 +9,13 @@ import pandas as pd
 import pytest
 import redis
 
-from src.importer.importer import HealthDataImporter, _load
+from src.importer.importer import (
+    HealthDataImporter,
+    _load,
+    _load_documents,
+    _parse_hk_timestamp,
+    _sanitize_doc,
+)
 from src.importer.response import (
     BatchFailure,
     DuplicatePolicy,
@@ -183,6 +189,144 @@ class TestFailuresFile:
 # ---------------------------------------------------------------------------
 # _load function
 # ---------------------------------------------------------------------------
+
+
+class TestDocumentHelpers:
+    def test_parse_hk_timestamp_none(self):
+        assert _parse_hk_timestamp(None) is None
+
+    def test_parse_hk_timestamp_utc(self):
+        assert _parse_hk_timestamp("2024-01-01 00:00:00 +0000") == 1_704_067_200
+
+    def test_parse_hk_timestamp_with_offset(self):
+        assert _parse_hk_timestamp("2024-01-01 01:00:00 +0100") == 1_704_067_200
+
+    def test_parse_hk_timestamp_returns_int(self):
+        assert isinstance(_parse_hk_timestamp("2024-01-01 00:00:00 +0000"), int)
+
+    def test_sanitize_doc_replaces_nan_with_none(self):
+        assert _sanitize_doc({"b": float("nan")})["b"] is None
+
+    def test_sanitize_doc_preserves_non_nan(self):
+        assert _sanitize_doc({"x": 42, "y": "text"}) == {"x": 42, "y": "text"}
+
+    def test_sanitize_doc_empty(self):
+        assert _sanitize_doc({}) == {}
+
+
+class TestLoadDocuments:
+    def _workout_df(self):
+        return pd.DataFrame(
+            [
+                {
+                    "workoutActivityType": "HKWorkoutActivityTypeRunning",
+                    "sourceName": "Apple Watch",
+                    "startDate": "2024-01-01 00:00:00 +0000",
+                    "endDate": "2024-01-01 00:30:00 +0000",
+                    "duration": "30.0",
+                    "durationUnit": "min",
+                    "sourceVersion": "9.0",
+                    "creationDate": "2024-01-01 00:00:00 +0000",
+                    "device": "watch",
+                    "meta": {"HKTimeZone": "Europe/Berlin"},
+                    "events": [],
+                    "statistics": [],
+                    "route": None,
+                    "activities": [],
+                }
+            ]
+        )
+
+    def _correlation_df(self):
+        return pd.DataFrame(
+            [
+                {
+                    "type": "HKCorrelationTypeIdentifierBloodPressure",
+                    "sourceName": "Health",
+                    "startDate": "2024-01-01 00:00:00 +0000",
+                    "endDate": "2024-01-01 00:01:00 +0000",
+                    "sourceVersion": "17.0",
+                    "creationDate": "2024-01-01 00:00:00 +0000",
+                    "meta": {"HKWasUserEntered": "1"},
+                    "records": [],
+                }
+            ]
+        )
+
+    def _activity_df(self):
+        return pd.DataFrame(
+            [
+                {
+                    "dateComponents": "2024-01-01",
+                    "activeEnergyBurned": "450",
+                    "activeEnergyBurnedGoal": "500",
+                    "activeEnergyBurnedUnit": "kcal",
+                    "appleExerciseTime": "35",
+                    "appleExerciseTimeGoal": "30",
+                    "appleStandHours": "12",
+                    "appleStandHoursGoal": "12",
+                    "appleMoveTime": None,
+                    "appleMoveTimeGoal": None,
+                }
+            ]
+        )
+
+    def test_empty_dfs_are_noop(self, mock_redis):
+        _load_documents(pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), mock_redis)
+        mock_redis.json.assert_not_called()
+
+    def test_workout_key_prefix(self, mock_redis):
+        _load_documents(self._workout_df(), pd.DataFrame(), pd.DataFrame(), mock_redis)
+        assert mock_redis.json.return_value.set.call_args[0][0].startswith("workout:")
+
+    def test_workout_start_date_is_integer(self, mock_redis):
+        _load_documents(self._workout_df(), pd.DataFrame(), pd.DataFrame(), mock_redis)
+        assert isinstance(
+            mock_redis.json.return_value.set.call_args[0][2]["startDate"], int
+        )
+
+    def test_workout_metakeys_extracted(self, mock_redis):
+        _load_documents(self._workout_df(), pd.DataFrame(), pd.DataFrame(), mock_redis)
+        assert (
+            "HKTimeZone" in mock_redis.json.return_value.set.call_args[0][2]["metaKeys"]
+        )
+
+    def test_correlation_key_prefix(self, mock_redis):
+        _load_documents(
+            pd.DataFrame(), self._correlation_df(), pd.DataFrame(), mock_redis
+        )
+        assert mock_redis.json.return_value.set.call_args[0][0].startswith(
+            "correlation:"
+        )
+
+    def test_correlation_metakeys_extracted(self, mock_redis):
+        _load_documents(
+            pd.DataFrame(), self._correlation_df(), pd.DataFrame(), mock_redis
+        )
+        assert (
+            "HKWasUserEntered"
+            in mock_redis.json.return_value.set.call_args[0][2]["metaKeys"]
+        )
+
+    def test_activity_key_uses_date_components(self, mock_redis):
+        _load_documents(pd.DataFrame(), pd.DataFrame(), self._activity_df(), mock_redis)
+        assert "2024-01-01" in mock_redis.json.return_value.set.call_args[0][0]
+
+    def test_activity_doc_has_date_integer_field(self, mock_redis):
+        _load_documents(pd.DataFrame(), pd.DataFrame(), self._activity_df(), mock_redis)
+        assert isinstance(mock_redis.json.return_value.set.call_args[0][2]["date"], int)
+
+    def test_nan_sanitized_to_none(self, mock_redis):
+        df = self._activity_df()
+        df.loc[0, "appleMoveTime"] = float("nan")
+        _load_documents(pd.DataFrame(), pd.DataFrame(), df, mock_redis)
+        assert mock_redis.json.return_value.set.call_args[0][2]["appleMoveTime"] is None
+
+    def test_mixed_upload_counts(self, mock_redis):
+        _load_documents(
+            self._workout_df(), self._correlation_df(), self._activity_df(), mock_redis
+        )
+        assert mock_redis.json.return_value.set.call_count == 3
 
 
 class TestLoad:
@@ -381,6 +525,22 @@ class TestEtl:
             importer.etl()
         assert importer.failures == failures
 
+    def test_etl_calls_load_documents(self, importer):
+        df = _make_transformed_df()
+        with (
+            patch.object(
+                importer,
+                "_extract",
+                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
+            ),
+            patch("src.importer.importer.transform"),
+            patch("src.importer.importer._load", return_value=[]),
+            patch("src.importer.importer._load_documents") as mock_doc,
+            patch.object(importer, "_update_failures_file"),
+        ):
+            importer.etl()
+        mock_doc.assert_called_once()
+
     def test_etl_persist_failures_true_calls_update(self, importer):
         df = _make_transformed_df()
         with (
@@ -560,6 +720,22 @@ class TestRetryFailed:
         loaded_df = mock_load.call_args[1]["df"]
         assert (loaded_df["type"] == "HR").all()
         assert len(loaded_df) == 3
+
+    def test_retry_does_not_call_load_documents(self, importer):
+        df = _make_transformed_df(n=2)
+        self._write_failures(importer, [RowFailure("HR", 0, start_error="e")])
+        with (
+            patch.object(
+                importer,
+                "_extract",
+                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
+            ),
+            patch("src.importer.importer.transform"),
+            patch("src.importer.importer._load", return_value=[]),
+            patch("src.importer.importer._load_documents") as mock_doc,
+        ):
+            importer.retry_failed(persist_failures=True)
+        mock_doc.assert_not_called()
 
     def test_retry_all_resolved_deletes_file(self, importer):
         df = _make_transformed_df(n=2)

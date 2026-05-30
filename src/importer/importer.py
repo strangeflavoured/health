@@ -19,6 +19,7 @@ Typical usage::
 """
 
 import logging
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -43,6 +44,90 @@ from .response import (
 from .transform import transform
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Document-upload helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_hk_timestamp(value: str | None) -> int | None:
+    """Convert an Apple Health date string to a Unix integer timestamp.
+
+    Args:
+        value: Date string in Apple Health format, or ``None``.
+
+    Returns:
+        Unix timestamp in whole seconds, or ``None``.
+
+    """
+    if value is None:
+        return None
+    return int(pd.Timestamp(value).timestamp())
+
+
+def _sanitize_doc(doc: dict) -> dict:
+    """Replace ``float('nan')`` values with ``None`` for JSON-safe serialisation."""
+    return {
+        k: (None if isinstance(v, float) and math.isnan(v) else v)
+        for k, v in doc.items()
+    }
+
+
+def _load_documents(
+    workouts: pd.DataFrame,
+    correlations: pd.DataFrame,
+    activities: pd.DataFrame,
+    r: redis.Redis,
+) -> None:
+    """Upload workout, correlation, and activity documents to Redis JSON.
+
+    Keys: ``workout:<startDate_unix>:<workoutActivityType>``,
+    ``correlation:<startDate_unix>:<type>``,
+    ``activity:<dateComponents>``.
+    """
+    n_workouts = n_correlations = n_activities = 0
+
+    for _, row in workouts.iterrows():
+        rd = _sanitize_doc(row.to_dict())
+        start_ts = _parse_hk_timestamp(rd.get("startDate"))
+        end_ts = _parse_hk_timestamp(rd.get("endDate"))
+        activity_type = rd.get("workoutActivityType", "unknown")
+        doc = {
+            **rd,
+            "startDate": start_ts,
+            "endDate": end_ts,
+            "metaKeys": list((rd.get("meta") or {}).keys()),
+        }
+        r.json().set(f"workout:{start_ts}:{activity_type}", "$", doc)
+        n_workouts += 1
+
+    for _, row in correlations.iterrows():
+        rd = _sanitize_doc(row.to_dict())
+        start_ts = _parse_hk_timestamp(rd.get("startDate"))
+        corr_type = rd.get("type", "unknown")
+        doc = {
+            **rd,
+            "startDate": start_ts,
+            "endDate": _parse_hk_timestamp(rd.get("endDate")),
+            "metaKeys": list((rd.get("meta") or {}).keys()),
+        }
+        r.json().set(f"correlation:{start_ts}:{corr_type}", "$", doc)
+        n_correlations += 1
+
+    for _, row in activities.iterrows():
+        rd = _sanitize_doc(row.to_dict())
+        date_str = rd.get("dateComponents")
+        doc = {**rd, "date": _parse_hk_timestamp(date_str) if date_str else None}
+        r.json().set(f"activity:{date_str}", "$", doc)
+        n_activities += 1
+
+    logger.info(
+        "Stored %d workout(s), %d correlation(s), %d activity summary(ies).",
+        n_workouts,
+        n_correlations,
+        n_activities,
+    )
 
 
 class HealthDataImporter:
@@ -162,17 +247,21 @@ class HealthDataImporter:
             importer.etl(write_feather=True)
 
         """
-        df = self._extract(write_feather=write_feather, no_cache=no_cache)
-        transform(df)
-        self.failures = _load(df, self.connection)
+        records, correlations, workouts, activities = self._extract(
+            write_feather=write_feather, no_cache=no_cache
+        )
+        transform(records)
+        self.failures = _load(records, self.connection)
 
         if self.failures:
             logger.warning(
                 "%s.etl incomplete: %d of %d datapoints failed to upload.",
                 self.__class__,
-                count_failures(self.failures, df),
-                len(df),
+                count_failures(self.failures, records),
+                len(records),
             )
+
+        _load_documents(workouts, correlations, activities, self.connection)
 
         if persist_failures:
             self._update_failures_file()
@@ -234,26 +323,29 @@ class HealthDataImporter:
             logger.warning("retry_failed: failures file is empty, nothing to retry.")
             return None
 
-        df = self._extract(write_feather=False, no_cache=False)
+        records, _, _, _ = self._extract(write_feather=False, no_cache=False)
 
         row_selectors: list = []
         for f in self.failures:
             match f:
                 case BatchFailure(data_type=t, batch_nr=n):
                     row_selectors.extend(
-                        df[df["type"] == t].index[n * BATCH_SIZE : (n + 1) * BATCH_SIZE]
+                        records[records["type"] == t].index[
+                            n * BATCH_SIZE : (n + 1) * BATCH_SIZE
+                        ]
                     )
                 case RowFailure(row_index=i):
                     row_selectors.append(i)
 
-        retry_df = df[df.index.isin(row_selectors)]
+        retry_df = records[records.index.isin(row_selectors)]
         transform(retry_df)
 
-        r = self.connection
-        n_before = count_failures(self.failures, df)
-        self.failures = _load(df=retry_df, r=r, duplicate_policy=DuplicatePolicy.FIRST)
+        n_before = count_failures(self.failures, records)
+        self.failures = _load(
+            df=retry_df, r=self.connection, duplicate_policy=DuplicatePolicy.FIRST
+        )
 
-        n_after = count_failures(self.failures, df)
+        n_after = count_failures(self.failures, records)
         logger.info(
             "retry_failed complete: %d/%d failure(s) resolved, %d remaining.",
             n_before - n_after,
@@ -296,10 +388,12 @@ class HealthDataImporter:
             importer.update()
 
         """
-        df = self._extract(write_feather=write_feather, no_cache=no_cache)
-        transform(df)
+        records, correlations, workouts, activities = self._extract(
+            write_feather=write_feather, no_cache=no_cache
+        )
+        transform(records)
         self.failures = _load(
-            df,
+            records,
             self.connection,
             duplicate_policy=DuplicatePolicy.LAST,
         )
@@ -308,9 +402,11 @@ class HealthDataImporter:
             logger.warning(
                 "%s.update incomplete: %d of %d datapoints failed to upload.",
                 self.__class__,
-                count_failures(self.failures, df),
-                len(df),
+                count_failures(self.failures, records),
+                len(records),
             )
+
+        _load_documents(workouts, correlations, activities, self.connection)
 
         if persist_failures:
             self._update_failures_file()
@@ -319,34 +415,35 @@ class HealthDataImporter:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _extract(self, *, write_feather: bool, no_cache: bool) -> pd.DataFrame:
-        """Parse the Apple Health export and return a raw DataFrame.
+    def _extract(
+        self, *, write_feather: bool, no_cache: bool
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """Parse the Apple Health export and return four DataFrames.
 
-        Prefers the Feather cache at :attr:`output_file` to avoid re-running
-        the slow XML-to-Feather conversion.  Falls back to the ZIP export at
-        :attr:`zip_file` if no cache exists.
+        When reading from the Feather cache only records are available; the
+        other three DataFrames are returned empty.
 
         Args:
-            write_feather: Write a Feather cache file after parsing the ZIP
-                export.
-            no_cache: If True, ignores pre-existing cache file and reads ZIP input.
+            write_feather: Write a Feather cache file for the records DataFrame.
+            no_cache: If ``True``, bypass the Feather cache.
 
         Returns:
-            Raw health records as a :class:`~pandas.DataFrame`.
+            4-tuple ``(records, correlations, workouts, activities)``.
 
         Raises:
-            FileNotFoundError: When neither the Feather cache nor the source
-                ZIP can be found.
-
-        Example::
-
-            df = importer._extract(write_feather=True, no_cache=False)
+            FileNotFoundError: When neither the Feather cache nor the ZIP can
+                be found.
 
         """
         logger.info("Extracting export data...")
         if self.output_file.exists() and not no_cache:
             logger.info("Feather cache found; skipping XML conversion.")
-            return feather.read_feather(self.output_file)
+            return (
+                feather.read_feather(self.output_file),
+                pd.DataFrame(),
+                pd.DataFrame(),
+                pd.DataFrame(),
+            )
 
         if not self.zip_file.exists():
             raise FileNotFoundError(
@@ -364,7 +461,7 @@ class HealthDataImporter:
             logger.info("Writing Feather cache to %s", self.output_file)
             record_df.to_feather(self.output_file)
 
-        return record_df
+        return record_df, correlation_df, workout_df, activity_df
 
     def _update_failures_file(self) -> None:
         """Persist or clear the failures file to match in-memory state.
