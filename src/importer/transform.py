@@ -7,6 +7,19 @@ All public and private functions in this module accept a ``df`` argument that
 refers to the same underlying :class:`~pandas.DataFrame` and mutate it
 in-place.  No copies are created, keeping peak RAM proportional to the
 export size rather than a multiple of it.
+
+Performance notes
+-----------------
+* :data:`_FLAT_CATEGORY_MAP` is built once at import time as a flat
+  ``(type, value) → int`` dictionary, eliminating the two-level lookup that
+  the old implementation performed on every categorical row.
+* :func:`_handle_categorical_units` scans only the *non-nullable* columns when
+  checking for unexpected ``NaN`` values, avoiding a full ``df.isna()``
+  materialisation for each call.
+* :func:`_timestamps_to_unix` uses :func:`pandas.to_datetime` rather than
+  ``Series.astype`` so that both raw string inputs (from the XML parser) and
+  already-parsed datetime inputs are handled correctly and without deprecation
+  warnings from pandas 3.x.
 """
 
 import logging
@@ -22,26 +35,46 @@ logger = logging.getLogger(__name__)
 # these columns are expected to contain entries without value
 COLUMNS_WITHOUT_VALUE = ["unit", "device"]
 
+# ---------------------------------------------------------------------------
+# Module-level flat lookup built once at import time.
+# Replaces the two-level CATEGORICAL_IDENTIFIER_MAPS[type][value] per-row
+# lookup with a single O(1) dict access.
+# ---------------------------------------------------------------------------
+
+_FLAT_CATEGORY_MAP: dict[tuple[str, str], int] = {
+    (type_name, value_name): int_val
+    for type_name, value_map in CATEGORICAL_IDENTIFIER_MAPS.items()
+    for value_name, int_val in value_map.items()
+}
+
 
 def transform(df: pd.DataFrame) -> None:
     """Clean and reshape *df* in-place for upload to Redis TimeSeries.
 
     Applies the following steps in order:
 
-    0. Check input `df` sanity.
-    1. Drop rows whose ``value`` field is ``NaN`` (:func:`_drop_null_values`).
-    2. Resolve categorical string values to signed integers or NaN and assign the
-       ``"Categorical"`` sentinel unit (:func:`_handle_categorical_units`).
-    3. Convert ``startDate`` and ``endDate`` from ``str`` to Unix
-       timestamps in whole seconds (:func:`_timestamps_to_unix`).
+    0. Check input `df` sanity via :func:`~.data_check.check_export_data`.
+    1. Drop rows whose ``value`` field is ``NaN``
+       (:func:`_drop_null_values`).
+    2. Resolve categorical string values to signed integers and assign the
+       ``"Categorical"`` sentinel unit
+       (:func:`_handle_categorical_units`).
+    3. Cast ``value`` to ``float64``.
+    4. Convert ``startDate`` and ``endDate`` from strings or timezone-aware
+       datetimes to Unix timestamps in whole seconds
+       (:func:`_timestamps_to_unix`).
+    5. Add a ``group`` column derived from the type registry
+       (:meth:`~src.model.base.HKGroup.map_members`).
 
     Note:
-        Not thread-safe -- all mutations are applied directly to the shared
+        Not thread-safe — all mutations are applied directly to the shared
         DataFrame without locking.
 
     Args:
         df: The raw health records DataFrame as produced by the extract step;
-            mutated in-place.
+            mutated in-place.  ``startDate`` and ``endDate`` may be either
+            Apple Health timestamp strings (``"2024-01-01 00:00:00 +0000"``)
+            or pandas datetime objects.
 
     Example::
 
@@ -90,10 +123,16 @@ def _drop_null_values(df: pd.DataFrame) -> None:
 def _handle_categorical_units(df: pd.DataFrame) -> None:
     """Assign integer values and a sentinel unit to categorical records.
 
-    Rows without a ``unit`` value are treated as categorical.  Their string ``value``
-    is resolved to a signed integer/NaN via :func:`_map_categories`, and their ``unit``
-    is set to :attr:`~model.base.MissingUnit.CATEGORICAL`. For `type`/`value` pairs
-    in ``KNOWN_CATEGORY_TYPE_VIOLATIONS`` `type` is updated.
+    Rows without a ``unit`` value are treated as categorical.  Their string
+    ``value`` is resolved to a signed integer via :func:`_map_categories`, and
+    their ``unit`` is set to :attr:`~model.base.MissingUnit.CATEGORICAL`.
+    For ``type``/``value`` pairs in
+    :const:`~.data_check.KNOWN_CATEGORY_TYPE_VIOLATIONS` the ``type`` is
+    updated before mapping.
+
+    This function only scans columns that are *not* in
+    :data:`COLUMNS_WITHOUT_VALUE` for unexpected ``NaN`` values, avoiding a
+    full ``df.isna()`` materialisation.
 
     Note:
         A warning is logged (and the row left unmodified) if a ``type`` or
@@ -105,8 +144,8 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
 
     Raises:
         NotImplementedError: If ``NaN`` values are found in any column other
-            than ``unit``, indicating an unexpected schema change.
-
+            than those listed in :data:`COLUMNS_WITHOUT_VALUE`, indicating an
+            unexpected schema change.
         ValueError: If a row without a unit has a numeric ``value``; only
             categorical string values are expected in that position.
 
@@ -116,9 +155,13 @@ def _handle_categorical_units(df: pd.DataFrame) -> None:
         # Categorical rows now have integer values and unit == "Categorical"
 
     """
-    null_columns: pd.Index = df.columns[df.isna().any()]
-    if not null_columns.isin(COLUMNS_WITHOUT_VALUE).all():
-        unexpected = null_columns.difference(COLUMNS_WITHOUT_VALUE).tolist()
+    # Targeted scan: only check columns that should never be null.
+    unexpected = [
+        col
+        for col in df.columns
+        if col not in COLUMNS_WITHOUT_VALUE and df[col].isna().any()
+    ]
+    if unexpected:
         raise NotImplementedError(
             f"Unexpected column(s) have NaN (schema may have changed): {unexpected}"
         )
@@ -148,7 +191,8 @@ def _timestamps_to_unix(series: pd.Series) -> pd.Series:
     :func:`pandas.to_datetime` with ``utc=True`` to guarantee correct UTC
     conversion regardless of the input timezone offset.
 
-    Integer floor division by 10⁹ avoids floating-point rounding errors.
+    Integer floor division by 10⁹ avoids floating-point rounding errors and
+    ensures the result is always an exact ``int64``.
 
     Args:
         series: A pandas Series whose values are either Apple Health timestamp
@@ -171,10 +215,15 @@ def _timestamps_to_unix(series: pd.Series) -> pd.Series:
 def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
     """Replace categorical string values with integer values in-place.
 
+    Uses the module-level :data:`_FLAT_CATEGORY_MAP` for a single O(1) dict
+    lookup per row rather than the two-level
+    ``CATEGORICAL_IDENTIFIER_MAPS[type][value]`` access.  All errors are
+    accumulated before raising so the caller sees the complete set of unknown
+    ``(type, value)`` pairs.
+
     Note:
-        The :meth:`~pd.DataFrame.groupby` call creates a temporary copy of the
-        categorical slice; the slice size is expected to be small relative
-        to the full DataFrame.
+        The categorical slice is expected to be small relative to the full
+        DataFrame; the Python loop overhead is therefore acceptable.
 
     Args:
         df: Health records DataFrame; the ``value`` column is mutated in-place
@@ -183,15 +232,14 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
             ``unit`` value).
 
     Raises:
-        KeyError: If a ``type`` string is absent from
-            :data:`~model.CATEGORICAL_IDENTIFIER_MAPS`, or if a ``value``
-            string is not a valid member name of the corresponding
-            :class:`~model.base.HKCategoryTypeIdentifier`.
+        KeyError: If any ``(type, value)`` pair is absent from
+            :data:`_FLAT_CATEGORY_MAP`.  The error message lists all unknown
+            pairs grouped by type.
 
     Example::
 
         _map_categories(df, df["unit"].isna())
-        # df.loc[no_unit, "value"] now contains signed numbers
+        # df.loc[no_unit, "value"] now contains signed integer strings
 
     """
     categorical_slice = df.loc[no_unit, ["type", "value"]]
@@ -201,9 +249,10 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
     for type_, value in zip(
         categorical_slice["type"], categorical_slice["value"], strict=True
     ):
-        try:
-            result.append(str(CATEGORICAL_IDENTIFIER_MAPS[type_][value]))
-        except KeyError:
+        key = (type_, value)
+        if key in _FLAT_CATEGORY_MAP:
+            result.append(str(_FLAT_CATEGORY_MAP[key]))
+        else:
             missing.setdefault(type_, set()).add(value)
 
     if missing:
@@ -215,9 +264,16 @@ def _map_categories(df: pd.DataFrame, no_unit: pd.Series) -> None:
 def _replace_known_violations(df: pd.DataFrame) -> None:
     """Replace faulty category identifiers.
 
-    Replaces `type` for :class:`~..model.base.HKCategoryTypeIdentifier` if `value`
-    better matches another identifier. Identifier/value combinations that should
-    be replaced are kept in :const:`~.data_check.KNOWN_CATEGORY_TYPE_VIOLATIONS`.
+    Replaces ``type`` for :class:`~..model.base.HKCategoryTypeIdentifier`
+    rows if the ``value`` better matches another identifier.
+    Identifier/value combinations that should be replaced are kept in
+    :const:`~.data_check.KNOWN_CATEGORY_TYPE_VIOLATIONS`.
+
+    Args:
+        df: Health records DataFrame; the ``type`` column is mutated in-place
+            for rows whose ``(type, value)`` pair is listed as a known
+            violation.
+
     """
     for faulty_type, (
         value_list,
