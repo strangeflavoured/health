@@ -29,7 +29,7 @@ from redis.commands.timeseries import TimeSeries
 
 from ..model import HKTypeIdentifierRegistry
 from ..redis_setup import ensure_ts_key
-from .parser import parse_apple_health
+from .parser import parse_apple_health, parse_apple_health_routes
 from .pipeline import upload_batch
 from .response import (
     BATCH_SIZE,
@@ -128,6 +128,68 @@ def _load_documents(
         n_correlations,
         n_activities,
     )
+
+
+def _upload_routes(
+    routes: pd.DataFrame,
+    workouts: pd.DataFrame,
+    r: redis.Redis,
+) -> None:
+    """Upload GPS route trackpoints as Redis JSON documents.
+
+    Groups the *routes* DataFrame by workout using the ``file`` column,
+    converts ``time`` (``datetime64[ns, UTC]``) to Unix integers, sanitises
+    NaN fields, and stores one document per workout under
+    ``route:<startDate_unix>:<workoutActivityType>``.
+
+    Args:
+        routes: Routes DataFrame from :func:`.parser.parse_apple_health_routes`.
+        workouts: Workout DataFrame — needed to map file paths to workout keys.
+        r: Active Redis connection with the JSON module loaded.
+
+    """
+    if routes.empty or workouts.empty:
+        return
+
+    n_stored = 0
+    for _, workout_row in workouts.iterrows():
+        rd = workout_row.to_dict()
+        route_info = rd.get("route")
+        if not isinstance(route_info, dict):
+            continue
+        route_files = route_info.get("files") or []
+        if not route_files:
+            continue
+
+        start_ts = _parse_hk_timestamp(rd.get("startDate"))
+        activity_type = rd.get("workoutActivityType", "unknown")
+
+        workout_routes = routes[routes["file"].isin(route_files)]
+        if workout_routes.empty:
+            continue
+
+        trackpoints: list[dict] = []
+        for _, tp in workout_routes.iterrows():
+            tp_dict = tp.to_dict()
+            t = tp_dict.get("time")
+            if hasattr(t, "timestamp"):
+                tp_dict["time"] = int(t.timestamp())
+            elif t is None or (isinstance(t, float) and math.isnan(t)):
+                tp_dict["time"] = None
+            trackpoints.append(_sanitize_doc(tp_dict))
+
+        key = f"route:{start_ts}:{activity_type}"
+        r.json().set(
+            key,
+            "$",
+            {
+                "workoutKey": f"workout:{start_ts}:{activity_type}",
+                "trackpoints": trackpoints,
+            },
+        )
+        n_stored += 1
+
+    logger.info("Stored %d route(s).", n_stored)
 
 
 class HealthDataImporter:
@@ -247,7 +309,7 @@ class HealthDataImporter:
             importer.etl(write_feather=True)
 
         """
-        records, correlations, workouts, activities = self._extract(
+        records, correlations, workouts, activities, routes = self._extract(
             write_feather=write_feather, no_cache=no_cache
         )
         transform(records)
@@ -262,6 +324,7 @@ class HealthDataImporter:
             )
 
         _load_documents(workouts, correlations, activities, self.connection)
+        _upload_routes(routes, workouts, self.connection)
 
         if persist_failures:
             self._update_failures_file()
@@ -323,7 +386,7 @@ class HealthDataImporter:
             logger.warning("retry_failed: failures file is empty, nothing to retry.")
             return None
 
-        records, _, _, _ = self._extract(write_feather=False, no_cache=False)
+        records = self._extract_records_only(no_cache=False)
 
         row_selectors: list = []
         for f in self.failures:
@@ -388,7 +451,7 @@ class HealthDataImporter:
             importer.update()
 
         """
-        records, correlations, workouts, activities = self._extract(
+        records, correlations, workouts, activities, routes = self._extract(
             write_feather=write_feather, no_cache=no_cache
         )
         transform(records)
@@ -407,6 +470,7 @@ class HealthDataImporter:
             )
 
         _load_documents(workouts, correlations, activities, self.connection)
+        _upload_routes(routes, workouts, self.connection)
 
         if persist_failures:
             self._update_failures_file()
@@ -417,7 +481,7 @@ class HealthDataImporter:
 
     def _extract(
         self, *, write_feather: bool, no_cache: bool
-    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Parse the Apple Health export and return four DataFrames.
 
         When reading from the Feather cache only records are available; the
@@ -443,6 +507,7 @@ class HealthDataImporter:
                 pd.DataFrame(),
                 pd.DataFrame(),
                 pd.DataFrame(),
+                pd.DataFrame(),
             )
 
         if not self.zip_file.exists():
@@ -461,7 +526,62 @@ class HealthDataImporter:
             logger.info("Writing Feather cache to %s", self.output_file)
             record_df.to_feather(self.output_file)
 
-        return record_df, correlation_df, workout_df, activity_df
+        routes_df = self._parse_routes(workout_df)
+        return record_df, correlation_df, workout_df, activity_df, routes_df
+
+    def _parse_routes(self, workout_df: pd.DataFrame) -> pd.DataFrame:
+        """Parse GPS routes from workouts that carry a route file reference.
+
+        Args:
+            workout_df: Workout DataFrame from :func:`.parser.parse_apple_health`.
+
+        Returns:
+            Routes DataFrame, or an empty DataFrame when no routes are present.
+
+        """
+        if workout_df.empty or "route" not in workout_df.columns:
+            return pd.DataFrame()
+
+        route_paths: list[str] = [
+            path
+            for route in workout_df["route"].dropna()
+            if isinstance(route, dict)
+            for path in (route.get("files") or [])
+        ]
+        if not route_paths:
+            return pd.DataFrame()
+
+        logger.info("Parsing %d GPX route file(s)...", len(route_paths))
+        return parse_apple_health_routes(self.zip_file, paths=route_paths)
+
+    def _extract_records_only(self, *, no_cache: bool) -> pd.DataFrame:
+        """Load only the records DataFrame, preferring the Feather cache.
+
+        Used by :meth:`retry_failed` so a retry run succeeds even when only
+        the records Feather file exists.
+
+        Args:
+            no_cache: If ``True``, bypass the Feather cache.
+
+        Returns:
+            The raw health records DataFrame.
+
+        Raises:
+            FileNotFoundError: When neither the records Feather cache nor the
+                ZIP export can be found.
+
+        """
+        logger.info("Extracting records data...")
+        if not no_cache and self.output_file.exists():
+            return feather.read_feather(self.output_file)
+        if not self.zip_file.exists():
+            raise FileNotFoundError(
+                f"No export file found. Expected one of:\n"
+                f"  {self.output_file}\n"
+                f"  {self.zip_file}"
+            )
+        record_df, _, _, _ = parse_apple_health(zip_path=self.zip_file)
+        return record_df
 
     def _update_failures_file(self) -> None:
         """Persist or clear the failures file to match in-memory state.

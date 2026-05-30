@@ -15,6 +15,7 @@ from src.importer.importer import (
     _load_documents,
     _parse_hk_timestamp,
     _sanitize_doc,
+    _upload_routes,
 )
 from src.importer.response import (
     BatchFailure,
@@ -129,6 +130,7 @@ class TestExtract:
                 pd.DataFrame(),
                 pd.DataFrame(),
                 pd.DataFrame(),
+                pd.DataFrame(),
             ),
         ) as mock_parse:
             importer.zip_file.touch()
@@ -140,7 +142,14 @@ class TestExtract:
         fake_records = MagicMock(spec=pd.DataFrame)
         with patch(
             "src.importer.importer.parse_apple_health",
-            return_value=(fake_records, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
+            return_value=(
+                fake_records,
+                pd.DataFrame(),
+                pd.DataFrame(),
+                pd.DataFrame(),
+                pd.DataFrame(),
+                pd.DataFrame(),
+            ),
         ):
             importer.zip_file.touch()
             importer._extract(write_feather=True, no_cache=False)
@@ -329,6 +338,152 @@ class TestLoadDocuments:
         assert mock_redis.json.return_value.set.call_count == 3
 
 
+class TestParseRoutes:
+    def test_empty_workout_df_returns_empty(self, importer):
+        assert importer._parse_routes(pd.DataFrame()).empty
+
+    def test_workout_with_none_route_returns_empty(self, importer):
+        assert importer._parse_routes(pd.DataFrame([{"route": None}])).empty
+
+    def test_workout_with_empty_files_returns_empty(self, importer):
+        assert importer._parse_routes(
+            pd.DataFrame([{"route": {"files": [], "meta": {}}}])
+        ).empty
+
+    def test_calls_parse_routes_with_collected_paths(self, importer):
+        df = pd.DataFrame(
+            [
+                {
+                    "route": {"files": ["workout-routes/r.gpx"], "meta": {}},
+                    "workoutActivityType": "Run",
+                    "startDate": "2024-01-01 00:00:00 +0000",
+                    "endDate": "2024-01-01 00:30:00 +0000",
+                }
+            ]
+        )
+        with patch(
+            "src.importer.importer.parse_apple_health_routes",
+            return_value=pd.DataFrame(),
+        ) as mock_r:
+            importer.zip_file.touch()
+            importer._parse_routes(df)
+        mock_r.assert_called_once()
+
+    def test_multiple_workouts_all_paths_collected(self, importer):
+        df = pd.DataFrame(
+            [
+                {"route": {"files": ["r1.gpx"], "meta": {}}},
+                {"route": {"files": ["r2.gpx", "r3.gpx"], "meta": {}}},
+            ]
+        )
+        with patch(
+            "src.importer.importer.parse_apple_health_routes",
+            return_value=pd.DataFrame(),
+        ) as mock_r:
+            importer.zip_file.touch()
+            importer._parse_routes(df)
+        called_paths = mock_r.call_args[1].get("paths") or mock_r.call_args[0][1]
+        assert set(called_paths) == {"r1.gpx", "r2.gpx", "r3.gpx"}
+
+
+class TestUploadRoutes:
+    def _routes_df(self):
+        return pd.DataFrame(
+            [
+                {
+                    "file": "workout-routes/r.gpx",
+                    "lat": 52.52,
+                    "lon": 13.40,
+                    "ele": 34.5,
+                    "time": pd.Timestamp("2024-01-01T09:00:00Z"),
+                    "speed": 2.83,
+                    "course": 274.5,
+                    "hAcc": 4.2,
+                    "vAcc": 3.1,
+                },
+                {
+                    "file": "workout-routes/r.gpx",
+                    "lat": 52.521,
+                    "lon": 13.401,
+                    "ele": 35.0,
+                    "time": pd.Timestamp("2024-01-01T09:00:01Z"),
+                    "speed": 3.0,
+                    "course": 275.0,
+                    "hAcc": 4.0,
+                    "vAcc": 3.0,
+                },
+            ]
+        )
+
+    def _workouts_df(self):
+        return pd.DataFrame(
+            [
+                {
+                    "workoutActivityType": "HKWorkoutActivityTypeRunning",
+                    "startDate": "2024-01-01 00:00:00 +0000",
+                    "endDate": "2024-01-01 00:30:00 +0000",
+                    "route": {"files": ["workout-routes/r.gpx"], "meta": {}},
+                }
+            ]
+        )
+
+    def test_empty_routes_is_noop(self, mock_redis):
+        _upload_routes(pd.DataFrame(), self._workouts_df(), mock_redis)
+        mock_redis.json.assert_not_called()
+
+    def test_empty_workouts_is_noop(self, mock_redis):
+        _upload_routes(self._routes_df(), pd.DataFrame(), mock_redis)
+        mock_redis.json.assert_not_called()
+
+    def test_route_key_prefix(self, mock_redis):
+        _upload_routes(self._routes_df(), self._workouts_df(), mock_redis)
+        assert mock_redis.json.return_value.set.call_args[0][0].startswith("route:")
+
+    def test_route_key_contains_activity_type(self, mock_redis):
+        _upload_routes(self._routes_df(), self._workouts_df(), mock_redis)
+        assert (
+            "HKWorkoutActivityTypeRunning"
+            in mock_redis.json.return_value.set.call_args[0][0]
+        )
+
+    def test_route_doc_has_trackpoints_list(self, mock_redis):
+        _upload_routes(self._routes_df(), self._workouts_df(), mock_redis)
+        doc = mock_redis.json.return_value.set.call_args[0][2]
+        assert isinstance(doc["trackpoints"], list) and len(doc["trackpoints"]) == 2
+
+    def test_trackpoint_time_is_integer(self, mock_redis):
+        _upload_routes(self._routes_df(), self._workouts_df(), mock_redis)
+        for tp in mock_redis.json.return_value.set.call_args[0][2]["trackpoints"]:
+            assert isinstance(tp["time"], int)
+
+    def test_trackpoint_nan_sanitized_to_none(self, mock_redis):
+        routes = self._routes_df().copy()
+        routes.loc[0, "ele"] = float("nan")
+        _upload_routes(routes, self._workouts_df(), mock_redis)
+        assert (
+            mock_redis.json.return_value.set.call_args[0][2]["trackpoints"][0]["ele"]
+            is None
+        )
+
+    def test_workout_without_route_skipped(self, mock_redis):
+        workouts = pd.DataFrame(
+            [
+                {
+                    "workoutActivityType": "Run",
+                    "startDate": "2024-01-01 00:00:00 +0000",
+                    "endDate": "2024-01-01 00:30:00 +0000",
+                    "route": None,
+                }
+            ]
+        )
+        _upload_routes(self._routes_df(), workouts, mock_redis)
+        mock_redis.json.assert_not_called()
+
+    def test_uses_dollar_json_path(self, mock_redis):
+        _upload_routes(self._routes_df(), self._workouts_df(), mock_redis)
+        assert mock_redis.json.return_value.set.call_args[0][1] == "$"
+
+
 class TestLoad:
     def _make_df(self, type_val="HR", n=2) -> pd.DataFrame:
         return pd.DataFrame(
@@ -409,16 +564,19 @@ class TestLoad:
             return_value=pd.DataFrame({"type": ["HR"]}),
         ):
             importer.output_file.touch()
-            _, correlations, workouts, activities = importer._extract(
+            _, correlations, workouts, activities, routes = importer._extract(
                 write_feather=False, no_cache=False
             )
-        assert correlations.empty and workouts.empty and activities.empty
+        assert (
+            correlations.empty and workouts.empty and activities.empty and routes.empty
+        )
 
-    def test_returns_four_dataframes(self, importer):
+    def test_returns_five_dataframes(self, importer):
         with patch(
             "src.importer.importer.parse_apple_health",
             return_value=(
                 pd.DataFrame({"type": ["HR"]}),
+                pd.DataFrame(),
                 pd.DataFrame(),
                 pd.DataFrame(),
                 pd.DataFrame(),
@@ -427,7 +585,7 @@ class TestLoad:
             importer.zip_file.touch()
             result = importer._extract(write_feather=False, no_cache=False)
 
-        assert isinstance(result, tuple) and len(result) == 4
+        assert isinstance(result, tuple) and len(result) == 5
 
     def test_no_cache_true_bypasses_feather(self, importer):
         """no_cache=True must skip the feather cache even when it exists."""
@@ -436,6 +594,7 @@ class TestLoad:
                 "src.importer.importer.parse_apple_health",
                 return_value=(
                     pd.DataFrame({"type": ["HR"]}),
+                    pd.DataFrame(),
                     pd.DataFrame(),
                     pd.DataFrame(),
                     pd.DataFrame(),
@@ -496,11 +655,7 @@ class TestEtl:
     def test_etl_sets_failures_on_success(self, importer):
         df = _make_transformed_df()
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch.object(importer, "_update_failures_file"),
@@ -513,11 +668,7 @@ class TestEtl:
         df = _make_transformed_df()
         failures = [BatchFailure("HR", 0, "err")]
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=failures),
             patch.object(importer, "_update_failures_file"),
@@ -525,14 +676,33 @@ class TestEtl:
             importer.etl()
         assert importer.failures == failures
 
-    def test_etl_calls_load_documents(self, importer):
+    def test_etl_calls_upload_routes(self, importer):
         df = _make_transformed_df()
         with (
             patch.object(
                 importer,
                 "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
+                return_value=(
+                    df,
+                    pd.DataFrame(),
+                    pd.DataFrame(),
+                    pd.DataFrame(),
+                    pd.DataFrame(),
+                ),
             ),
+            patch("src.importer.importer.transform"),
+            patch("src.importer.importer._load", return_value=[]),
+            patch("src.importer.importer._load_documents"),
+            patch("src.importer.importer._upload_routes") as mock_routes,
+            patch.object(importer, "_update_failures_file"),
+        ):
+            importer.etl()
+        mock_routes.assert_called_once()
+
+    def test_etl_calls_load_documents(self, importer):
+        df = _make_transformed_df()
+        with (
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]),
             patch("src.importer.importer._load_documents") as mock_doc,
@@ -544,11 +714,7 @@ class TestEtl:
     def test_etl_persist_failures_true_calls_update(self, importer):
         df = _make_transformed_df()
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]),
             patch.object(importer, "_update_failures_file") as mock_upd,
@@ -559,11 +725,7 @@ class TestEtl:
     def test_etl_persist_failures_false_skips_update(self, importer):
         df = _make_transformed_df()
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]),
             patch.object(importer, "_update_failures_file") as mock_upd,
@@ -574,7 +736,9 @@ class TestEtl:
     def test_etl_no_cache_forwarded(self, importer):
         df = _make_transformed_df()
         with (
-            patch.object(importer, "_extract", return_value=df) as mock_extract,
+            patch.object(
+                importer, "_extract_records_only", return_value=df
+            ) as mock_extract,
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]),
             patch.object(importer, "_update_failures_file"),
@@ -585,11 +749,7 @@ class TestEtl:
     def test_etl_uses_duplicate_policy_first(self, importer):
         df = _make_transformed_df()
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch.object(importer, "_update_failures_file"),
@@ -608,14 +768,23 @@ class TestEtl:
 
 
 class TestUpdate:
+    def test_update_calls_upload_routes(self, importer):
+        df = _make_transformed_df()
+        with (
+            patch.object(importer, "_extract_records_only", return_value=df),
+            patch("src.importer.importer.transform"),
+            patch("src.importer.importer._load", return_value=[]),
+            patch("src.importer.importer._load_documents"),
+            patch("src.importer.importer._upload_routes") as mock_routes,
+            patch.object(importer, "_update_failures_file"),
+        ):
+            importer.update()
+        mock_routes.assert_called_once()
+
     def test_update_uses_duplicate_policy_last(self, importer):
         df = _make_transformed_df()
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch.object(importer, "_update_failures_file"),
@@ -628,11 +797,7 @@ class TestUpdate:
         df = _make_transformed_df()
         failures = [BatchFailure("HR", 0, "err")]
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=failures),
             patch.object(importer, "_update_failures_file"),
@@ -643,11 +808,7 @@ class TestUpdate:
     def test_update_persist_failures_false_skips(self, importer):
         df = _make_transformed_df()
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]),
             patch.object(importer, "_update_failures_file") as mock_upd,
@@ -658,7 +819,9 @@ class TestUpdate:
     def test_update_no_cache_forwarded(self, importer):
         df = _make_transformed_df()
         with (
-            patch.object(importer, "_extract", return_value=df) as mock_extract,
+            patch.object(
+                importer, "_extract_records_only", return_value=df
+            ) as mock_extract,
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]),
             patch.object(importer, "_update_failures_file"),
@@ -690,11 +853,7 @@ class TestRetryFailed:
         df.index = [0, 1, 2, 3]
         self._write_failures(importer, [RowFailure("HR", 1, start_error="dup")])
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch.object(importer, "_update_failures_file"),
@@ -707,11 +866,7 @@ class TestRetryFailed:
         df = _make_transformed_df(type_val="HR", n=3)
         self._write_failures(importer, [BatchFailure("HR", 0, "conn lost")])
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch.object(importer, "_update_failures_file"),
@@ -725,27 +880,21 @@ class TestRetryFailed:
         df = _make_transformed_df(n=2)
         self._write_failures(importer, [RowFailure("HR", 0, start_error="e")])
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]),
             patch("src.importer.importer._load_documents") as mock_doc,
+            patch("src.importer.importer._upload_routes") as mock_routes,
         ):
             importer.retry_failed(persist_failures=True)
         mock_doc.assert_not_called()
+        mock_routes.assert_not_called()
 
     def test_retry_all_resolved_deletes_file(self, importer):
         df = _make_transformed_df(n=2)
         self._write_failures(importer, [RowFailure("HR", 0, start_error="e")])
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]),
         ):
@@ -757,11 +906,7 @@ class TestRetryFailed:
         remaining = [RowFailure("HR", 1, end_error="still bad")]
         self._write_failures(importer, [RowFailure("HR", 0), RowFailure("HR", 1)])
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=remaining),
         ):
@@ -773,11 +918,7 @@ class TestRetryFailed:
         df = _make_transformed_df(n=1)
         self._write_failures(importer, [RowFailure("HR", 0)])
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch.object(importer, "_update_failures_file"),
@@ -789,11 +930,7 @@ class TestRetryFailed:
         df = _make_transformed_df(n=1)
         self._write_failures(importer, [RowFailure("HR", 0)])
         with (
-            patch.object(
-                importer,
-                "_extract",
-                return_value=(df, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()),
-            ),
+            patch.object(importer, "_extract_records_only", return_value=df),
             patch("src.importer.importer.transform"),
             patch("src.importer.importer._load", return_value=[]),
             patch.object(importer, "_update_failures_file") as mock_upd,
