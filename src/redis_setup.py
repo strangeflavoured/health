@@ -255,8 +255,8 @@ def create_index(client: redis.Redis, spec: IndexSpec, *, dry_run: bool) -> None
         aliases) and return without issuing any Redis commands.
 
     """
+    field_names = [f.name for f in spec.fields]
     if dry_run:
-        field_names = [f.name for f in spec.fields]
         logger.info(
             "[dry-run] would create %s  prefix=%s  fields=%s",
             spec.name,
@@ -271,7 +271,9 @@ def create_index(client: redis.Redis, spec: IndexSpec, *, dry_run: bool) -> None
             index_type=IndexType.JSON,
         ),
     )
-    logger.info("created               %s  prefix=%s", spec.name, spec.prefix)
+    logger.info(
+        "created        %s  prefix=%s  fields=%s", spec.name, spec.prefix, field_names
+    )
 
 
 def setup_indexes(
@@ -387,8 +389,10 @@ def upsert_ts_labels(
             continue
         try:
             client.ts().alter(key, labels=labels)
+            logger.info("altered        labels  %s  %s", key, labels)
         except redis.ResponseError:
             client.ts().create(key, labels=labels)
+            logger.info("created        labels  %s  %s", key, labels)
 
 
 def ensure_ts_key(
