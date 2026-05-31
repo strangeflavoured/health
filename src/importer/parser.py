@@ -1,7 +1,8 @@
 """Parser for Apple Health export files.
 
-Reads the export.zip produced by the Apple Health app and returns a single
-tidy DataFrame that can be saved by the caller.
+Reads the export.zip produced by the Apple Health app and returns one tidy
+DataFrame per top-level element type (records, correlations, workouts,
+ActivitySummary entries) plus a helper for parsing workout-route GPX files.
 
 Memory note
 -----------
@@ -12,10 +13,23 @@ alongside the final DataFrame, cutting peak memory consumption roughly in half
 for the records table (which may contain millions of rows).  Workout,
 correlation, and activity rows are fewer in number so they retain the
 list-of-dicts approach for readability.
+
+Unknown elements
+----------------
+Top-level XML elements that this parser does not yet handle (``Me``,
+``ExportDate``, ``ClinicalRecord``, ``Audiogram``, ``VisionPrescription`` …)
+emit a ``WARNING`` once per tag with the total count at end-of-parse so that
+silent data drops are visible to operators.  Unknown *child* elements raise
+``NotImplementedError`` rather than being skipped — the parser is opinionated
+that schema drift inside a known parent indicates a real change worth halting
+on.
 """
+
+from __future__ import annotations
 
 import logging
 import zipfile
+from collections import Counter
 from pathlib import Path
 
 import defusedxml.ElementTree as ETree
@@ -108,6 +122,19 @@ _WORKOUT_STATISTICS_KEYS = [
     "average",
 ]
 
+# Top-level element tags that Apple Health emits but this parser does not
+# convert to DataFrames.  Listed explicitly so the WARNING message can name
+# the well-known cases instead of repeating "unknown element".
+_KNOWN_UNHANDLED_TAGS = frozenset(
+    {
+        "ExportDate",
+        "Me",
+        "ClinicalRecord",
+        "Audiogram",
+        "VisionPrescription",
+    }
+)
+
 
 class NoHealthDataError(ValueError):
     """Raised when trying to parse a zip file without usable data."""
@@ -122,8 +149,10 @@ def parse_apple_health(
 
     Reads the export.xml inside the given export.zip using a memory-efficient
     streaming parser and returns one DataFrame per top-level element type.
-    Unknown element types or unimplemented child elements raise
-    ``NotImplementedError`` rather than being silently skipped.
+    Unknown *child* elements raise ``NotImplementedError`` (silent schema
+    drift inside a known parent would corrupt downstream uploads).  Unknown
+    *top-level* elements are logged at WARNING level with a per-tag count at
+    end-of-parse so operators see the gap without halting the run.
 
     Memory optimisation: the records DataFrame is built from per-column lists
     rather than a list-of-row-dicts, avoiding a large intermediate allocation.
@@ -149,7 +178,7 @@ def parse_apple_health(
           ``_RECORD_COLUMNS`` fields.
 
         **workouts** — one row per ``Workout`` element. Columns follow
-        ``_CORRELATION_COLUMNS`` plus:
+        ``_WORKOUT_COLUMNS`` plus:
 
         - meta (dict): ``MetadataEntry`` children as ``{key: value}``.
         - events (list[dict]): ``WorkoutEvent`` elements with
@@ -187,6 +216,7 @@ def parse_apple_health(
     correlation_rows: list[dict] = []
     workout_rows: list[dict] = []
     activity_rows: list[dict] = []
+    unknown_counts: Counter[str] = Counter()
 
     with (
         zipfile.ZipFile(zip_path) as zf,
@@ -200,178 +230,191 @@ def parse_apple_health(
                     root = elem
                 elif elem.tag == "Correlation":
                     correlation = True
+                continue
 
-            elif event == "end":
-                match elem.tag:
-                    case "Record":
-                        if correlation:
-                            continue
-                        # Columnar accumulation — one list append per column.
-                        for col in _RECORD_COLUMNS:
-                            record_cols[col].append(elem.attrib.get(col))
+            # event == "end"
+            match elem.tag:
+                case "Record":
+                    if correlation:
+                        # Belongs to a parent Correlation; processed there.
+                        continue
+                    # Columnar accumulation — one list append per column.
+                    # Hoist attrib lookup once per record to skip repeated
+                    # attribute access through the C extension.
+                    attrib = elem.attrib
+                    for col in _RECORD_COLUMNS:
+                        record_cols[col].append(attrib.get(col))
 
-                    case "Correlation":
-                        corr = {
-                            col: elem.attrib.get(col) for col in _CORRELATION_COLUMNS
-                        }
+                case "Correlation":
+                    corr = {col: elem.attrib.get(col) for col in _CORRELATION_COLUMNS}
 
-                        meta = {}
-                        records = []
-                        for child in elem:
-                            match child.tag:
-                                case "MetadataEntry":
-                                    meta[child.attrib.get("key")] = child.attrib.get(
-                                        "value"
-                                    )
-                                case "Record":
-                                    records.append(
-                                        {
-                                            col: child.attrib.get(col)
-                                            for col in _RECORD_COLUMNS
-                                        }
-                                    )
-                                case _:
-                                    raise NotImplementedError(
-                                        f"{elem.tag} child {child.tag} is not implemented."  # noqa: E501
-                                    )
-
-                        corr["meta"] = meta
-                        corr["records"] = records
-                        correlation_rows.append(corr)
-                        correlation = False
-
-                    case "Workout":
-                        workout = {
-                            col: elem.attrib.get(col) for col in _WORKOUT_COLUMNS
-                        }
-
-                        activities = []
-                        events = []
-                        meta = {}
-                        route = None
-                        stats = []
-                        for child in elem:
-                            match child.tag:
-                                case "WorkoutActivity":
-                                    activity = {
+                    meta = {}
+                    records = []
+                    for child in elem:
+                        match child.tag:
+                            case "MetadataEntry":
+                                meta[child.attrib.get("key")] = child.attrib.get(
+                                    "value"
+                                )
+                            case "Record":
+                                records.append(
+                                    {
                                         col: child.attrib.get(col)
-                                        for col in _WORKOUT_ACTIVITY_KEYS
+                                        for col in _RECORD_COLUMNS
                                     }
+                                )
+                            case _:
+                                raise NotImplementedError(
+                                    f"{elem.tag} child {child.tag} is not implemented."  # noqa: E501
+                                )
 
-                                    e = []
-                                    m = {}
-                                    s = []
-                                    for c in child:
-                                        match c.tag:
-                                            case "WorkoutEvent":
-                                                _e = {
-                                                    col: c.attrib.get(col)
-                                                    for col in _WORKOUT_EVENT_KEYS
-                                                }
-                                                for _c in c:
-                                                    if _c.tag == "MetadataEntry":
-                                                        _e[_c.attrib.get("key")] = (
-                                                            _c.attrib.get("value")
-                                                        )
-                                                    else:
-                                                        raise NotImplementedError(
-                                                            f"{c.tag} child {_c.tag} is not implemented."  # noqa: E501
-                                                        )
-                                                e.append(_e)
-                                            case "MetadataEntry":
-                                                m[c.attrib.get("key")] = c.attrib.get(
-                                                    "value"
-                                                )
-                                            case "WorkoutStatistics":
-                                                s.append(
-                                                    {
-                                                        col: c.attrib.get(col)
-                                                        for col in _WORKOUT_STATISTICS_KEYS  # noqa: E501
-                                                    }
-                                                )
-                                            case _:
-                                                raise NotImplementedError(
-                                                    f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
-                                                )
+                    corr["meta"] = meta
+                    corr["records"] = records
+                    correlation_rows.append(corr)
+                    correlation = False
 
-                                    activity["meta"] = m
-                                    activity["statistics"] = s
-                                    activity["events"] = e
-                                    activities.append(activity)
+                case "Workout":
+                    workout = {col: elem.attrib.get(col) for col in _WORKOUT_COLUMNS}
 
-                                case "WorkoutEvent":
-                                    e = {
-                                        col: child.attrib.get(col)
-                                        for col in _WORKOUT_EVENT_KEYS
-                                    }
-                                    for c in child:
-                                        if c.tag == "MetadataEntry":
-                                            e[c.attrib.get("key")] = c.attrib.get(
+                    activities = []
+                    events = []
+                    meta = {}
+                    route = None
+                    stats = []
+                    for child in elem:
+                        match child.tag:
+                            case "WorkoutActivity":
+                                activity = {
+                                    col: child.attrib.get(col)
+                                    for col in _WORKOUT_ACTIVITY_KEYS
+                                }
+
+                                e = []
+                                m = {}
+                                s = []
+                                for c in child:
+                                    match c.tag:
+                                        case "WorkoutEvent":
+                                            _e = {
+                                                col: c.attrib.get(col)
+                                                for col in _WORKOUT_EVENT_KEYS
+                                            }
+                                            for _c in c:
+                                                if _c.tag == "MetadataEntry":
+                                                    _e[_c.attrib.get("key")] = (
+                                                        _c.attrib.get("value")
+                                                    )
+                                                else:
+                                                    raise NotImplementedError(
+                                                        f"{c.tag} child {_c.tag} is not implemented."  # noqa: E501
+                                                    )
+                                            e.append(_e)
+                                        case "MetadataEntry":
+                                            m[c.attrib.get("key")] = c.attrib.get(
                                                 "value"
                                             )
-                                        else:
+                                        case "WorkoutStatistics":
+                                            s.append(
+                                                {
+                                                    col: c.attrib.get(col)
+                                                    for col in _WORKOUT_STATISTICS_KEYS  # noqa: E501
+                                                }
+                                            )
+                                        case _:
                                             raise NotImplementedError(
                                                 f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
                                             )
-                                    events.append(e)
 
-                                case "MetadataEntry":
-                                    meta[child.attrib.get("key")] = child.attrib.get(
-                                        "value"
-                                    )
+                                activity["meta"] = m
+                                activity["statistics"] = s
+                                activity["events"] = e
+                                activities.append(activity)
 
-                                case "WorkoutRoute":
-                                    route = {
+                            case "WorkoutEvent":
+                                e = {
+                                    col: child.attrib.get(col)
+                                    for col in _WORKOUT_EVENT_KEYS
+                                }
+                                for c in child:
+                                    if c.tag == "MetadataEntry":
+                                        e[c.attrib.get("key")] = c.attrib.get("value")
+                                    else:
+                                        raise NotImplementedError(
+                                            f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
+                                        )
+                                events.append(e)
+
+                            case "MetadataEntry":
+                                meta[child.attrib.get("key")] = child.attrib.get(
+                                    "value"
+                                )
+
+                            case "WorkoutRoute":
+                                route = {
+                                    col: child.attrib.get(col)
+                                    for col in _WORKOUT_ROUTE_KEYS
+                                }
+
+                                files = []
+                                m = {}
+                                for c in child:
+                                    match c.tag:
+                                        case "FileReference":
+                                            files.append(c.attrib.get("path"))
+                                        case "MetadataEntry":
+                                            m[c.attrib.get("key")] = c.attrib.get(
+                                                "value"
+                                            )
+                                        case _:
+                                            raise NotImplementedError(
+                                                f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
+                                            )
+                                route["files"] = files
+                                route["meta"] = m
+
+                            case "WorkoutStatistics":
+                                stats.append(
+                                    {
                                         col: child.attrib.get(col)
-                                        for col in _WORKOUT_ROUTE_KEYS
+                                        for col in _WORKOUT_STATISTICS_KEYS
                                     }
+                                )
 
-                                    files = []
-                                    m = {}
-                                    for c in child:
-                                        match c.tag:
-                                            case "FileReference":
-                                                files.append(c.attrib.get("path"))
-                                            case "MetadataEntry":
-                                                m[c.attrib.get("key")] = c.attrib.get(
-                                                    "value"
-                                                )
-                                            case _:
-                                                raise NotImplementedError(
-                                                    f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
-                                                )
-                                    route["files"] = files
-                                    route["meta"] = m
+                            case _:
+                                raise NotImplementedError(
+                                    f"{elem.tag} child {child.tag} is not implemented."  # noqa: E501
+                                )
 
-                                case "WorkoutStatistics":
-                                    stats.append(
-                                        {
-                                            col: child.attrib.get(col)
-                                            for col in _WORKOUT_STATISTICS_KEYS
-                                        }
-                                    )
+                    workout["meta"] = meta
+                    workout["events"] = events
+                    workout["statistics"] = stats
+                    workout["route"] = route
+                    workout["activities"] = activities
+                    workout_rows.append(workout)
 
-                                case _:
-                                    raise NotImplementedError(
-                                        f"{elem.tag} child {child.tag} is not implemented."  # noqa: E501
-                                    )
+                case "ActivitySummary":
+                    activity_rows.append(
+                        {col: elem.attrib.get(col) for col in _ACTIVITY_COLUMNS}
+                    )
 
-                        workout["meta"] = meta
-                        workout["events"] = events
-                        workout["statistics"] = stats
-                        workout["route"] = route
-                        workout["activities"] = activities
-                        workout_rows.append(workout)
-
-                    case "ActivitySummary":
-                        activity_rows.append(
-                            {col: elem.attrib.get(col) for col in _ACTIVITY_COLUMNS}
-                        )
-
-                    case _:
+                case _:
+                    # Unknown top-level element — record it but do not abort.
+                    # `root` is non-None at this point because the very first
+                    # `start` event sets it; the explicit guard satisfies
+                    # static analysis without changing behaviour.
+                    if root is not None and elem is root:
+                        # Closing tag of <HealthData> — nothing to count.
                         continue
+                    unknown_counts[elem.tag] += 1
 
+            # Free memory of the just-finished top-level child of root.
+            # Done unconditionally so unknown elements do not accumulate
+            # while waiting for the next known one to trigger a clear.
+            if root is not None and elem is not root:
                 root.clear()
+
+    if unknown_counts:
+        _log_unknown_elements(unknown_counts)
 
     record_df = pd.DataFrame(record_cols)
     correlation_df = pd.DataFrame(correlation_rows)
@@ -384,10 +427,32 @@ def parse_apple_health(
         and workout_df.empty
         and activity_df.empty
     ):
-        logger.error(f"No records found in zip file {zip_path}.")
+        logger.error("No records found in zip file %s.", zip_path)
         raise NoHealthDataError
 
+    logger.info(
+        "Parsed %d records, %d correlations, %d workouts, %d activity summaries.",
+        len(record_df),
+        len(correlation_df),
+        len(workout_df),
+        len(activity_df),
+    )
     return record_df, correlation_df, workout_df, activity_df
+
+
+def _log_unknown_elements(counts: Counter[str]) -> None:
+    """Emit a single WARNING summarising unhandled top-level elements.
+
+    Known-but-unhandled tags (``Me``, ``ExportDate`` …) and genuinely
+    unknown tags are reported together with their occurrence counts so a
+    new HealthKit element introduced by Apple in a future iOS release
+    becomes immediately visible in the import log.
+    """
+    parts = []
+    for tag, count in sorted(counts.items()):
+        marker = "" if tag in _KNOWN_UNHANDLED_TAGS else " (unrecognised)"
+        parts.append(f"{tag}={count}{marker}")
+    logger.warning("Skipped unhandled top-level element(s): %s", ", ".join(parts))
 
 
 _GPX_NS = "http://www.topografix.com/GPX/1/1"
@@ -398,26 +463,29 @@ def parse_apple_health_routes(
     zip_path: str | Path,
     paths: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Parse workout route GPX files from an Apple Health export archive.
+    """Parse workout-route GPX files from an Apple Health export archive.
 
     Each workout route is stored as a separate GPX file inside the archive.
-    File paths are available on the ``route["files"]`` field of rows returned
-    by :func:`parse_apple_health`. If no paths are given, all GPX files found
-    under ``workout-routes/`` in the archive are parsed.
+    File paths are available on the ``route["files"]`` field of rows
+    returned by :func:`parse_apple_health`.  If no paths are given, every
+    ``workout-routes/*.gpx`` file in the archive is parsed.
+
+    The returned DataFrame is one row per trackpoint, with a ``file``
+    column that lets the caller join trackpoints back to their workout via
+    the route ``files`` list.
 
     Args:
-        zip_path: Path to the export.zip file generated by the Apple Health app.
-            Accepts both :class:`str` and :class:`pathlib.Path`.
+        zip_path: Path to the export.zip file generated by the Apple Health
+            app.  Accepts both :class:`str` and :class:`pathlib.Path`.
         paths: Optional list of GPX file paths relative to the
             ``apple_health_export/`` directory inside the archive, e.g.
-            ``["workout-routes/route_2024-03-15_123456789.gpx"]``.
-            If ``None``, all ``workout-routes/*.gpx`` files are parsed.
+            ``["workout-routes/route_2024-03-15_123456789.gpx"]``.  If
+            ``None``, all ``workout-routes/*.gpx`` files are parsed.
 
     Returns:
         A DataFrame with one row per trackpoint and the following columns:
 
-        - file (str): GPX file path relative to ``apple_health_export/``;
-          use this to join back to the workouts DataFrame.
+        - file (str): GPX file path relative to ``apple_health_export/``.
         - lat (float): Latitude in degrees (WGS84).
         - lon (float): Longitude in degrees (WGS84).
         - ele (float | None): Altitude in metres above sea level.
