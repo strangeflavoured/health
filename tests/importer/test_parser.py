@@ -218,6 +218,38 @@ _GPX_EMPTY = """<?xml version="1.0" encoding="UTF-8"?>
 </gpx>
 """
 
+_TWO_DATES_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<HealthData locale="en_US">
+  <Record
+    type="HKQuantityTypeIdentifierHeartRate"
+    sourceName="Watch" sourceVersion="1" device="d" unit="count/min"
+    creationDate="2024-01-01 00:00:00 +0000"
+    startDate="2024-01-01 00:00:00 +0000"
+    endDate="2024-01-01 00:01:00 +0000"
+    value="60"
+  />
+  <Record
+    type="HKQuantityTypeIdentifierHeartRate"
+    sourceName="Watch" sourceVersion="1" device="d" unit="count/min"
+    creationDate="2024-01-03 00:00:00 +0000"
+    startDate="2024-01-03 00:00:00 +0000"
+    endDate="2024-01-03 00:01:00 +0000"
+    value="70"
+  />
+</HealthData>
+"""
+
+_LATE_RECORD_XML = """\
+  <Record
+    type="HKQuantityTypeIdentifierHeartRate"
+    sourceName="Watch" sourceVersion="1" device="d" unit="count/min"
+    creationDate="2024-01-03 00:00:00 +0000"
+    startDate="2024-01-03 00:00:00 +0000"
+    endDate="2024-01-03 00:01:00 +0000"
+    value="1"
+/>"""
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -617,6 +649,125 @@ class TestActivitySummaryParsing:
 
 
 # ---------------------------------------------------------------------------
+# parse_apple_health — from_date filtering
+# ---------------------------------------------------------------------------
+
+
+class TestFromDateFiltering:
+    """Tests for the from_date parameter of parse_apple_health.
+
+    The filter is *inclusive*: an element whose date equals from_date must be
+    kept.  Only elements whose date falls *strictly before* from_date are
+    dropped.  Elements that carry no recognisable date attribute (ExportDate,
+    Me, the root HealthData tag) must be passed through without error.
+    """
+
+    @staticmethod
+    def _with_late_record(xml: str) -> str:
+        """Inject _LATE_RECORD_XML inside an existing <HealthData> document."""
+        return xml.replace("</HealthData>", f"{_LATE_RECORD_XML}\n</HealthData>")
+
+    def test_none_includes_all_records(self, tmp_path):
+        """from_date=None is the default and must leave all records intact."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_TWO_DATES_XML))
+        records, *_ = parse_apple_health(zip_path, from_date=None)
+        assert len(records) == 2
+
+    def test_excludes_records_strictly_before(self, tmp_path):
+        """Records whose endDate day is before from_date must be dropped."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_TWO_DATES_XML))
+        records, *_ = parse_apple_health(zip_path, from_date=pd.Timestamp("2024-01-02"))
+        assert len(records) == 1
+        assert records.iloc[0]["value"] == "70"
+
+    def test_includes_records_on_from_date(self, tmp_path):
+        """A record whose endDate equals from_date at day granularity must be kept
+        (boundary is inclusive — the condition is strict less-than)."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_TWO_DATES_XML))
+        records, *_ = parse_apple_health(zip_path, from_date=pd.Timestamp("2024-01-01"))
+        assert len(records) == 2
+
+    def test_filters_workouts_by_end_date(self, tmp_path):
+        """Workouts whose endDate falls before from_date must be excluded."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(
+            _xml_zip(self._with_late_record(_WORKOUT_XML))
+        )  # endDate 2024-01-01 00:30
+        _, _, workouts, _ = parse_apple_health(
+            zip_path, from_date=pd.Timestamp("2024-01-02")
+        )
+        assert len(workouts) == 0
+
+    def test_keeps_workout_on_from_date(self, tmp_path):
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_WORKOUT_XML))
+        _, _, workouts, _ = parse_apple_health(
+            zip_path, from_date=pd.Timestamp("2024-01-01")
+        )
+        assert len(workouts) == 1
+
+    def test_filters_correlations_by_end_date(self, tmp_path):
+        """Correlations whose endDate falls before from_date must be excluded."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(
+            _xml_zip(self._with_late_record(_CORRELATION_XML))
+        )  # endDate 2024-01-01
+        _, correlations, _, _ = parse_apple_health(
+            zip_path, from_date=pd.Timestamp("2024-01-02")
+        )
+        assert len(correlations) == 0
+
+    def test_keeps_correlation_on_from_date(self, tmp_path):
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_CORRELATION_XML))
+        _, correlations, _, _ = parse_apple_health(
+            zip_path, from_date=pd.Timestamp("2024-01-01")
+        )
+        assert len(correlations) == 1
+
+    def test_filters_activity_summaries_by_date_components(self, tmp_path):
+        """ActivitySummary carries its date in dateComponents, not endDate.
+        The fallback attribute chain must reach it and filter correctly."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(
+            _xml_zip(self._with_late_record(_ACTIVITY_SUMMARY_XML))
+        )  # dateComponents 2024-01-01
+        _, _, _, activities = parse_apple_health(
+            zip_path, from_date=pd.Timestamp("2024-01-02")
+        )
+        assert len(activities) == 0
+
+    def test_keeps_activity_summary_on_from_date(self, tmp_path):
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_ACTIVITY_SUMMARY_XML))
+        _, _, _, activities = parse_apple_health(
+            zip_path, from_date=pd.Timestamp("2024-01-01")
+        )
+        assert len(activities) == 1
+
+    def test_dateless_elements_do_not_crash(self, tmp_path):
+        """Elements with no endDate/date/dateComponents (ExportDate, Me) must
+        be silently passed through when from_date is set — previously this
+        caused a ValueError from NaT.date()."""
+        zip_path = tmp_path / "export.zip"
+        # _XML_WITH_KNOWN_UNHANDLED contains ExportDate and Me alongside a Record.
+        # Use a from_date before the record so the result is non-empty.
+        zip_path.write_bytes(_xml_zip(_XML_WITH_KNOWN_UNHANDLED))
+        records, *_ = parse_apple_health(zip_path, from_date=pd.Timestamp("2023-06-01"))
+        assert len(records) == 1
+
+    def test_all_filtered_raises_no_health_data_error(self, tmp_path):
+        """If from_date discards every element, NoHealthDataError must still fire."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_TWO_DATES_XML))
+        with pytest.raises(NoHealthDataError):
+            parse_apple_health(zip_path, from_date=pd.Timestamp("2025-01-01"))
+
+
+# ---------------------------------------------------------------------------
 # Security: XXE prevention
 # ---------------------------------------------------------------------------
 
@@ -961,6 +1112,60 @@ class TestUnknownTopLevelElements:
         assert len(unhandled_warnings) == 1
         # And the count "=2" appears in that one warning.
         assert "=2" in unhandled_warnings[0].getMessage()
+
+    def test_workout_children_not_counted_as_unknown(self, tmp_path, caplog):
+        """WorkoutEvent, WorkoutStatistics, WorkoutRoute, WorkoutActivity,
+        MetadataEntry, and FileReference are all processed inside the Workout
+        branch and must never appear in the unknown-elements warning.
+
+        Before the fix, every child's 'end' event fell through to case _: and
+        inflated unknown_counts with internal tag names.
+        """
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_WORKOUT_XML))
+        with caplog.at_level(logging.WARNING, logger="src.importer.parser"):
+            parse_apple_health(zip_path)
+
+        child_tags = {
+            "WorkoutEvent",
+            "WorkoutStatistics",
+            "WorkoutRoute",
+            "WorkoutActivity",
+            "MetadataEntry",
+            "FileReference",
+        }
+        warning_msgs = [
+            r.getMessage() for r in caplog.records if r.levelname == "WARNING"
+        ]
+        for msg in warning_msgs:
+            for tag in child_tags:
+                assert tag not in msg, (
+                    f"Internal tag {tag!r} must not appear in the unknown-elements"
+                    f" warning; got: {msg!r}"
+                )
+
+    def test_correlation_children_not_counted_as_unknown(self, tmp_path, caplog):
+        """MetadataEntry and Record children of a Correlation must not appear
+        in the unknown-elements warning.
+
+        Record is already guarded by the inside_complex flag; this test ensures
+        MetadataEntry (which has no dedicated top-level case) is also excluded.
+        """
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_CORRELATION_XML))
+        with caplog.at_level(logging.WARNING, logger="src.importer.parser"):
+            parse_apple_health(zip_path)
+
+        child_tags = {"MetadataEntry", "Record"}
+        warning_msgs = [
+            r.getMessage() for r in caplog.records if r.levelname == "WARNING"
+        ]
+        for msg in warning_msgs:
+            for tag in child_tags:
+                assert tag not in msg, (
+                    f"Internal tag {tag!r} must not appear in the unknown-elements"
+                    f" warning; got: {msg!r}"
+                )
 
 
 class TestEndOfParseLogging:
