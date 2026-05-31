@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import time
 import xml
 import zipfile
@@ -48,8 +49,6 @@ _RECORD_XML = """<?xml version="1.0" encoding="UTF-8"?>
   />
 </HealthData>
 """
-
-_VALID_XML = _RECORD_XML  # backward-compatibility alias
 
 _CORRELATION_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <HealthData locale="en_US">
@@ -864,3 +863,115 @@ class TestParseAppleHealthRoutes:
         routes = parse_apple_health_routes(zip_path, paths=route_paths)
         assert len(routes) == 2
         assert (routes["file"] == _GPX_ROUTE_PATH).all()
+
+
+# ---------------------------------------------------------------------------
+# Unknown top-level elements — should WARN, not crash, not be silent
+# ---------------------------------------------------------------------------
+
+
+_XML_WITH_KNOWN_UNHANDLED = """<?xml version="1.0" encoding="UTF-8"?>
+<HealthData locale="en_US">
+  <ExportDate value="2024-01-01 00:00:00 +0000"/>
+  <Me
+    HKCharacteristicTypeIdentifierDateOfBirth=""
+    HKCharacteristicTypeIdentifierBiologicalSex="HKBiologicalSexNotSet"/>
+  <Record
+    type="HKQuantityTypeIdentifierHeartRate"
+    sourceName="Watch" sourceVersion="1" device="d" unit="count/min"
+    creationDate="2024-01-01 00:00:00 +0000"
+    startDate="2024-01-01 00:00:00 +0000"
+    endDate="2024-01-01 00:01:00 +0000"
+    value="72"/>
+</HealthData>"""
+
+
+_XML_WITH_GENUINELY_UNKNOWN = """<?xml version="1.0" encoding="UTF-8"?>
+<HealthData locale="en_US">
+  <BrandNewElementApolloAddsInIos25 foo="bar"/>
+  <BrandNewElementApolloAddsInIos25 foo="baz"/>
+  <Record
+    type="HKQuantityTypeIdentifierHeartRate"
+    sourceName="Watch" sourceVersion="1" device="d" unit="count/min"
+    creationDate="2024-01-01 00:00:00 +0000"
+    startDate="2024-01-01 00:00:00 +0000"
+    endDate="2024-01-01 00:01:00 +0000"
+    value="72"/>
+</HealthData>"""
+
+
+class TestUnknownTopLevelElements:
+    def test_known_unhandled_tag_does_not_raise(self, tmp_path):
+        """ExportDate / Me are known but unhandled — they must not crash."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_XML_WITH_KNOWN_UNHANDLED))
+        records, *_ = parse_apple_health(zip_path)
+        assert len(records) == 1
+
+    def test_unknown_tag_does_not_raise(self, tmp_path):
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_XML_WITH_GENUINELY_UNKNOWN))
+        records, *_ = parse_apple_health(zip_path)
+        assert len(records) == 1
+
+    def test_known_unhandled_tag_logged_as_warning(self, tmp_path, caplog):
+        """A WARNING should be emitted naming each unhandled tag and its count."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_XML_WITH_KNOWN_UNHANDLED))
+        with caplog.at_level(logging.WARNING, logger="src.importer.parser"):
+            parse_apple_health(zip_path)
+
+        warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert any(
+            "ExportDate=1" in r.getMessage() or "Me=1" in r.getMessage()
+            for r in warnings
+        )
+
+    def test_unknown_tag_marked_as_unrecognised_in_log(self, tmp_path, caplog):
+        """Truly unknown tags get a "(unrecognised)" marker so operators
+        can distinguish them from known-but-skipped ones."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_XML_WITH_GENUINELY_UNKNOWN))
+        with caplog.at_level(logging.WARNING, logger="src.importer.parser"):
+            parse_apple_health(zip_path)
+
+        warning_msgs = [
+            r.getMessage() for r in caplog.records if r.levelname == "WARNING"
+        ]
+        assert any(
+            "BrandNewElementApolloAddsInIos25" in m and "unrecognised" in m
+            for m in warning_msgs
+        )
+
+    def test_count_aggregated_in_single_warning(self, tmp_path, caplog):
+        """Multiple occurrences of one tag → one warning with count, not N warnings."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_XML_WITH_GENUINELY_UNKNOWN))
+        with caplog.at_level(logging.WARNING, logger="src.importer.parser"):
+            parse_apple_health(zip_path)
+
+        # Only one WARNING is emitted summarising unhandled elements.
+        unhandled_warnings = [
+            r
+            for r in caplog.records
+            if r.levelname == "WARNING"
+            and "BrandNewElementApolloAddsInIos25" in r.getMessage()
+        ]
+        assert len(unhandled_warnings) == 1
+        # And the count "=2" appears in that one warning.
+        assert "=2" in unhandled_warnings[0].getMessage()
+
+
+class TestEndOfParseLogging:
+    def test_records_count_logged(self, tmp_path, caplog):
+        """The parser emits a summary INFO line at end-of-parse."""
+        zip_path = tmp_path / "export.zip"
+        zip_path.write_bytes(_xml_zip(_RECORD_XML))
+        with caplog.at_level(logging.INFO, logger="src.importer.parser"):
+            parse_apple_health(zip_path)
+
+        info_msgs = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+        # Look for the summary that mentions records/correlations/workouts/activities.
+        assert any(
+            "records" in m and "correlation" in m and "workout" in m for m in info_msgs
+        )
