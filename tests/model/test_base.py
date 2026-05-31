@@ -7,6 +7,8 @@ import pytest
 from src.model import (
     CATEGORICAL_IDENTIFIER_MAPS,
     HKCategoryTypeIdentifierRegistry,
+    HKCorrelationTypeIdentifierRegistry,
+    HKMiscTypeIdentifierRegistry,
     HKQuantityTypeIdentifierRegistry,
     HKTypeIdentifierRegistry,
 )
@@ -122,9 +124,18 @@ class TestHKGroups:
         assert expected == set(actual)
 
     def test_map_members(self):
+        # The exact total grows as new types are added to the model; derive
+        # it from the registries instead of pinning a magic number.
+        expected_total = (
+            len(HKCategoryTypeIdentifierRegistry)
+            + len(HKQuantityTypeIdentifierRegistry)
+            + len(HKCorrelationTypeIdentifierRegistry)
+            + len(HKMiscTypeIdentifierRegistry)
+        )
+
         out = HKGroup.map_members()
         assert isinstance(out, dict)
-        assert len(out) == 190
+        assert len(out) == expected_total
         for k, v in out.items():
             assert isinstance(k, str)
             assert isinstance(v, str)
