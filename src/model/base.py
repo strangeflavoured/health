@@ -1,6 +1,17 @@
 """Base classes for health data models.
 
-Provides HK_GROUPS registry to public API .
+Provides :data:`HK_GROUPS`, the :class:`HKIdentifier` sentinel hierarchy, and the
+miscellaneous identifier registry to the public API.
+
+Adding a new identifier type
+----------------------------
+1. Subclass one of :class:`HKQuantityTypeIdentifier`,
+   :class:`HKCategoryTypeIdentifier`, :class:`HKCorrelationTypeIdentifier`, or
+   :class:`HKMiscTypeIdentifier` *and* the appropriate :class:`HKGroup`
+   subclass (``Fitness``, ``VitalSigns`` …).
+2. Define ``unit`` (quantity / misc) or the nested ``Values`` enum (category).
+3. The class is auto-collected into its registry at import time via
+   ``__subclasses__()``; no manual wiring required.
 """
 
 from enum import Enum
@@ -60,6 +71,20 @@ class HKCategoryTypeIdentifier(HKIdentifier):
     def category_values(cls) -> dict[str, int]:
         """Return name: value dict of `HKCategoryTypeIdentifier` values."""
         return {i.name: i.value for i in cls.Values}
+
+
+class HKCorrelationTypeIdentifier(HKIdentifier):
+    """Sentinel correlation identifier values.
+
+    Correlations bundle multiple :class:`HKQuantityTypeIdentifier` records
+    that semantically belong together (e.g. systolic + diastolic blood
+    pressure).  The correlation itself carries no numeric value or unit, so
+    :attr:`unit` is set to the categorical sentinel for consistency with
+    category types.
+    """
+
+    identifier_type = "correlation"
+    unit = MissingUnit.CATEGORICAL.value
 
 
 class HKMiscTypeIdentifier(HKIdentifier):
