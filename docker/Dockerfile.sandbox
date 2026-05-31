@@ -25,6 +25,7 @@ RUN uv sync --locked --no-dev --no-editable \
 # copy scripts
 COPY --chown=health:health ./scripts/import_to_redis.py .
 COPY --chown=health:health ./scripts/setup_logger.py .
+COPY --chown=health:health ./scripts/setup-redis.py .
 
 ENTRYPOINT ["uv", "run", "--frozen"]
 CMD ["python3.12"]
