@@ -20,8 +20,10 @@ from src.model.base import (
     Fitness,
     Hearing,
     HKCategoryTypeIdentifier,
+    HKCorrelationTypeIdentifier,
     HKGroup,
     HKIdentifier,
+    HKMiscTypeIdentifier,
     HKQuantityTypeIdentifier,
     LabTestResults,
     Mindfulness,
@@ -56,6 +58,12 @@ class TestHKIdentifierHierarchy:
 
     def test_category_identifier_type(self):
         assert HKCategoryTypeIdentifier.identifier_type == "category"
+
+    def test_correlation_identifier_type(self):
+        assert HKCorrelationTypeIdentifier.identifier_type == "correlation"
+
+    def test_misc_identifier_type(self):
+        assert HKMiscTypeIdentifier.identifier_type == "miscellaneous"
 
 
 class TestHKCategoryTypeIdentifier:
@@ -152,10 +160,16 @@ class TestHKGroups:
 
 class TestRegistryCompleteness:
     def test_quantity_registry_len(self):
-        assert len(HKQuantityTypeIdentifierRegistry) > 50
+        assert len(HKQuantityTypeIdentifierRegistry) == 119
 
     def test_category_registry_len(self):
-        assert len(HKCategoryTypeIdentifierRegistry) > 20
+        assert len(HKCategoryTypeIdentifierRegistry) == 70
+
+    def test_correlation_registry_len(self):
+        assert len(HKCorrelationTypeIdentifierRegistry) == 2
+
+    def test_misc_registry_len(self):
+        assert len(HKMiscTypeIdentifierRegistry) == 1
 
     def test_category_registry_is_immutable(self):
         with pytest.raises(TypeError):
@@ -166,7 +180,7 @@ class TestRegistryCompleteness:
             assert k.startswith("HKQuantityTypeIdentifier")
 
     def test_category_maps_built_correctly(self):
-        assert len(CATEGORY_MAP) > 0
+        assert len(CATEGORY_MAP) == 249
         for k, v in CATEGORY_MAP.items():
             assert isinstance(k, tuple)
             assert len(k) == 2
@@ -190,7 +204,7 @@ class TestRegistryCompleteness:
             HKCategoryTypeIdentifier.category_values()
 
     def test_unit_map_built_correctly(self):
-        assert len(UNIT_MAP) > 0
+        assert len(UNIT_MAP) == 192
         for k, v in UNIT_MAP.items():
             assert isinstance(k, str)
             assert isinstance(v, str)
