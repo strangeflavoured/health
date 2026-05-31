@@ -484,7 +484,7 @@ class HealthDataImporter:
             return pd.DataFrame()
 
         route_paths = [
-            path
+            path.lstrip("/")
             for route in workouts_df["route"].dropna()
             for path in (route.get("files") or [])
         ]
