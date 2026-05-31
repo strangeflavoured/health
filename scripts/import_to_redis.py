@@ -31,10 +31,11 @@ if __name__ == "__main__":
         try:
             importer.etl(write_feather=True)
             logger.info("Successfully imported Apple Health Export Data.")
-            log_peak_memory(logger)
         except Exception as e:  # noqa: BLE001
             logger.error(e)
             if isinstance(e, ExceptionGroup):
                 for exc in e.exceptions:
                     logger.error(exc)
             logger.warning("FAILED to import Apple Health Export Data.")
+
+    log_peak_memory(logger)
