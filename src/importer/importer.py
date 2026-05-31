@@ -210,6 +210,7 @@ class HealthDataImporter:
             self._extract(write_feather=write_feather, no_cache=no_cache)
         )
 
+        records_df.drop_duplicates(inplace=True)  # noqa: PD002
         transform(records_df)
         self.failures = _load(records_df, self.connection)
         # Document uploads have their own failure paths; aggregate them.
@@ -285,6 +286,7 @@ class HealthDataImporter:
             return None
 
         records_df, *_ = self._extract(write_feather=False, no_cache=False)
+        records_df.drop_duplicates(inplace=True)  # noqa: PD002
 
         row_selectors: list = []
         for f in self.failures:
@@ -358,6 +360,7 @@ class HealthDataImporter:
             self._extract(write_feather=write_feather, no_cache=no_cache)
         )
 
+        records_df.drop_duplicates(inplace=True)  # noqa: PD002
         transform(records_df)
         self.failures = _load(
             records_df,
