@@ -32,6 +32,10 @@ HKTypeIdentifierRegistry: MappingProxyType[str, Any] = MappingProxyType(
     | HKMiscTypeIdentifierRegistry
 )
 
+UNIT_MAP: MappingProxyType[str, dict[str, int]] = MappingProxyType(
+    {k: v.unit for k, v in HKTypeIdentifierRegistry.items()}
+)
+
 __all__ = [
     "HK_GROUPS",
     "HKTypeIdentifierRegistry",
@@ -40,4 +44,5 @@ __all__ = [
     "HKQuantityTypeIdentifierRegistry",
     "HKMiscTypeIdentifierRegistry",
     "CATEGORICAL_IDENTIFIER_MAPS",
+    "UNIT_MAP",
 ]
