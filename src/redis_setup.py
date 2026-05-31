@@ -426,6 +426,7 @@ def ensure_ts_key(
         client.ts().info(key)  # type: ignore[no-untyped-call]
     except redis.ResponseError:
         client.ts().create(key, labels=labels)
+        logger.warning("Created key=%s  labels=%s", key, labels)
 
 
 def records_labels() -> list[tuple[str, dict[str, str]]]:
