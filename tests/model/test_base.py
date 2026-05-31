@@ -6,6 +6,7 @@ import pytest
 
 from src.model import (
     CATEGORICAL_IDENTIFIER_MAPS,
+    UNIT_MAP,
     HKCategoryTypeIdentifierRegistry,
     HKCorrelationTypeIdentifierRegistry,
     HKMiscTypeIdentifierRegistry,
@@ -179,6 +180,16 @@ class TestRegistryCompleteness:
 
     def test_category_is_subclass_of_hk_identifier(self):
         assert issubclass(HKCategoryTypeIdentifier, HKIdentifier)
+
+    def test_unit_map_built_correctly(self):
+        assert len(UNIT_MAP) > 0
+        for k, v in UNIT_MAP.items():
+            assert isinstance(k, str)
+            assert isinstance(v, str)
+
+    def test_unit_map_is_immutable(self):
+        with pytest.raises(TypeError):
+            UNIT_MAP["X"] = {}  # ty: ignore[invalid-assignment]
 
 
 class TestGroupClasses:
