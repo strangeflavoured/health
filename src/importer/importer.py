@@ -157,6 +157,7 @@ class HealthDataImporter:
         write_feather: bool = False,
         persist_failures: bool = True,
         no_cache: bool = False,
+        from_date: pd.Timestamp | None = None,
     ) -> None:
         """Run the full Extract → Transform → Load pipeline.
 
@@ -190,6 +191,7 @@ class HealthDataImporter:
                 could not be uploaded as a JSON file.
             no_cache: If True, ignore any pre-existing cache and read the
                 ZIP input from scratch.
+            from_date: Lower date boundary to upload data from.
 
         Raises:
             FileNotFoundError: When neither the Feather cache nor the
@@ -207,7 +209,9 @@ class HealthDataImporter:
 
         """
         records_df, correlations_df, workouts_df, activities_df, routes_df = (
-            self._extract(write_feather=write_feather, no_cache=no_cache)
+            self._extract(
+                write_feather=write_feather, no_cache=no_cache, from_date=from_date
+            )
         )
 
         records_df.drop_duplicates(inplace=True)  # noqa: PD002
@@ -327,6 +331,7 @@ class HealthDataImporter:
         write_feather: bool = False,
         persist_failures: bool = True,
         no_cache: bool = False,
+        from_date: pd.Timestamp | None = None,
     ) -> None:
         """Re-import the export, **overwriting** existing TimeSeries points.
 
@@ -343,6 +348,7 @@ class HealthDataImporter:
                 could not be uploaded as a JSON file.
             no_cache: If True, ignore any pre-existing cache and read the
                 ZIP input from scratch.
+            from_date: Lower date boundary to upload data from.
 
         Raises:
             FileNotFoundError: When neither the Feather cache nor the
@@ -357,7 +363,9 @@ class HealthDataImporter:
 
         """
         records_df, correlations_df, workouts_df, activities_df, routes_df = (
-            self._extract(write_feather=write_feather, no_cache=no_cache)
+            self._extract(
+                write_feather=write_feather, no_cache=no_cache, from_date=from_date
+            )
         )
 
         records_df.drop_duplicates(inplace=True)  # noqa: PD002
@@ -388,7 +396,11 @@ class HealthDataImporter:
     # ------------------------------------------------------------------
 
     def _extract(
-        self, *, write_feather: bool, no_cache: bool
+        self,
+        *,
+        write_feather: bool,
+        no_cache: bool,
+        from_date: pd.Timestamp | None = None,
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Parse the Apple Health export and return all five DataFrames.
 
@@ -408,6 +420,8 @@ class HealthDataImporter:
                 ZIP export.
             no_cache: If True, ignore the pre-existing Feather cache and
                 re-read from the ZIP.
+            from_date: Date to process data from. If not set, all data are
+                processed.
 
         Returns:
             ``(records_df, correlations_df, workouts_df, activities_df,
@@ -434,7 +448,9 @@ class HealthDataImporter:
             # We still need the document data — re-parse from ZIP if available.
             if self.zip_file.exists():
                 _, correlations_df, workouts_df, activities_df = parse_apple_health(
-                    zip_path=self.zip_file
+                    zip_path=self.zip_file,
+                    from_date=from_date,
+                    skip_records=True,
                 )
                 routes_df = self._extract_routes(workouts_df)
             else:

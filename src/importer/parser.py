@@ -145,7 +145,9 @@ class NoHealthDataError(ValueError):
 
 def parse_apple_health(
     zip_path: str | Path,
+    *,
     from_date: pd.Timestamp | None = None,
+    skip_records: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Parse an Apple Health export archive into a collection of DataFrames.
 
@@ -168,6 +170,8 @@ def parse_apple_health(
             ignored). Elements that carry no date attribute (e.g. ``Me``,
             ``ExportDate``) are never filtered out. If ``None``, all elements
             are processed.
+        skip_records: If ``True``, records are not parsed and instead the feather
+            cache is used.
 
     Returns:
         A 4-tuple of ``(records, correlations, workouts, activities)``:
@@ -275,7 +279,7 @@ def parse_apple_health(
             if not skip_elem:
                 match elem.tag:
                     case "Record":
-                        if inside_complex:
+                        if inside_complex or skip_records:
                             # Belongs to a parent Correlation; processed there.
                             continue
                         # Columnar accumulation — one list append per column.
