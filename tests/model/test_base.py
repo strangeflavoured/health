@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from src.model import (
-    CATEGORICAL_IDENTIFIER_MAPS,
+    CATEGORY_MAP,
     UNIT_MAP,
     HKCategoryTypeIdentifierRegistry,
     HKCorrelationTypeIdentifierRegistry,
@@ -165,15 +165,18 @@ class TestRegistryCompleteness:
         for k, _v in HKQuantityTypeIdentifierRegistry.items():
             assert k.startswith("HKQuantityTypeIdentifier")
 
-    def test_categorical_identifier_maps_built_correctly(self):
-        assert len(CATEGORICAL_IDENTIFIER_MAPS) > 0
-        for _k, v in CATEGORICAL_IDENTIFIER_MAPS.items():
-            assert isinstance(v, dict)
-            assert all(isinstance(i, int) for i in v.values())
+    def test_category_maps_built_correctly(self):
+        assert len(CATEGORY_MAP) > 0
+        for k, v in CATEGORY_MAP.items():
+            assert isinstance(k, tuple)
+            assert len(k) == 2
+            assert isinstance(k[0], str)
+            assert isinstance(k[1], str)
+            assert isinstance(v, int)
 
-    def test_categorical_maps_is_immutable(self):
+    def test_category_maps_is_immutable(self):
         with pytest.raises(TypeError):
-            CATEGORICAL_IDENTIFIER_MAPS["X"] = {}  # type: ignore[index]
+            CATEGORY_MAP["X"] = {}  # type: ignore[index]
 
     def test_quantity_is_subclass_of_hk_identifier(self):
         assert issubclass(HKQuantityTypeIdentifier, HKIdentifier)
