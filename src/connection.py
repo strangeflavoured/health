@@ -43,3 +43,21 @@ def docker_redis_connect(acl_user: str = "app") -> redis.Redis:
         **conn_args,
         **mtls_kwargs,
     )
+
+
+def latest_ts_timestamp(client: redis.Redis) -> int:
+    """Get latest timestamp of all ts data in database."""
+    responses = client.ts().mrevrange(
+        "-",
+        "+",
+        count=1,
+        filters=["event_type=end"],
+        latest=True,
+    )
+
+    latest_timestamp = 0
+    for resp in responses:
+        for r in resp.values():
+            if r[1]:
+                latest_timestamp = max(latest_timestamp, r[1][0][0])
+    return latest_timestamp
