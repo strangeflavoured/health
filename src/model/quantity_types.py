@@ -352,10 +352,18 @@ class HKQuantityTypeIdentifierAppleSleepingBreathingDisturbances(
     unit = "count"
 
 
+# Apple Health exports glucose units as the literal string
+# "mmol<180.15588...>/L" — the bracketed number is the molar mass
+# of glucose, used by HealthKit to convert to/from mg/dL.  We expose the
+# clean SI unit here; downstream code that needs the conversion factor
+# should reference :data:`MMOL_PER_L_TO_MG_PER_DL_GLUCOSE` below.
+MMOL_PER_L_TO_MG_PER_DL_GLUCOSE: float = 18.01558800000541  # 1 mmol/L = 18.02 mg/dL
+
+
 class HKQuantityTypeIdentifierBloodGlucose(
     HKQuantityTypeIdentifier, HK_GROUPS["LabTestResults"]
 ):
-    unit = "mmol<180.1558800000541>/L"
+    unit = "mmol/L"
 
 
 class HKQuantityTypeIdentifierBloodAlcoholContent(
