@@ -34,7 +34,7 @@ import logging
 
 import pandas as pd
 
-from ..model import CATEGORICAL_IDENTIFIER_MAPS
+from ..model import CATEGORY_MAP
 from ..model.base import HKGroup, MissingUnit
 from .data_check import KNOWN_CATEGORY_TYPE_VIOLATIONS, check_export_data
 
@@ -50,23 +50,15 @@ _UNIT_PER_SECOND = {"s": 1, "ms": 1_000, "us": 1_000_000, "ns": 1_000_000_000}
 # ---------------------------------------------------------------------------
 # Module-level flat lookups built once at import time.
 #
-# ``_FLAT_CATEGORY_MAP`` is the dict form used for membership checks and
+# ``CATEGORY_MAP`` is the dict form used for membership checks and
 # nice error reporting; ``_FLAT_CATEGORY_SERIES`` is the same data exposed
 # as a MultiIndex-keyed Series so the per-row mapping in
 # :func:`_map_categories` can be done with a single vectorised reindex.
 # ---------------------------------------------------------------------------
 
-_FLAT_CATEGORY_MAP: dict[tuple[str, str], int] = {
-    (type_name, value_name): int_val
-    for type_name, value_map in CATEGORICAL_IDENTIFIER_MAPS.items()
-    for value_name, int_val in value_map.items()
-}
-
 _FLAT_CATEGORY_SERIES: pd.Series = pd.Series(
-    list(_FLAT_CATEGORY_MAP.values()),
-    index=pd.MultiIndex.from_tuples(
-        list(_FLAT_CATEGORY_MAP.keys()), names=("type", "value")
-    ),
+    list(CATEGORY_MAP.values()),
+    index=pd.MultiIndex.from_tuples(list(CATEGORY_MAP.keys()), names=("type", "value")),
     dtype="int64",
 )
 
