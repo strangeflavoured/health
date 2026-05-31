@@ -2,15 +2,13 @@
 
 This module has two responsibilities:
 
-1. **RediSearch indexes** — create and maintain JSON indexes over the three
+1. **RediSearch indexes** — create and maintain JSON indexes over the four
    primary document namespaces written by the Apple Health importer:
 
    * ``workout:<id>``     — HKWorkout documents (events, statistics, activities)
    * ``correlation:<id>`` — HKCorrelation documents (blood-pressure pairs, etc.)
    * ``activity:<date>``  — ActivitySummary documents (one per calendar day)
-
-   Route documents (``route:<workoutId>``) have no search index and are always
-   retrieved directly by key.
+   * ``route:<workoutId>`` — WorkoutRoute documents (GPX trackpoints per workout)
 
 2. **RedisTimeSeries labels** — provision ``ts:<identifier>:start`` and
    ``ts:<identifier>:end`` keys for every type registered in
@@ -18,33 +16,45 @@ This module has two responsibilities:
    (``identifier``, ``unit``, ``group``, ``event_type``) that enable
    ``TS.MRANGE`` label-filter queries across the whole dataset.
 
+Document/index schema contract
+------------------------------
+Every JSON document the importer writes carries a ``metaKeys`` field
+(``list[str]``, the keys of its ``meta`` dict).  This makes
+``$.metaKeys[*]`` a valid TagField path even though Apple's ``meta`` is
+stored as an object.  Timestamp fields (``startDate``, ``endDate``,
+``creationDate``, ``date``) are stored as **int64 Unix seconds**, matching
+the TimeSeries values and giving the NumericField indexes the form
+RediSearch expects.
+
 Idempotency
 -----------
-All public functions are safe to call on a Redis instance that already contains
-data or indexes:
+All public functions are safe to call on a Redis instance that already
+contains data or indexes:
 
-* :func:`setup_indexes` skips indexes that already exist unless ``force=True``.
-  Dropping an index does **not** delete documents — RediSearch re-indexes
-  existing JSON documents automatically after recreation.
-* :func:`upsert_ts_labels` calls ``TS.ALTER`` on existing keys and falls back to
-  ``TS.CREATE`` only when the key is absent.  Labels are therefore only written
-  once at key-creation time during normal import; this function is intended as a
-  one-off provisioning or migration tool, not as part of every import cycle.
+* :func:`setup_indexes` skips indexes that already exist unless
+  ``force=True``.  Dropping an index does **not** delete documents —
+  RediSearch re-indexes existing JSON documents automatically after
+  recreation.
+* :func:`upsert_ts_labels` calls ``TS.ALTER`` on existing keys and falls
+  back to ``TS.CREATE`` only when the key is absent.  Labels are therefore
+  only written once at key-creation time during normal import; this
+  function is intended as a one-off provisioning or migration tool, not as
+  part of every import cycle.
 
 Dry-run mode
 ------------
 Every mutating function accepts a ``dry_run`` keyword argument.  When
 ``dry_run=True`` the function logs what it *would* do and returns without
-touching Redis.  This is the default in the companion runner script so that
-accidental executions are harmless.
+touching Redis.  This is the default in the companion runner script so
+that accidental executions are harmless.
 
 Typical usage
 -------------
 Run directly from the project root::
 
-    python run_redis_setup.py                # dry-run by default
-    python run_redis_setup.py --execute      # actually write to Redis
-    python run_redis_setup.py --force        # drop + recreate existing indexes
+    python scripts/setup-redis.py                # dry-run by default
+    python scripts/setup-redis.py --execute      # actually write to Redis
+    python scripts/setup-redis.py --force        # drop + recreate existing indexes
 
 Or call programmatically::
 
@@ -65,6 +75,7 @@ from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.exceptions import ResponseError
 
 from .model import HKTypeIdentifierRegistry
+from .model.base import MissingUnit
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +168,20 @@ _INDICES: list[IndexSpec] = [
             ),
         ],
     ),
+    IndexSpec(
+        name="idx:routes",
+        prefix="route:",
+        description=(
+            "WorkoutRoute documents — one per workout with embedded trackpoints"
+        ),
+        fields=[
+            TagField("$.workoutId", as_name="workoutId"),
+            TagField("$.sourceName", as_name="sourceName"),
+            NumericField("$.startDate", as_name="startDate", sortable=True),
+            NumericField("$.endDate", as_name="endDate", sortable=True),
+            NumericField("$.numPoints", as_name="numPoints", sortable=True),
+        ],
+    ),
 ]
 
 
@@ -170,8 +195,7 @@ def index_exists(client: redis.Redis, name: str) -> bool:
 
     Uses ``FT.INFO`` as the existence probe.  Any
     :class:`~redis.exceptions.ResponseError` is treated as "index not found"
-    — which is the error Redis returns for
-    unknown index names.
+    — which is the error Redis returns for unknown index names.
 
     Parameters
     ----------
@@ -225,7 +249,7 @@ def create_index(client: redis.Redis, spec: IndexSpec, *, dry_run: bool) -> None
     client:
         Connected :class:`redis.Redis` instance.
     spec:
-        Index specification — name, prefix, and field list.
+        Declarative description of the index to create.
     dry_run:
         When ``True``, log the intended operation (including field paths and
         aliases) and return without issuing any Redis commands.
@@ -256,7 +280,7 @@ def setup_indexes(
     dry_run: bool = False,
     force: bool = False,
 ) -> None:
-    """Create all RediSearch indexes defined in :data:`_INDEXES`.
+    """Create all RediSearch indexes defined in :data:`_INDICES`.
 
     Iterates over the module-level index registry and creates any missing
     indexes.  Existing indexes are left untouched unless *force* is ``True``,
@@ -274,7 +298,7 @@ def setup_indexes(
         to Redis.  Propagated to :func:`drop_index` and :func:`create_index`.
     force:
         When ``True``, drop and recreate indexes that already exist.  Use this
-        after changing field definitions in :data:`_INDEXES`.  Has no effect
+        after changing field definitions in :data:`_INDICES`.  Has no effect
         on indexes that are absent (they are created normally).
 
     """
@@ -297,7 +321,7 @@ def setup_indexes(
 def print_status(client: redis.Redis) -> None:
     """Log a human-readable status table for all known indexes.
 
-    For each index in :data:`_INDEXES`, emits one log line showing either the
+    For each index in :data:`_INDICES`, emits one log line showing either the
     document count (or ``"indexing…"`` if a background indexing pass is in
     progress) or ``"missing"`` if the index does not exist.
 
@@ -403,12 +427,16 @@ def ensure_ts_key(
 def records_labels() -> list[tuple[str, dict[str, str]]]:
     """Build the full list of TimeSeries ``(key, labels)`` pairs from the type registry.
 
-    Iterates over :data:`~src.model.HKTypeIdentifierRegistry` and produces two
-    entries per registered type — one for the ``:start`` series and one for the
-    ``:end`` series — using the ``event_type`` label to distinguish them.
+    Iterates over :data:`~src.model.HKTypeIdentifierRegistry` and produces
+    entries for every registered type.  Quantity and category types receive
+    two entries each — one ``:start`` series and one ``:end`` series, with
+    the ``event_type`` label distinguishing them.  Correlation types do not
+    get TimeSeries keys (correlations live as RediSearch JSON documents);
+    they are filtered out here.
 
-    The ``unit`` field is read from ``cls.unit`` when available.  Types that do
-    not expose a ``unit`` attribute (e.g. category types) receive ``unit=None``.
+    The ``unit`` label is read from ``cls.unit`` and falls back to the
+    categorical sentinel (``"Categorical"``) for types that have no
+    canonical SI unit.
 
     Label schema per key
     --------------------
@@ -418,9 +446,8 @@ def records_labels() -> list[tuple[str, dict[str, str]]]:
     identifier    HKTypeIdentifier string, e.g.
                   ``"HKQuantityTypeIdentifierHeartRate"``
     unit          SI / Apple unit string, e.g. ``"count/min"``, or
-                  ``None`` for types without a canonical unit
-    group         Logical grouping from the model, e.g.
-                  ``"vitals"``
+                  ``"Categorical"`` for category types
+    group         Logical grouping from the model, e.g. ``"vital_signs"``
     event_type    ``"start"`` or ``"end"``
     ============  ==================================================
 
@@ -438,8 +465,13 @@ def records_labels() -> list[tuple[str, dict[str, str]]]:
     """
     key_labels: list[tuple[str, dict[str, str]]] = []
     for name, cls in HKTypeIdentifierRegistry.items():
+        # Correlations are stored as JSON documents, not as TimeSeries.
+        if cls.identifier_type == "correlation":
+            continue
+
+        unit = getattr(cls, "unit", MissingUnit.CATEGORICAL.value)
         base_labels: dict[str, str] = {
-            "unit": cls.unit,
+            "unit": unit,
             "identifier": name,
             "group": cls.group,
         }
