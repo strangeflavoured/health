@@ -263,18 +263,30 @@ def _check_units(df: pd.DataFrame) -> None:
 
     """
     unit_mismatch: list[tuple[str, str, str]] = []
-    multiple_units: list[tuple[str, str, list[str]]] = []
+    multiple_units: list[tuple[str, str, tuple[str]]] = []
     for row in df.groupby("type")["unit"].agg(["unique"]).itertuples():
-        unit = UNIT_MAP[row.Index]
+        row_index = row.Index
+        if not isinstance(row_index, str):
+            raise TypeError(
+                "_check_units expects a string as row index, got "
+                f"{row_index!r} (type {type(row_index)}) instead."
+            )
+        row_unique = row.unique
+        if not isinstance(row_unique, pd.arrays.ArrowStringArray):
+            raise TypeError(
+                "_check_units expects ArrowStringArray for unique units, got "
+                f"{row_unique!r} (type {type(row_unique)}) instead."
+            )
+        unit: str = UNIT_MAP[row_index]  # type: ignore[unreachable]
 
-        if len(row.unique) == 1:
-            u = row.unique[0]
+        if len(row_unique) == 1:
+            u = row_unique[0]
             if pd.notna(u) and (u != unit) and (unit != MissingUnit.CATEGORICAL.value):
-                unit_mismatch.append((row.Index, unit, u))
-        elif len(row.unique) > 1:
-            multiple_units.append((row.Index, unit, (*row.unique,)))
+                unit_mismatch.append((row_index, unit, u))
+        elif len(row_unique) > 1:
+            multiple_units.append((row_index, unit, (*row_unique,)))
         else:
-            raise NotImplementedError(f"Data type {row.Index} has no unit.")
+            raise NotImplementedError(f"Data type {row_index} has no unit.")
 
     exceptions: list[DataSanityError] = []
     for t, u, unit in unit_mismatch:
@@ -350,7 +362,13 @@ def check_export_data(df: pd.DataFrame) -> None:
         except DataSanityError as exc:
             exceptions.append(exc)
         except ExceptionGroup as eg:
-            exceptions.extend(eg.exceptions)
+            for e in eg.exceptions:
+                if isinstance(e, DataSanityError):
+                    exceptions.append(e)
+                else:
+                    raise ValueError(
+                        f"check_export_data encountered an unexpected Exception: {e}"
+                    ) from e
 
     if exceptions:
         raise ExceptionGroup(

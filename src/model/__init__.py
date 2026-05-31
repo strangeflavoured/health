@@ -36,7 +36,7 @@ HKTypeIdentifierRegistry: MappingProxyType[str, Any] = MappingProxyType(
     | HKMiscTypeIdentifierRegistry
 )
 
-UNIT_MAP: MappingProxyType[str, dict[str, int]] = MappingProxyType(
+UNIT_MAP: MappingProxyType[str, str] = MappingProxyType(
     {k: v.unit for k, v in HKTypeIdentifierRegistry.items()}
 )
 
