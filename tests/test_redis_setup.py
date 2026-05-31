@@ -201,14 +201,20 @@ class TestSetupIndexes:
 
     def test_partial_existence(self):
         names = [s.name for s in _INDICES]
+        # One existing, the rest missing — should create everything that's
+        # missing and never drop.
+        existence = {names[0]: True}
+        for n in names[1:]:
+            existence[n] = False
+
         client = _make_client()
         with (
-            self._patch_exists({names[0]: True, names[1]: False, names[2]: False}),
+            self._patch_exists(existence),
             patch.object(redis_setup, "create_index") as mock_create,
             patch.object(redis_setup, "drop_index") as mock_drop,
         ):
             setup_indexes(client, dry_run=False, force=False)
-        assert mock_create.call_count == 2
+        assert mock_create.call_count == len(_INDICES) - 1
         mock_drop.assert_not_called()
 
     def test_propagates_dry_run_to_create(self):
@@ -396,12 +402,36 @@ class TestEnsureTsKey:
 
 
 class TestRecordsLabels:
-    def test_returns_two_entries_per_registry_type(self):
-        assert len(records_labels()) == len(HKTypeIdentifierRegistry) * 2
+    """Tests for :func:`records_labels`.
 
-    def test_start_and_end_keys_present_for_each_type(self):
+    ``records_labels`` produces ``(key, labels)`` pairs for every registered
+    type *except* correlations — correlations are stored as JSON documents
+    rather than TimeSeries, so they do not get ``ts:`` keys.  These tests
+    encode that contract explicitly.
+    """
+
+    @staticmethod
+    def _ts_eligible_types() -> dict:
+        """Registry view of types that should yield TS keys."""
+        return {
+            name: cls
+            for name, cls in HKTypeIdentifierRegistry.items()
+            if cls.identifier_type != "correlation"
+        }
+
+    def test_returns_two_entries_per_ts_eligible_type(self):
+        assert len(records_labels()) == len(self._ts_eligible_types()) * 2
+
+    def test_correlation_types_excluded(self):
         keys = [k for k, _ in records_labels()]
-        for name in HKTypeIdentifierRegistry:
+        for name, cls in HKTypeIdentifierRegistry.items():
+            if cls.identifier_type == "correlation":
+                assert f"ts:{name}:start" not in keys
+                assert f"ts:{name}:end" not in keys
+
+    def test_start_and_end_keys_present_for_each_ts_eligible_type(self):
+        keys = [k for k, _ in records_labels()]
+        for name in self._ts_eligible_types():
             assert f"ts:{name}:start" in keys
             assert f"ts:{name}:end" in keys
 
@@ -421,17 +451,20 @@ class TestRecordsLabels:
 
     def test_unit_populated_for_quantity_type(self):
         for key, labels in records_labels():
-            if key in HKQuantityTypeIdentifierRegistry:
+            identifier = key.split(":")[1]
+            if identifier in HKQuantityTypeIdentifierRegistry:
                 assert labels["unit"] != "Categorical"
 
     def test_unit_populated_for_misc_type(self):
         for key, labels in records_labels():
-            if key in HKMiscTypeIdentifierRegistry:
+            identifier = key.split(":")[1]
+            if identifier in HKMiscTypeIdentifierRegistry:
                 assert labels["unit"] != "Categorical"
 
     def test_unit_is_categorical_for_category_type(self):
         for key, labels in records_labels():
-            if key in HKCategoryTypeIdentifierRegistry:
+            identifier = key.split(":")[1]
+            if identifier in HKCategoryTypeIdentifierRegistry:
                 assert labels["unit"] == "Categorical"
 
     def test_identifier_label_matches_key_name(self):
@@ -448,7 +481,7 @@ class TestRecordsLabels:
             parts = key.split(":")
             by_name[(parts[1], parts[2])] = labels
 
-        for name in HKTypeIdentifierRegistry:
+        for name in self._ts_eligible_types():
             s = by_name[(name, "start")]
             e = by_name[(name, "end")]
             for field in ("unit", "identifier", "group"):
