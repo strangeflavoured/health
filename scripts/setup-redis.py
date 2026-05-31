@@ -78,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
     configure_logging(__file__)
     logger = logging.getLogger(__name__)
 
-    r = docker_redis_connect()
+    r = docker_redis_connect(acl_user="admin")
     try:
         r.ping()
     except redis.RedisError as exc:
