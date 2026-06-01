@@ -36,7 +36,11 @@ import pandas as pd
 
 from ..model import CATEGORY_MAP
 from ..model.base import HKGroup, MissingUnit
-from .data_check import KNOWN_CATEGORY_TYPE_VIOLATIONS, check_export_data
+from .data_check import (
+    KNOWN_CATEGORY_TYPE_VIOLATIONS,
+    KNOWN_UNIT_MISMATCHES,
+    check_export_data,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +108,7 @@ def transform(df: pd.DataFrame) -> None:
     _drop_null_values(df)
     check_export_data(df)
     _handle_categorical_units(df)
+    _replace_unit_mismatches(df)
     df["value"] = pd.to_numeric(df["value"]).astype("float64")
     df["startDate"] = _timestamps_to_unix(df["startDate"])
     df["endDate"] = _timestamps_to_unix(df["endDate"])
@@ -296,3 +301,10 @@ def _replace_known_violations(df: pd.DataFrame) -> None:
         df.loc[(df["type"] == faulty_type) & (df["value"].isin(value_list)), "type"] = (
             correct_type
         )
+
+
+def _replace_unit_mismatches(df: pd.DataFrame) -> None:
+    """Replace known unit mismatches in-place."""
+    keys = pd.MultiIndex.from_frame(df[["type", "unit"]])
+    mask = keys.isin(KNOWN_UNIT_MISMATCHES.keys())
+    df.loc[mask, "unit"] = keys[mask].map(KNOWN_UNIT_MISMATCHES)

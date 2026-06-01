@@ -56,6 +56,10 @@ KNOWN_CATEGORY_TYPE_VIOLATIONS: MappingProxyType[str, tuple[list[str], str]] = (
     )
 )
 
+KNOWN_UNIT_MISMATCHES: MappingProxyType[tuple[str, str], str] = MappingProxyType(
+    {("HKQuantityTypeIdentifierBloodGlucose", "mmol<180.1558800000541>/L"): "mmol/L"}
+)
+
 
 class DataSanityError(ValueError):
     """Raised when data checks fail."""
@@ -290,6 +294,8 @@ def _check_units(df: pd.DataFrame) -> None:
 
     exceptions: list[DataSanityError] = []
     for t, u, unit in unit_mismatch:
+        if KNOWN_UNIT_MISMATCHES.get((t, unit)):
+            continue
         exceptions.append(
             DataSanityError(
                 f"Data type {t} unit doesn't match.\n\tExpected: {u}, got {unit}"
