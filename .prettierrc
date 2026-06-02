@@ -2,5 +2,20 @@
   "semi": false,
   "singleQuote": true,
   "tabWidth": 2,
-  "trailingComma": "all"
+  "trailingComma": "all",
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "options": {
+        "plugins": ["./frontend/node_modules/@trivago/prettier-plugin-sort-imports/lib/src/index.js"],
+        "importOrder": [
+          "^react",
+          "<THIRD_PARTY_MODULES>",
+          "^[./]"
+        ],
+        "importOrderSeparation": true,
+        "importOrderSortSpecifiersWithinImportDeclarations": true
+      }
+    }
+  ]
 }
