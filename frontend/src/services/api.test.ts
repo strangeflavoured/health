@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
+
 import { getHealth } from './api'
 
 const mockGet = vi.hoisted(() => vi.fn())
