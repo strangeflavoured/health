@@ -399,16 +399,19 @@ def ensure_ts_key(
     client: redis.Redis,
     key: str,
     labels: dict[str, str],
+    duplicate_policy: str = "FIRST",
 ) -> None:
-    """Create a RedisTimeSeries key with labels if it does not already exist.
+    """Create or update a RedisTimeSeries key.
 
-    Intended to be called by the importer immediately before the first
-    ``TS.ADD`` for a given key within an import run.  If the key already exists
-    (i.e. it was created during a previous import), the ``TS.INFO`` probe
-    succeeds and this function returns without any writes.
+    If the key does not yet exist it is created with *labels* and
+    *duplicate_policy*.  If it already exists, only the ``DUPLICATE_POLICY``
+    is updated via ``TS.ALTER`` so that the policy for the current run (e.g.
+    ``"FIRST"`` for :meth:`~.HealthDataImporter.etl` vs ``"LAST"`` for
+    :meth:`~.HealthDataImporter.update`) takes effect before the first
+    ``TS.MADD`` for that key.
 
-    This is the preferred creation path during import; :func:`upsert_ts_labels`
-    is reserved for bulk provisioning and schema migrations.
+    Labels are **not** updated on existing keys; use :func:`upsert_ts_labels`
+    for bulk label migrations.
 
     Parameters
     ----------
@@ -417,15 +420,20 @@ def ensure_ts_key(
     key:
         Full Redis key name, e.g. ``"ts:HKQuantityTypeIdentifierHeartRate:start"``.
     labels:
-        Flat ``str → str`` metadata mapping attached to the key at creation
-        time.  Labels are immutable after creation via this function; use
-        :func:`upsert_ts_labels` (``TS.ALTER``) to change them later.
+        Flat ``str → str`` metadata mapping attached at creation time.
+    duplicate_policy:
+        ``TS.MADD`` duplicate-conflict strategy for this key: ``"FIRST"``
+        (keep the oldest value, used by :meth:`~.HealthDataImporter.etl`) or
+        ``"LAST"`` (overwrite, used by :meth:`~.HealthDataImporter.update`).
+        Accepts any string accepted by RedisTimeSeries.
 
     """
     try:
         client.ts().info(key)
+        # Key exists — update the policy so the current run's strategy applies.
+        client.ts().alter(key, duplicate_policy=duplicate_policy)
     except redis.ResponseError:
-        client.ts().create(key, labels=labels)
+        client.ts().create(key, labels=labels, duplicate_policy=duplicate_policy)
         logger.warning("Created key=%s  labels=%s", key, labels)
 
 

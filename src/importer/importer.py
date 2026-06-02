@@ -40,14 +40,13 @@ Typical usage::
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import pandas as pd
 import redis
 from pyarrow import feather
-from redis.commands.timeseries import TimeSeries
 
-from ..model import HKTypeIdentifierRegistry
 from ..redis_setup import ensure_ts_key
 from .document_loader import (
     load_activities,
@@ -70,6 +69,10 @@ from .response import (
 from .transform import transform
 
 logger = logging.getLogger(__name__)
+
+# Number of data types uploaded concurrently.  Each worker handles
+# all batches for one type sequentially; types are independent.
+MAX_UPLOAD_WORKERS: int = 4
 
 
 class HealthDataImporter:
@@ -567,30 +570,134 @@ class HealthDataImporter:
         return failures
 
 
+def _upload_type(
+    data_type: str,
+    batch_df: pd.DataFrame,
+    r: redis.Redis,
+    duplicate_policy: DuplicatePolicy,
+) -> list[UploadFailure]:
+    """Upload all batches for one data type and return any failures.
+
+    Intended to be called from a :class:`~concurrent.futures.ThreadPoolExecutor`
+    worker.  Each call is self-contained: it provisions its two TimeSeries keys
+    (setting the duplicate policy so ``TS.MADD`` uses the right conflict
+    strategy), then loops over BATCH_SIZE slices of *batch_df* issuing one
+    ``TS.MADD`` per slice.
+
+    The :class:`redis.Redis` client is shared across workers via its internal
+    :class:`~redis.connection.ConnectionPool`; individual ``TS.MADD`` calls
+    each check out a connection, send the command, receive the reply, and
+    return the connection — which is thread-safe.
+
+    Args:
+        data_type: The HK type identifier string (e.g.
+            ``"HKQuantityTypeIdentifierHeartRate"``).
+        batch_df: All transformed rows for *data_type*.
+        r: Shared Redis client.  Thread-safe for individual commands.
+        duplicate_policy: Write-conflict strategy; sets the key-level policy
+            via :func:`~src.redis_setup.ensure_ts_key` before the first
+            ``TS.MADD`` for this type.
+
+    Returns:
+        List of :class:`~.response.UploadFailure` objects; empty on
+        full success.
+
+    """
+    n = len(batch_df)
+    rts = r.ts()
+    failures: list[UploadFailure] = []
+
+    sample = batch_df.iloc[0]
+    base_labels: dict[str, str] = {
+        "unit": str(sample["unit"]),
+        "identifier": data_type,
+        "group": str(sample["group"]),
+    }
+    ensure_ts_key(
+        r,
+        f"ts:{data_type}:start",
+        labels=base_labels | {"event_type": "start"},
+        duplicate_policy=duplicate_policy.value,
+    )
+    ensure_ts_key(
+        r,
+        f"ts:{data_type}:end",
+        labels=base_labels | {"event_type": "end"},
+        duplicate_policy=duplicate_policy.value,
+    )
+
+    logger.info(
+        "%s: uploading %d rows in %d batch(es).",
+        data_type,
+        n,
+        -(-n // BATCH_SIZE),
+    )
+
+    for i in range(0, n, BATCH_SIZE):
+        _df = batch_df.iloc[i : i + BATCH_SIZE]
+        try:
+            row_failures = upload_batch(rts, _df)
+            if row_failures:
+                logger.warning(
+                    "	Batch %d: %d/%d row(s) failed.",
+                    i // BATCH_SIZE + 1,
+                    len(row_failures),
+                    len(_df),
+                )
+                failures.extend(row_failures)
+        except IndexError as exc:
+            batch_failure = BatchFailure(
+                data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
+            )
+            logger.exception(
+                "\t\tBatch %d: could not resolve failures: %s",
+                i // BATCH_SIZE + 1,
+                batch_failure,
+            )
+            failures.append(batch_failure)
+        except redis.RedisError as exc:
+            batch_failure = BatchFailure(
+                data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
+            )
+            logger.exception(
+                "\t\tBatch %d: entire batch failed: %s",
+                i // BATCH_SIZE + 1,
+                batch_failure,
+            )
+            failures.append(batch_failure)
+
+    return failures
+
+
 def _load(
     df: pd.DataFrame,
     r: redis.Redis,
     duplicate_policy: DuplicatePolicy = DuplicatePolicy.FIRST,
 ) -> list[UploadFailure]:
-    """Batch-upload all records to Redis TimeSeries.
+    """Batch-upload all records to Redis TimeSeries using worker threads.
 
-    Each unique ``type`` is uploaded in its own pipeline transaction with
-    a batch size of :data:`~.response.BATCH_SIZE`, so a failure in one
-    type does not abort the others.  Returns a list of
-    :class:`~.response.UploadFailure` objects.
+    Fans out across unique data types using a
+    :class:`~concurrent.futures.ThreadPoolExecutor` with
+    :data:`MAX_UPLOAD_WORKERS` threads.  Each worker calls
+    :func:`_upload_type`, which provisions the two TimeSeries keys for that
+    type (setting the duplicate policy for ``TS.MADD``), then uploads all
+    batches for that type sequentially.
+
+    Types are independent — they write to different keys — so there is no
+    contention between workers.  The shared :class:`redis.Redis` client is
+    thread-safe: each ``TS.MADD`` call checks out a connection from the
+    client's internal pool, sends the command, and returns the connection.
 
     Args:
         df: Transformed health records DataFrame.
-        r: Active Redis connection.
-        duplicate_policy: :class:`DuplicatePolicy.FIRST` (default, used
-            by :meth:`HealthDataImporter.etl` and
-            :meth:`HealthDataImporter.retry_failed`) or
-            :class:`DuplicatePolicy.LAST` (used by
-            :meth:`HealthDataImporter.update`).
+        r: Shared Redis client.
+        duplicate_policy: Write-conflict strategy passed to
+            :func:`_upload_type` and ultimately to
+            :func:`~src.redis_setup.ensure_ts_key`.
 
     Returns:
-        A new list of :class:`~.response.UploadFailure` objects.  Empty
-        if all data points were successfully uploaded.
+        Aggregated list of :class:`~.response.UploadFailure` objects from all
+        workers; empty on full success.
 
     Example::
 
@@ -598,96 +705,37 @@ def _load(
 
     """
     logger.info(
-        "Loading data to Redis TimeSeries (duplicate_policy=%s)...",
+        "Loading data to Redis TimeSeries (duplicate_policy=%s, workers=%d)...",
         duplicate_policy.value,
+        MAX_UPLOAD_WORKERS,
     )
-    rts: TimeSeries = r.ts()
     failures: list[UploadFailure] = []
 
     data_types = df["type"].unique()
-    logger.info("Found %d data types.", len(data_types))
-    for data_type in data_types:
-        batch_df = df[df["type"] == data_type]
-        n = len(batch_df)
-        logger.info(
-            "%s: Uploading %i rows in %i batches.",
-            data_type,
-            n,
-            n // BATCH_SIZE + 1,
-        )
+    logger.info("Found %d data type(s).", len(data_types))
 
-        # Make sure labels exist.  Use the unioned registry so quantity,
-        # category, and misc types are all resolvable.
-        cls = HKTypeIdentifierRegistry.get(data_type)
-        if cls is None:
-            # Unknown identifier — record a synthetic batch failure for the
-            # whole type so the rows can be inspected later.
-            failures.append(
-                BatchFailure(
-                    data_type=data_type,
-                    batch_nr=0,
-                    error=f"Identifier {data_type!r} not in HKTypeIdentifierRegistry.",
-                )
-            )
-            logger.error(
-                "Skipping %s: identifier is not registered in the model.",
-                data_type,
-            )
-            continue
-
-        base_labels: dict[str, str] = {
-            "unit": cls.unit,
-            "identifier": data_type,
-            "group": cls.group,
+    with ThreadPoolExecutor(max_workers=MAX_UPLOAD_WORKERS) as pool:
+        future_to_type = {
+            pool.submit(
+                _upload_type,
+                dt,
+                df[df["type"] == dt],
+                r,
+                duplicate_policy,
+            ): dt
+            for dt in data_types
+            if len(df[df["type"] == dt]) > 0
         }
-        ensure_ts_key(
-            r, f"ts:{data_type}:start", labels=base_labels | {"event_type": "start"}
-        )
-        ensure_ts_key(
-            r, f"ts:{data_type}:end", labels=base_labels | {"event_type": "end"}
-        )
 
-        # Upload in batches of BATCH_SIZE.
-        for i in range(0, n, BATCH_SIZE):
-            j = min(i + BATCH_SIZE, n)
-            _df = batch_df.iloc[i:j]
-
+        for future in as_completed(future_to_type):
+            data_type = future_to_type[future]
             try:
-                row_failures = upload_batch(
-                    rts,
-                    _df,
-                    duplicate_policy=duplicate_policy,
-                )
-
-                if row_failures:
-                    logger.warning(
-                        "\tBatch %i: %d/%d row(s) failed.",
-                        i // BATCH_SIZE + 1,
-                        len(row_failures),
-                        len(_df),
-                    )
-                    failures.extend(row_failures)
-
-            except IndexError as exc:
+                failures.extend(future.result())
+            except Exception as exc:  # noqa: BLE001
                 batch_failure = BatchFailure(
-                    data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
+                    data_type=data_type, batch_nr=0, error=str(exc)
                 )
-                logger.exception(
-                    "\tBatch %i: Could not resolve failures:\n\t\t%s",
-                    i // BATCH_SIZE + 1,
-                    batch_failure,
-                )
-                failures.append(batch_failure)
-
-            except redis.RedisError as exc:
-                batch_failure = BatchFailure(
-                    data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
-                )
-                logger.exception(
-                    "\tBatch %i: Entire batch failed:\n\t\t%s",
-                    i // BATCH_SIZE + 1,
-                    batch_failure,
-                )
+                logger.exception("Unexpected error uploading %s: %s", data_type, exc)
                 failures.append(batch_failure)
 
     return failures

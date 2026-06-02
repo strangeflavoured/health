@@ -1,21 +1,21 @@
-"""Tests for src/importer/pipeline.py — Redis TimeSeries pipeline helpers."""
+"""Tests for src/importer/pipeline.py — TS.MADD upload helpers."""
 
 from __future__ import annotations
 
 import time
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 from redis import ResponseError
 
 from src.importer.pipeline import (
-    _queue_row,
+    _build_madd_args,
     _resolve_failures,
     upload_batch,
 )
-from src.importer.response import DuplicatePolicy, RowFailure
+from src.importer.response import RowFailure
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -33,41 +33,68 @@ def _make_df(
             "value": [float(60 + i) for i in range(n)],
             "startDate": [1_700_000_000 + i * 60 for i in range(n)],
             "endDate": [1_700_000_060 + i * 60 for i in range(n)],
+            "group": ["fitness"] * n,
         }
     )
 
 
 # ---------------------------------------------------------------------------
-# _queue_row
+# _build_madd_args
 # ---------------------------------------------------------------------------
 
 
-class TestQueueRow:
-    def test_calls_pipe_add_twice(self):
-        pipe = MagicMock()
-        _queue_row(pipe, "ts:HR:start", "ts:HR:end", 1, 2, 72.0, "FIRST")
-        assert pipe.add.call_count == 2
+class TestBuildMaddArgs:
+    def test_returns_two_triples_per_row(self):
+        args = _build_madd_args(_make_df(3))
+        assert len(args) == 6
 
-    def test_start_call_uses_start_key_and_timestamp(self):
-        pipe = MagicMock()
-        _queue_row(pipe, "ts:HR:start", "ts:HR:end", 10, 20, 72.0, "FIRST")
-        kwargs = pipe.add.call_args_list[0][1]
-        assert kwargs["key"] == "ts:HR:start"
-        assert kwargs["timestamp"] == 10
-        assert kwargs["value"] == 72.0
-        assert kwargs["duplicate_policy"] == "FIRST"
+    def test_empty_df_returns_empty_list(self):
+        assert _build_madd_args(_make_df(0)) == []
 
-    def test_end_call_uses_end_key_and_timestamp(self):
-        pipe = MagicMock()
-        _queue_row(pipe, "ts:HR:start", "ts:HR:end", 10, 20, 72.0, "LAST")
-        kwargs = pipe.add.call_args_list[1][1]
-        assert kwargs["key"] == "ts:HR:end"
-        assert kwargs["timestamp"] == 20
-        assert kwargs["value"] == 72.0
-        assert kwargs["duplicate_policy"] == "LAST"
+    def test_start_key_format(self):
+        args = _build_madd_args(_make_df(1, "HKQuantityTypeIdentifierStepCount"))
+        assert args[0][0] == "ts:HKQuantityTypeIdentifierStepCount:start"
 
-    def test_returns_none(self):
-        assert _queue_row(MagicMock(), "a", "b", 1, 2, 1.0, "FIRST") is None
+    def test_end_key_format(self):
+        args = _build_madd_args(_make_df(1, "HKQuantityTypeIdentifierStepCount"))
+        assert args[1][0] == "ts:HKQuantityTypeIdentifierStepCount:end"
+
+    def test_interleaving_start_before_end(self):
+        """For each row start must immediately precede end."""
+        args = _build_madd_args(_make_df(3))
+        for i in range(3):
+            assert args[i * 2][0].endswith(":start")
+            assert args[i * 2 + 1][0].endswith(":end")
+
+    def test_start_timestamp_forwarded(self):
+        df = _make_df(1)
+        args = _build_madd_args(df)
+        assert args[0][1] == df["startDate"].iloc[0]
+
+    def test_end_timestamp_forwarded(self):
+        df = _make_df(1)
+        args = _build_madd_args(df)
+        assert args[1][1] == df["endDate"].iloc[0]
+
+    def test_value_forwarded_to_start(self):
+        df = _make_df(1)
+        args = _build_madd_args(df)
+        assert args[0][2] == pytest.approx(df["value"].iloc[0])
+
+    def test_value_forwarded_to_end(self):
+        df = _make_df(1)
+        args = _build_madd_args(df)
+        assert args[1][2] == pytest.approx(df["value"].iloc[0])
+
+    def test_returns_list_of_tuples(self):
+        args = _build_madd_args(_make_df(2))
+        assert all(isinstance(a, tuple) and len(a) == 3 for a in args)
+
+    def test_no_labels_in_args(self):
+        """Duplicate policy and labels are key-level; must not appear in MADD args."""
+        args = _build_madd_args(_make_df(1))
+        for triple in args:
+            assert len(triple) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -107,17 +134,15 @@ class TestResolveFailures:
         assert failures[0].end_error is not None
 
     def test_mismatched_length_raises_index_error(self):
-        df = _make_df(3)
         with pytest.raises(IndexError):
-            _resolve_failures([1, 2], df)
+            _resolve_failures([1, 2], _make_df(3))
 
     def test_odd_length_response_raises_index_error(self):
         with pytest.raises(IndexError):
             _resolve_failures([1, 2, 3, 4, 5], _make_df(2))
 
     def test_empty_df_empty_response(self):
-        df = _make_df(0)
-        assert _resolve_failures([], df) == []
+        assert _resolve_failures([], _make_df(0)) == []
 
     def test_non_response_error_value_treated_as_success(self):
         assert _resolve_failures([12345, 67890], _make_df(1)) == []
@@ -129,8 +154,8 @@ class TestResolveFailures:
         response = list(range(n * 2))
         t0 = time.perf_counter()
         failures = _resolve_failures(response, df)
-        assert failures == []
         assert time.perf_counter() - t0 < 2.0
+        assert failures == []
 
     def test_failure_data_type_matches_row(self):
         df = pd.DataFrame(
@@ -143,28 +168,49 @@ class TestResolveFailures:
                 "endDate": [1001, 2001],
             }
         )
-        err = ResponseError("fail")
-        failures = _resolve_failures([err, err, 200, 201], df)
+        failures = _resolve_failures(
+            [ResponseError("fail"), ResponseError("fail"), 200, 201], df
+        )
         assert failures[0].data_type == "TypeA"
 
     def test_row_index_preserved(self):
         df = _make_df(2)
         df.index = [10, 20]
-        err = ResponseError("x")
-        failures = _resolve_failures([err, 1, 2, 3], df)
+        failures = _resolve_failures([ResponseError("x"), 1, 2, 3], df)
         assert failures[0].row_index == 10
+
+    def test_failure_log_uses_row_type_not_index(self):
+        """ "Regression: log line must show the HK type string, not the row index."""
+        df = pd.DataFrame(
+            {
+                "type": ["HKQuantityTypeIdentifierHeartRate"],
+                "sourceName": ["Watch"],
+                "unit": ["bpm"],
+                "value": [72.0],
+                "startDate": [1_000_000],
+                "endDate": [1_000_060],
+            }
+        )
+        with patch("src.importer.pipeline.logger") as mock_log:
+            _resolve_failures([ResponseError("TSDB: Duplicate"), 1], df)
+        assert "HKQuantityTypeIdentifierHeartRate" in str(mock_log.info.call_args[0])
 
     def test_returns_list_type(self):
         assert isinstance(_resolve_failures([1, 2], _make_df(1)), list)
 
+    def test_non_response_error_treated_as_success(self):
+        assert _resolve_failures([12345, 67890], _make_df(1)) == []
+
     def test_start_error_string_matches_response_error_message(self):
-        err = ResponseError("TSDB: Duplicate sample")
-        failures = _resolve_failures([err, 101], _make_df(1))
+        failures = _resolve_failures(
+            [ResponseError("TSDB: Duplicate sample"), 101], _make_df(1)
+        )
         assert "TSDB: Duplicate sample" in failures[0].start_error
 
     def test_end_error_string_matches_response_error_message(self):
-        err = ResponseError("TSDB: Duplicate sample")
-        failures = _resolve_failures([100, err], _make_df(1))
+        failures = _resolve_failures(
+            [100, ResponseError("TSDB: Duplicate sample")], _make_df(1)
+        )
         assert "TSDB: Duplicate sample" in failures[0].end_error
 
 
@@ -175,126 +221,54 @@ class TestResolveFailures:
 
 class TestUploadBatch:
     def _mock_rts(self, response: list[Any]) -> MagicMock:
-        pipe = MagicMock()
-        pipe.execute.return_value = response
         rts = MagicMock()
-        rts.pipeline.return_value = pipe
+        rts.madd.return_value = response
         return rts
 
     def test_returns_empty_on_success(self):
-        df = _make_df(2)
         rts = self._mock_rts([100, 101, 200, 201])
-        assert upload_batch(rts, df) == []
+        assert upload_batch(rts, _make_df(2)) == []
 
-    def test_returns_failures_on_error(self):
-        df = _make_df(1)
-        err = ResponseError("TSDB: Duplicate")
-        rts = self._mock_rts([err, 101])
-        result = upload_batch(rts, df)
+    def test_returns_failures_on_error_response(self):
+        rts = self._mock_rts([ResponseError("TSDB: Duplicate"), 101])
+        result = upload_batch(rts, _make_df(1))
         assert len(result) == 1
         assert isinstance(result[0], RowFailure)
 
-    def test_execute_called_once(self):
-        df = _make_df(3)
-        rts = self._mock_rts([1, 2, 3, 4, 5, 6])
-        upload_batch(rts, df)
-        rts.pipeline.return_value.execute.assert_called_once()
-
-    def test_execute_raise_on_error_false(self):
-        df = _make_df(1)
-        rts = self._mock_rts([1, 2])
-        upload_batch(rts, df)
-        call_kwargs = rts.pipeline.return_value.execute.call_args[1]
-        assert call_kwargs.get("raise_on_error") is False
-
-    def test_policy_forwarded_to_pipe_add(self):
-        df = _make_df(2)
+    def test_calls_madd_once(self):
         rts = self._mock_rts([1, 2, 3, 4])
-        upload_batch(rts, df, duplicate_policy=DuplicatePolicy.LAST)
-        for c in rts.pipeline.return_value.add.call_args_list:
-            assert c.kwargs["duplicate_policy"] == "LAST"
+        upload_batch(rts, _make_df(2))
+        rts.madd.assert_called_once()
 
-    def test_default_policy_is_first(self):
-        df = _make_df(1)
+    def test_madd_receives_flat_arg_list(self):
+        """madd must be called with the list of triples from _build_madd_args."""
         rts = self._mock_rts([1, 2])
-        upload_batch(rts, df)
-        for c in rts.pipeline.return_value.add.call_args_list:
-            assert c.kwargs["duplicate_policy"] == "FIRST"
+        upload_batch(rts, _make_df(1))
+        args_passed = rts.madd.call_args[0][0]
+        assert isinstance(args_passed, list)
+        assert len(args_passed) == 2  # 2 samples for 1 row
 
-    def test_keys_computed_once_per_batch(self):
-        """All start commands must use the *same* key, all end commands must
-        use the *same* key — proving the key string is not re-formatted per
-        row.
-        """
-        df = _make_df(5, type_val="HKQuantityTypeIdentifierStepCount")
-        rts = self._mock_rts([0] * 10)
-        upload_batch(rts, df)
-
-        calls = rts.pipeline.return_value.add.call_args_list
-        start_keys = {calls[i].kwargs["key"] for i in range(0, len(calls), 2)}
-        end_keys = {calls[i].kwargs["key"] for i in range(1, len(calls), 2)}
-        assert start_keys == {"ts:HKQuantityTypeIdentifierStepCount:start"}
-        assert end_keys == {"ts:HKQuantityTypeIdentifierStepCount:end"}
-
-    def test_empty_df_returns_empty(self):
-        df = _make_df(0)
+    def test_empty_df_no_madd_call(self):
         rts = self._mock_rts([])
-        assert upload_batch(rts, df) == []
-
-    def test_empty_df_does_not_open_pipeline(self):
-        rts = self._mock_rts([])
-        upload_batch(rts, _make_df(0))
-        rts.pipeline.assert_not_called()
-
-    def test_timestamp_forwarded(self):
-        df = pd.DataFrame(
-            {
-                "type": ["HR"],
-                "sourceName": ["w"],
-                "unit": ["count/min"],
-                "value": [72.0],
-                "startDate": [1_234_567_890],
-                "endDate": [1_234_567_950],
-            }
-        )
-        rts = self._mock_rts([1, 2])
-        upload_batch(rts, df)
-        calls = rts.pipeline.return_value.add.call_args_list
-        assert calls[0].kwargs["timestamp"] == 1_234_567_890
-        assert calls[1].kwargs["timestamp"] == 1_234_567_950
-
-    def test_value_forwarded(self):
-        df = pd.DataFrame(
-            {
-                "type": ["HR"],
-                "sourceName": ["w"],
-                "unit": ["count/min"],
-                "value": [99.5],
-                "startDate": [1_700_000_000],
-                "endDate": [1_700_000_060],
-            }
-        )
-        rts = self._mock_rts([1, 2])
-        upload_batch(rts, df)
-        for c in rts.pipeline.return_value.add.call_args_list:
-            assert c.kwargs["value"] == 99.5
-
-    def test_numpy_scalars_unwrapped_to_python(self):
-        """numpy ints/floats must be cast to plain Python scalars so
-        redis-py serialises them cleanly.
-        """
-        df = _make_df(1)
-        # int64 columns are produced by transform._timestamps_to_unix
-        df["startDate"] = df["startDate"].astype("int64")
-        df["endDate"] = df["endDate"].astype("int64")
-        rts = self._mock_rts([1, 2])
-        upload_batch(rts, df)
-
-        for c in rts.pipeline.return_value.add.call_args_list:
-            ts = c.kwargs["timestamp"]
-            v = c.kwargs["value"]
-            assert isinstance(ts, int) and not isinstance(ts, bool)
-            assert isinstance(v, float)
+        result = upload_batch(rts, _make_df(0))
+        rts.madd.assert_not_called()
+        assert result == []
 
     def test_return_type_is_list(self):
         assert isinstance(upload_batch(self._mock_rts([1, 2]), _make_df(1)), list)
+
+    def test_no_duplicate_policy_param(self):
+        """upload_batch must not accept duplicate_policy; policy is key-level."""
+        import inspect
+
+        sig = inspect.signature(upload_batch)
+        assert "duplicate_policy" not in sig.parameters
+
+    def test_timestamps_forwarded_correctly(self):
+        """MADD args must carry the exact integer timestamps from the DataFrame."""
+        rts = self._mock_rts([1, 2])
+        df = _make_df(1)
+        upload_batch(rts, df)
+        args = rts.madd.call_args[0][0]
+        assert args[0][1] == df["startDate"].iloc[0]
+        assert args[1][1] == df["endDate"].iloc[0]

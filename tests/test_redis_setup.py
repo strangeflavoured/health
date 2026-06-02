@@ -369,13 +369,39 @@ class TestEnsureTsKey:
         ensure_ts_key(client, "ts:HR:start", {"unit": "bpm"})
         self._ts(client).create.assert_not_called()
 
+    def test_alters_existing_key_duplicate_policy(self):
+        """When the key already exists the policy must be updated via TS.ALTER."""
+        client = _make_client()
+        self._ts(client).info.return_value = {}
+        ensure_ts_key(client, "ts:HR:start", {"unit": "bpm"}, duplicate_policy="LAST")
+        self._ts(client).alter.assert_called_once_with(
+            "ts:HR:start", duplicate_policy="LAST"
+        )
+
     def test_creates_key_when_absent(self):
         client = _make_client()
         self._ts(client).info.side_effect = redis.ResponseError("not found")
         ensure_ts_key(client, "ts:HR:start", {"unit": "bpm"})
         self._ts(client).create.assert_called_once_with(
-            "ts:HR:start", labels={"unit": "bpm"}
+            "ts:HR:start",
+            labels={"unit": "bpm"},
+            duplicate_policy="FIRST",
         )
+
+    def test_creates_key_with_supplied_duplicate_policy(self):
+        client = _make_client()
+        self._ts(client).info.side_effect = redis.ResponseError("gone")
+        ensure_ts_key(client, "ts:HR:start", {}, duplicate_policy="LAST")
+        self._ts(client).create.assert_called_once_with(
+            "ts:HR:start", labels={}, duplicate_policy="LAST"
+        )
+
+    def test_does_not_alter_when_creating(self):
+        """TS.ALTER must not be called when the key is newly created."""
+        client = _make_client()
+        self._ts(client).info.side_effect = redis.ResponseError("gone")
+        ensure_ts_key(client, "ts:HR:start", {})
+        self._ts(client).alter.assert_not_called()
 
     def test_passes_labels_verbatim(self):
         client = _make_client()
@@ -387,13 +413,22 @@ class TestEnsureTsKey:
             "event_type": "start",
         }
         ensure_ts_key(client, "ts:HR:start", labels)
-        self._ts(client).create.assert_called_once_with("ts:HR:start", labels=labels)
+        self._ts(client).create.assert_called_once_with(
+            "ts:HR:start", labels=labels, duplicate_policy="FIRST"
+        )
 
     def test_info_called_with_correct_key(self):
         client = _make_client()
         self._ts(client).info.return_value = {}
         ensure_ts_key(client, "ts:SpO2:end", {})
         self._ts(client).info.assert_called_once_with("ts:SpO2:end")
+
+    def test_default_policy_is_first(self):
+        client = _make_client()
+        self._ts(client).info.side_effect = redis.ResponseError("gone")
+        ensure_ts_key(client, "ts:HR:start", {})
+        _, kwargs = self._ts(client).create.call_args
+        assert kwargs["duplicate_policy"] == "FIRST"
 
 
 # ===========================================================================
