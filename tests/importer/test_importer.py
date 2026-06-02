@@ -9,7 +9,12 @@ import pandas as pd
 import pytest
 import redis
 
-from src.importer.importer import HealthDataImporter, _load
+from src.importer.importer import (
+    MAX_UPLOAD_WORKERS,
+    HealthDataImporter,
+    _load,
+    _upload_type,
+)
 from src.importer.response import (
     BatchFailure,
     DuplicatePolicy,
@@ -20,9 +25,11 @@ from src.importer.response import (
 # A type that genuinely exists in HKTypeIdentifierRegistry — tests need
 # this for the registry lookup inside _load to succeed.
 HR = "HKQuantityTypeIdentifierHeartRate"
-STEPS = "HKQuantityTypeIdentifierStepCount"
 HR_UNIT = "count/min"
+HR_GROUP = "vital_signs"
+STEPS = "HKQuantityTypeIdentifierStepCount"
 STEPS_UNIT = "count"
+STEPS_GROUP = "fitness"
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -64,7 +71,11 @@ def importer(data_dir: Path, mock_redis: MagicMock) -> HealthDataImporter:
 
 
 def _make_records_df(
-    type_val: str = HR, unit: str = HR_UNIT, n: int = 2
+    *,
+    type_val: str = HR,
+    unit: str = HR_UNIT,
+    group: str = HR_GROUP,
+    n: int = 2,
 ) -> pd.DataFrame:
     return pd.DataFrame(
         {
@@ -74,6 +85,7 @@ def _make_records_df(
             "value": [72.0] * n,
             "startDate": [1_700_000_000 + i for i in range(n)],
             "endDate": [1_700_000_060 + i for i in range(n)],
+            "group": [group] * n,
         }
     )
 
@@ -321,32 +333,70 @@ class TestFailuresFile:
 # ---------------------------------------------------------------------------
 
 
-class TestLoad:
+class TestUploadType:
+    """Tests for the per-data-type worker function."""
+
     def test_returns_empty_on_success(self, mock_redis):
         df = _make_records_df()
         # 2 commands per row × 2 rows = 4 results
-        mock_redis.ts.return_value.pipeline.return_value.execute.return_value = [
-            1,
-            2,
-            3,
-            4,
-        ]
-        assert _load(df, mock_redis) == []
+        mock_redis.ts.return_value.madd.return_value = [1, 2, 3, 4]
+        with patch("src.importer.importer.ensure_ts_key"):
+            result = _upload_type("HR", df, mock_redis, DuplicatePolicy.FIRST)
+        assert result == []
 
     def test_redis_error_creates_batch_failure(self, mock_redis):
         df = _make_records_df()
-        mock_redis.ts.return_value.pipeline.return_value.execute.side_effect = (
-            redis.RedisError("conn lost")
-        )
-        result = _load(df, mock_redis)
-        assert len(result) == 1
+        mock_redis.ts.return_value.madd.side_effect = redis.RedisError("conn lost")
+        with patch("src.importer.importer.ensure_ts_key"):
+            result = _upload_type("HR", df, mock_redis, DuplicatePolicy.FIRST)
+        assert len(result) == 1 and isinstance(result[0], BatchFailure)
+
+    def test_ensure_ts_key_called_twice(self, mock_redis):
+        mock_redis.ts.return_value.madd.return_value = [1, 2, 3, 4]
+        with patch("src.importer.importer.ensure_ts_key") as mock_ensure:
+            _upload_type("HR", _make_records_df(), mock_redis, DuplicatePolicy.FIRST)
+        assert mock_ensure.call_count == 2
+
+    def test_ensure_ts_key_receives_duplicate_policy(self, mock_redis):
+        """duplicate_policy.value must be forwarded to ensure_ts_key."""
+        mock_redis.ts.return_value.madd.return_value = [1, 2, 3, 4]
+        with patch("src.importer.importer.ensure_ts_key") as mock_ensure:
+            _upload_type("HR", _make_records_df(), mock_redis, DuplicatePolicy.LAST)
+        for call in mock_ensure.call_args_list:
+            assert call[1]["duplicate_policy"] == DuplicatePolicy.LAST.value
+
+    def test_ensure_ts_key_labels_use_df_unit_and_group(self, mock_redis):
+        mock_redis.ts.return_value.madd.return_value = [1, 2, 3, 4]
+        with patch("src.importer.importer.ensure_ts_key") as mock_ensure:
+            _upload_type(HR, _make_records_df(), mock_redis, DuplicatePolicy.FIRST)
+        assert len(mock_ensure.call_args_list) == 2
+        for c in mock_ensure.call_args_list:
+            assert c[1]["labels"]["unit"] == HR_UNIT
+            assert c[1]["labels"]["group"] == HR_GROUP
+        assert mock_ensure.call_args_list[0][1]["labels"]["event_type"] == "start"
+        assert mock_ensure.call_args_list[1][1]["labels"]["event_type"] == "end"
+
+    def test_index_error_creates_batch_failure(self, mock_redis):
+        with (
+            patch("src.importer.importer.ensure_ts_key"),
+            patch("src.importer.importer.upload_batch", side_effect=IndexError("x")),
+        ):
+            result = _upload_type(
+                "HR", _make_records_df(), mock_redis, DuplicatePolicy.FIRST
+            )
         assert isinstance(result[0], BatchFailure)
+
+
+class TestLoad:
+    def test_returns_empty_on_success(self, mock_redis):
+        with patch("src.importer.importer._upload_type", return_value=[]):
+            assert _load(_make_records_df(), mock_redis) == []
 
     def test_empty_df_returns_empty(self, mock_redis):
         df = _make_records_df(n=0)
         assert _load(df, mock_redis) == []
 
-    def test_multiple_types_processed_separately(self, mock_redis):
+    def test_upload_type_called_once_per_data_type(self, mock_redis):
         df = pd.DataFrame(
             {
                 "type": [HR, HR, STEPS, STEPS],
@@ -357,98 +407,53 @@ class TestLoad:
                 "endDate": [1_000_060 + i for i in range(4)],
             }
         )
-        # 2 commands per row × 2 rows-per-type
-        mock_redis.ts.return_value.pipeline.return_value.execute.return_value = [
-            1,
-            2,
-            3,
-            4,
-        ]
-        _load(df, mock_redis)
-        # one pipeline per type
-        assert mock_redis.ts.return_value.pipeline.call_count == 2
+        with patch("src.importer.importer._upload_type", return_value=[]) as mock_ut:
+            _load(df, mock_redis)
+        assert mock_ut.call_count == 2
 
-    def test_duplicate_policy_last_forwarded(self, mock_redis):
-        df = _make_records_df()
-        mock_redis.ts.return_value.pipeline.return_value.execute.return_value = [
-            1,
-            2,
-            3,
-            4,
-        ]
-        with patch("src.importer.importer.upload_batch") as mock_upload:
-            mock_upload.return_value = []
-            _load(df, mock_redis, duplicate_policy=DuplicatePolicy.LAST)
-        _, kwargs = mock_upload.call_args
-        assert kwargs["duplicate_policy"] == DuplicatePolicy.LAST
-
-    def test_index_error_creates_batch_failure(self, mock_redis):
-        df = _make_records_df()
-        with patch(
-            "src.importer.importer.upload_batch", side_effect=IndexError("mismatch")
-        ):
-            result = _load(df, mock_redis)
-        assert len(result) == 1 and isinstance(result[0], BatchFailure)
-
-    def test_single_row_df(self, mock_redis):
-        mock_redis.ts.return_value.pipeline.return_value.execute.return_value = [1, 2]
-        assert _load(_make_records_df(n=1), mock_redis) == []
-
-    def test_return_type_is_list(self, mock_redis):
-        mock_redis.ts.return_value.pipeline.return_value.execute.return_value = [
-            1,
-            2,
-            3,
-            4,
-        ]
-        assert isinstance(_load(_make_records_df(), mock_redis), list)
-
-    def test_unknown_identifier_yields_batch_failure_not_keyerror(self, mock_redis):
-        """The headline bug: previously _load raised KeyError on every
-        non-categorical identifier.  Now it must skip unknown identifiers
-        gracefully with a BatchFailure."""
+    def test_failures_aggregated_from_all_types(self, mock_redis):
         df = pd.DataFrame(
             {
-                "type": ["DefinitelyNotInRegistry"],
-                "sourceName": ["w"],
-                "unit": ["bpm"],
-                "value": [1.0],
-                "startDate": [1_700_000_000],
-                "endDate": [1_700_000_060],
+                "type": ["HR", "Steps"],
+                "sourceName": ["W", "W"],
+                "unit": ["bpm", "count"],
+                "value": [72.0, 500.0],
+                "startDate": [1_000_000, 1_000_001],
+                "endDate": [1_000_060, 1_000_061],
+                "group": ["vital_signs", "activity"],
             }
         )
-        result = _load(df, mock_redis)
-        assert len(result) == 1
-        assert isinstance(result[0], BatchFailure)
-        assert "DefinitelyNotInRegistry" in result[0].error
 
-    def test_uses_full_registry_not_only_categories(self, mock_redis):
-        """Regression: HKQuantityTypeIdentifier* must be resolvable.
+        with patch(
+            "src.importer.importer._upload_type",
+            side_effect=[
+                [BatchFailure("HR", 0, "e")],
+                [BatchFailure("Steps", 0, "e")],
+            ],
+        ):
+            result = _load(df, mock_redis)
+            assert len(result) == 2
 
-        Previously `_load` looked up identifiers in
-        `HKCategoryTypeIdentifierRegistry` only, so any quantity type
-        raised KeyError.  This test will fail if anyone re-introduces
-        that bug.
-        """
-        df = _make_records_df(type_val=HR, n=1)
-        mock_redis.ts.return_value.pipeline.return_value.execute.return_value = [1, 2]
-        # Should not raise:
-        result = _load(df, mock_redis)
-        assert result == []
+    def test_duplicate_policy_forwarded_to_upload_type(self, mock_redis):
+        with patch("src.importer.importer._upload_type", return_value=[]) as mock_ut:
+            _load(_make_records_df(), mock_redis, duplicate_policy=DuplicatePolicy.LAST)
+        assert mock_ut.call_args[0][3] == DuplicatePolicy.LAST
 
-    def test_correct_labels_used_for_quantity_type(self, mock_redis):
-        df = _make_records_df(type_val=HR, n=1)
-        mock_redis.ts.return_value.pipeline.return_value.execute.return_value = [1, 2]
-        with patch("src.importer.importer.ensure_ts_key") as mock_ensure:
-            _load(df, mock_redis)
-        # ensure_ts_key called twice — once for :start, once for :end.
-        assert mock_ensure.call_count == 2
-        # Inspect the labels passed.
-        all_labels = [c.kwargs["labels"] for c in mock_ensure.call_args_list]
-        for labels in all_labels:
-            assert labels["identifier"] == HR
-            assert labels["unit"] == HR_UNIT
-            assert labels["group"] == "vital_signs"
+    def test_uses_max_upload_workers(self):  # noqa: ARG001
+        assert MAX_UPLOAD_WORKERS == 4
+
+    def test_return_type_is_list(self, mock_redis):
+        with patch("src.importer.importer._upload_type", return_value=[]):
+            assert isinstance(_load(_make_records_df(), mock_redis), list)
+
+    def test_unexpected_exception_creates_batch_failure(self, mock_redis):
+        """Exceptions escaping _upload_type are caught and wrapped."""
+        with patch(
+            "src.importer.importer._upload_type",
+            side_effect=RuntimeError("unexpected"),
+        ):
+            result = _load(_make_records_df(), mock_redis)
+        assert len(result) == 1 and isinstance(result[0], BatchFailure)
 
 
 # ---------------------------------------------------------------------------
