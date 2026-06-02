@@ -1,45 +1,91 @@
 """Parser for Apple Health export files.
 
-Reads the export.zip produced by the Apple Health app and returns one tidy
-DataFrame per top-level element type (records, correlations, workouts,
-ActivitySummary entries) plus a helper for parsing workout-route GPX files.
+Reads the ``export.zip`` produced by the Apple Health app and returns one
+tidy DataFrame per top-level element type — ``Record``, ``Correlation``,
+``Workout``, ``ActivitySummary`` — plus a helper for parsing workout-route
+GPX files.
 
-Memory note
------------
-The :func:`parse_apple_health` function accumulates records using per-column
-lists (one ``list`` per column in ``_RECORD_COLUMNS``) rather than a list of
-per-row dicts.  This avoids creating a ``list[dict]`` intermediate structure
-alongside the final DataFrame, cutting peak memory consumption roughly in half
-for the records table (which may contain millions of rows).  Workout,
-correlation, and activity rows are fewer in number so they retain the
-list-of-dicts approach for readability.
+Streaming and memory
+--------------------
+:func:`parse_apple_health` uses :func:`lxml.etree.iterparse` with the
+standard "fast iterparse" cleanup pattern: each finished top-level child of
+``<HealthData>`` has its subtree cleared and previously-processed siblings
+dropped from the root.  Peak memory is bounded by the largest single
+top-level element, not by the export size.
 
-Unknown elements
-----------------
-Top-level XML elements that this parser does not yet handle (``Me``,
-``ExportDate``, ``ClinicalRecord``, ``Audiogram``, ``VisionPrescription`` …)
-emit a ``WARNING`` once per tag with the total count at end-of-parse so that
-silent data drops are visible to operators.  Child elements of ``Workout`` and
-``Correlation`` are always processed by their parent's branch and are never
-counted here.  Unknown *child* elements of a handled parent raise
-``NotImplementedError`` — the parser is opinionated that schema drift inside a
-known parent indicates a real change worth halting on.
+Records are accumulated into per-column lists (one list per attribute in
+``_RECORD_ATTRS``) rather than a list of row-dicts; for the ~millions of
+Record elements in a typical export this halves peak memory relative to
+the row-dict approach.  ``Correlation``, ``Workout`` and ``ActivitySummary``
+rows are less numerous and stay as row-dicts for readability.
+
+Date filtering
+--------------
+The ``from_date`` filter uses a 10-character ISO-prefix lexical comparison
+(``date_str[:10] < from_iso``) rather than ``pd.to_datetime`` per element.
+Apple Health dates are ISO-formatted, so this is exact at day granularity
+and around three orders of magnitude faster than parsing each timestamp.
+
+Correlation child Records
+-------------------------
+Per Apple's DTD: *"Any Records that appear as children of a correlation
+also appear as top-level records in this document."*  This parser exploits
+that: top-level Records go into ``records_df`` once, and the
+``correlations_df["records"]`` column carries row indices into
+``records_df`` rather than duplicating the record data.  Matching is by
+the full attribute tuple, with FIFO ordering for the unusual case of two
+identical top-level Records.
+
+Unknown top-level elements
+--------------------------
+Top-level XML elements that this parser does not convert to DataFrames are
+counted and reported in a single end-of-parse ``WARNING``.  Tags listed in
+``_KNOWN_UNHANDLED_TAGS`` (``Me``, ``ExportDate``, ``ClinicalRecord``,
+``Audiogram``, ``VisionPrescription``) are reported as expected-skip
+entries; any other tag is reported with an ``(unrecognised)`` marker so
+operators can spot iOS-version schema drift without scraping logs.
+
+Unknown *child* elements inside a handled parent raise
+``NotImplementedError`` — schema drift inside a known parent could silently
+corrupt downstream uploads and is worth halting on.
+
+XML security
+------------
+The parser sets ``load_dtd=False``, ``resolve_entities=False`` and
+``no_network=True``.  These block external-entity dereferencing (XXE) and,
+combined with libxml2's built-in amplification limit, billion-laughs DoS.
+A ``DOCTYPE`` containing internal entities will parse, but its entity
+references will be left unresolved in element content (and bounded by
+libxml2's amplification factor in attribute values).
 """
 
 from __future__ import annotations
 
 import logging
 import zipfile
-from collections import Counter
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 
-import defusedxml.ElementTree as ETree
 import pandas as pd
+from lxml import etree
 
 logger = logging.getLogger(__name__)
 
-# columns of parse_apple_health output dfs
-_RECORD_COLUMNS = (
+
+# ---------------------------------------------------------------------------
+# Schemas
+#
+# `_*_ATTRS` constants list the XML attributes pulled directly from an
+# element.  They are used by `_attrs()` and as identity tuples for the
+# correlation-record lookup; therefore they must contain only real
+# XML attribute names.
+#
+# `_*_COLUMNS` constants describe the output-DataFrame schema and are
+# what downstream code should pin against.  They include both attributes
+# and derived fields ("meta", "records", "events", ...).
+# ---------------------------------------------------------------------------
+
+_RECORD_ATTRS = (
     "type",
     "sourceName",
     "sourceVersion",
@@ -50,41 +96,49 @@ _RECORD_COLUMNS = (
     "creationDate",
     "value",
 )
+_RECORD_COLUMNS = _RECORD_ATTRS + ("meta",)
 
-_CORRELATION_COLUMNS = (
-    "sourceName",
-    "endDate",
-    "startDate",
-    "sourceVersion",
+_CORRELATION_ATTRS = (
     "type",
+    "sourceName",
+    "sourceVersion",
+    "device",
     "creationDate",
-    "meta",
-    "records",
+    "startDate",
+    "endDate",
 )
+_CORRELATION_COLUMNS = _CORRELATION_ATTRS + ("meta", "records")
 
-_ACTIVITY_COLUMNS = (
+_ACTIVITY_ATTRS = (
     "dateComponents",
     "appleExerciseTime",
+    "appleExerciseTimeGoal",
     "appleMoveTime",
-    "activeEnergyBurnedGoal",
-    "activeEnergyBurnedUnit",
-    "appleStandHoursGoal",
     "appleMoveTimeGoal",
     "appleStandHours",
+    "appleStandHoursGoal",
     "activeEnergyBurned",
-    "appleExerciseTimeGoal",
+    "activeEnergyBurnedGoal",
+    "activeEnergyBurnedUnit",
 )
+_ACTIVITY_COLUMNS = _ACTIVITY_ATTRS
 
-_WORKOUT_COLUMNS = (
-    "sourceName",
-    "endDate",
-    "duration",
-    "startDate",
-    "durationUnit",
-    "sourceVersion",
-    "creationDate",
-    "device",
+_WORKOUT_ATTRS = (
     "workoutActivityType",
+    "duration",
+    "durationUnit",
+    "totalDistance",
+    "totalDistanceUnit",
+    "totalEnergyBurned",
+    "totalEnergyBurnedUnit",
+    "sourceName",
+    "sourceVersion",
+    "device",
+    "creationDate",
+    "startDate",
+    "endDate",
+)
+_WORKOUT_COLUMNS = _WORKOUT_ATTRS + (
     "meta",
     "events",
     "statistics",
@@ -92,55 +146,223 @@ _WORKOUT_COLUMNS = (
     "activities",
 )
 
-# keys of workout dicts
-_WORKOUT_ACTIVITY_KEYS = [
-    "endDate",
-    "duration",
-    "startDate",
-    "durationUnit",
-    "uuid",
-    "meta",
-    "statistics",
-    "events",
-]
-_WORKOUT_EVENT_KEYS = ["durationUnit", "date", "duration", "type"]
-_WORKOUT_ROUTE_KEYS = [
-    "sourceName",
-    "endDate",
-    "startDate",
-    "sourceVersion",
-    "creationDate",
-    "device",
-]
-_WORKOUT_STATISTICS_KEYS = [
-    "endDate",
-    "sum",
-    "startDate",
+_WORKOUT_EVENT_ATTRS = ("type", "date", "duration", "durationUnit")
+_WORKOUT_STATISTICS_ATTRS = (
     "type",
-    "minimum",
-    "unit",
-    "maximum",
+    "startDate",
+    "endDate",
     "average",
-]
+    "minimum",
+    "maximum",
+    "sum",
+    "unit",
+)
+_WORKOUT_ROUTE_ATTRS = (
+    "sourceName",
+    "sourceVersion",
+    "device",
+    "creationDate",
+    "startDate",
+    "endDate",
+)
+_WORKOUT_ACTIVITY_ATTRS = ("uuid", "startDate", "endDate", "duration", "durationUnit")
 
-# Top-level element tags that Apple Health emits but this parser does not
-# convert to DataFrames.  Listed explicitly so the WARNING message can name
-# the well-known cases instead of repeating "unknown element".
+# Tags Apple Health emits at top level that this parser deliberately does
+# not convert to DataFrames.  Used to distinguish "known but skipped" from
+# "unrecognised — possible schema drift" in the end-of-parse warning.
 _KNOWN_UNHANDLED_TAGS = frozenset(
-    {
-        "ExportDate",
-        "Me",
-        "ClinicalRecord",
-        "Audiogram",
-        "VisionPrescription",
-    }
+    {"ExportDate", "Me", "ClinicalRecord", "Audiogram", "VisionPrescription"}
 )
 
 
 class NoHealthDataError(ValueError):
-    """Raised when trying to parse a zip file without usable data."""
+    """Raised when the export contains no rows in any of the four DataFrames."""
 
     pass
+
+
+# ---------------------------------------------------------------------------
+# shared helpers
+# ---------------------------------------------------------------------------
+
+
+def _attrs(elem: etree._Element, keys: tuple[str, ...]) -> dict[str, str | None]:
+    """Pull a fixed set of XML attributes into a dict."""
+    a = elem.attrib
+    return {k: a.get(k) for k in keys}
+
+
+def _is_before(elem: etree._Element, from_iso: str) -> bool:
+    """ISO-prefix lexical date comparison.
+
+    Matches the documented filter semantics (day granularity, timezone
+    ignored) and is roughly four orders of magnitude faster than
+    ``pd.to_datetime(...).date()`` per call.
+    """
+    a = elem.attrib
+    date = a.get("endDate") or a.get("date") or a.get("dateComponents")
+    return date is not None and date[:10] < from_iso
+
+
+def _record_metadata(elem: etree._Element) -> dict[str, str] | None:
+    """Collect ``MetadataEntry`` children as ``{key: value}``, or ``None``.
+
+    Returning ``None`` (rather than an empty dict) for the common
+    "no metadata" case keeps memory flat: a 2M-record export pays ~16 MB
+    for pointers vs ~130 MB for empty dicts.
+
+    ``HeartRateVariabilityMetadataList`` children are deliberately ignored
+    here — the per-beat detail used to compute SDNN is rarely needed and
+    bulky when present.  Add a separate helper if/when that data is wanted.
+    """
+    meta = None
+    for c in elem:
+        if c.tag == "MetadataEntry":
+            if meta is None:
+                meta = {}
+            if k := c.attrib.get("key"):
+                meta[k] = c.attrib.get("value", "")
+    return meta
+
+
+def _log_unknown_elements(counts: Counter[str]) -> None:
+    """Emit a single WARNING summarising every unhandled top-level element.
+
+    Known-but-unhandled tags (``_KNOWN_UNHANDLED_TAGS``) and genuinely
+    unrecognised tags are separated in the output so operators can
+    distinguish "expected skip" from "iOS schema drift, investigate".
+    """
+    known, unrecognised = [], []
+    for tag, n in sorted(counts.items()):
+        if tag in _KNOWN_UNHANDLED_TAGS:
+            known.append(f"{tag}={n}")
+        else:
+            unrecognised.append(f"{tag}={n}")
+
+    parts = []
+    if known:
+        parts.append("skipped " + ", ".join(known))
+    if unrecognised:
+        parts.append("unrecognised " + ", ".join(unrecognised))
+    logger.warning("Unknown top-level elements: %s", "; ".join(parts))
+
+
+# ---------------------------------------------------------------------------
+# per-parent helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_workout_event(elem: etree._Element) -> dict[str, str | None]:
+    out = _attrs(elem, _WORKOUT_EVENT_ATTRS)
+    for c in elem:
+        if c.tag == "MetadataEntry":
+            if k := c.attrib.get("key"):
+                out[k] = c.attrib.get("value")
+        else:
+            raise NotImplementedError(f"WorkoutEvent child {c.tag} is not implemented.")
+    return out
+
+
+def _parse_workout_route(
+    elem: etree._Element,
+) -> dict[str, str | list[str | None] | dict[str, str | None] | None]:
+    out = _attrs(elem, _WORKOUT_ROUTE_ATTRS)
+    files: list[str | None] = []
+    meta: dict[str, str | None] = {}
+    for c in elem:
+        if c.tag == "FileReference":
+            files.append(c.attrib.get("path"))
+        elif c.tag == "MetadataEntry":
+            if k := c.attrib.get("key"):
+                meta[k] = c.attrib.get("value")
+        else:
+            raise NotImplementedError(f"WorkoutRoute child {c.tag} is not implemented.")
+    return out | {"files": files, "meta": meta}  # type: ignore[return-value]
+
+
+def _parse_workout_activity(
+    elem: etree._Element,
+) -> dict[str, str | None | dict[str, str | None] | list[dict[str, str | None]]]:
+    out = _attrs(elem, _WORKOUT_ACTIVITY_ATTRS)
+    meta, events, stats = {}, [], []
+    for c in elem:
+        if c.tag == "WorkoutEvent":
+            events.append(_parse_workout_event(c))
+        elif c.tag == "MetadataEntry":
+            if k := c.attrib.get("key"):
+                meta[k] = c.attrib.get("value")
+        elif c.tag == "WorkoutStatistics":
+            stats.append(_attrs(c, _WORKOUT_STATISTICS_ATTRS))
+        else:
+            raise NotImplementedError(
+                f"WorkoutActivity child {c.tag} is not implemented."
+            )
+    return out | {"meta": meta, "events": events, "statistics": stats}  # type: ignore[return-value]
+
+
+def _parse_correlation(
+    elem: etree._Element,
+) -> dict[str, str | None | dict[str, str | None] | list[tuple[str | None, ...]]]:
+    """Extract Correlation attributes, metadata, and child-record keys.
+
+    Child Record references are returned as identifying attribute tuples in
+    a temporary ``_record_keys`` field, which :func:`parse_apple_health`
+    resolves to ``records_df`` row indices after the parsing loop completes.
+    """
+    out = _attrs(elem, _CORRELATION_ATTRS)
+    meta, keys = {}, []
+    for c in elem:
+        if c.tag == "MetadataEntry":
+            if k := c.attrib.get("key"):
+                meta[k] = c.attrib.get("value")
+        elif c.tag == "Record":
+            a = c.attrib
+            keys.append(tuple(a.get(col) for col in _RECORD_ATTRS))
+        else:
+            raise NotImplementedError(f"Correlation child {c.tag} is not implemented.")
+    return out | {"meta": meta, "_record_keys": keys}  # type: ignore[return-value]
+
+
+def _parse_workout(
+    elem: etree._Element,
+) -> dict[
+    str,
+    str
+    | None
+    | list[dict[str, str | None | dict[str, str | None] | list[dict[str, str | None]]]]
+    | list[dict[str, str | None]]
+    | list[dict[str, str | list[str | None] | dict[str, str | None] | None]]
+    | list[dict[str, str | None]]
+    | dict[str, str | None],
+]:
+    out = _attrs(elem, _WORKOUT_ATTRS)
+    activities, events, meta, route, stats = [], [], {}, [], []
+    for c in elem:
+        if c.tag == "WorkoutActivity":
+            activities.append(_parse_workout_activity(c))
+        elif c.tag == "WorkoutEvent":
+            events.append(_parse_workout_event(c))
+        elif c.tag == "MetadataEntry":
+            if k := c.attrib.get("key"):
+                meta[k] = c.attrib.get("value")
+        elif c.tag == "WorkoutRoute":
+            route.append(_parse_workout_route(c))
+        elif c.tag == "WorkoutStatistics":
+            stats.append(_attrs(c, _WORKOUT_STATISTICS_ATTRS))
+        else:
+            raise NotImplementedError(f"Workout child {c.tag} is not implemented.")
+    return out | {
+        "meta": meta,
+        "events": events,
+        "statistics": stats,
+        "route": route,
+        "activities": activities,
+    }  # type: ignore[return-value]
+
+
+# ---------------------------------------------------------------------------
+# main parser
+# ---------------------------------------------------------------------------
 
 
 def parse_apple_health(
@@ -148,369 +370,184 @@ def parse_apple_health(
     *,
     from_date: pd.Timestamp | None = None,
     skip_records: bool = False,
+    parse_record_metadata: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Parse an Apple Health export archive into a collection of DataFrames.
-
-    Reads the export.xml inside the given export.zip using a memory-efficient
-    streaming parser and returns one DataFrame per top-level element type.
-    Unknown *child* elements raise ``NotImplementedError`` (silent schema
-    drift inside a known parent would corrupt downstream uploads).  Unknown
-    *top-level* elements are logged at WARNING level with a per-tag count at
-    end-of-parse so operators see the gap without halting the run.
-
-    Memory optimisation: the records DataFrame is built from per-column lists
-    rather than a list-of-row-dicts, avoiding a large intermediate allocation.
+    """Parse an Apple Health ``export.zip`` into four DataFrames.
 
     Args:
-        zip_path: Path to the export.zip file generated by the Apple Health app.
-            Accepts both :class:`str` and :class:`pathlib.Path`.
-        from_date: Inclusive lower bound for filtering by date. Elements whose
-            date falls strictly before this value are skipped. The comparison
-            is performed at day granularity (time-of-day and timezone offset are
-            ignored). Elements that carry no date attribute (e.g. ``Me``,
-            ``ExportDate``) are never filtered out. If ``None``, all elements
-            are processed.
-        skip_records: If ``True``, records are not parsed and instead the feather
-            cache is used.
+        zip_path: Path to the ``export.zip`` produced by the Apple Health
+            app.  Accepts :class:`str` or :class:`pathlib.Path`.
+        from_date: Inclusive lower bound for filtering by date.  Top-level
+            elements whose date falls *strictly before* this value are
+            dropped.  Comparison is at day granularity by lexical
+            comparison of ISO-prefixed date strings (time-of-day and
+            timezone offset are ignored).  Elements without a date
+            attribute (``Me``, ``ExportDate``) are never filtered.  The
+            filter does NOT recurse into ``Correlation`` or ``Workout``:
+            if a complex parent passes the filter, all its children are
+            kept regardless of their own dates.  ``None`` disables filtering.
+        skip_records: If ``True``, top-level ``Record`` elements are not
+            accumulated into ``records_df`` (which is returned with the
+            correct columns but no rows).  Correlation ``records``
+            references will then all be ``None``.
+        parse_record_metadata: If ``True`` (default), ``MetadataEntry``
+            children of top-level Records are collected into a ``meta``
+            column on ``records_df`` (``dict[str, str] | None`` per row).
+            If ``False``, the column is omitted and the parse is marginally
+            faster.  ``HeartRateVariabilityMetadataList`` children are
+            always discarded regardless of this flag.
 
     Returns:
-        A 4-tuple of ``(records, correlations, workouts, activities)``:
+        A 4-tuple ``(records, correlations, workouts, activities)``.
 
-        **records** — one row per ``Record`` element not belonging to a
-        ``Correlation``. Columns follow ``_RECORD_COLUMNS``
-        (type, sourceName, sourceVersion, device, unit, startDate, endDate,
-        creationDate, value). All values are strings as exported; numeric
-        conversion is left to the caller.
+        **records** — one row per top-level ``Record``.  Columns follow
+        ``_RECORD_ATTRS`` plus ``meta`` (``dict[str, str] | None``) when
+        ``parse_record_metadata=True``.  All attribute values are strings
+        as exported by Apple; numeric/temporal conversion is left to the
+        caller.
 
-        **correlations** — one row per ``Correlation`` element. Columns follow
-        ``_CORRELATION_COLUMNS`` plus:
+        **correlations** — one row per ``Correlation``.  Columns follow
+        ``_CORRELATION_ATTRS`` plus:
 
-        - meta (dict): ``MetadataEntry`` children as ``{key: value}``.
-        - records (list[dict]): nested ``Record`` elements, each with
-          ``_RECORD_COLUMNS`` fields.
+        - ``meta`` (dict): ``MetadataEntry`` children as ``{key: value}``.
+        - ``records`` (list[int | None]): row indices into ``records_df``
+          for each child Record, in document order.  ``None`` indicates a
+          child that could not be linked — typically ``skip_records=True``
+          or a date filter that dropped the top-level duplicate while
+          keeping the correlation.
 
-        **workouts** — one row per ``Workout`` element. Columns follow
-        ``_WORKOUT_COLUMNS`` plus:
+        **workouts** — one row per ``Workout``.  Columns follow
+        ``_WORKOUT_ATTRS`` plus:
 
-        - meta (dict): ``MetadataEntry`` children as ``{key: value}``.
-        - events (list[dict]): ``WorkoutEvent`` elements with
-          ``_WORKOUT_EVENT_KEYS`` fields and any ``MetadataEntry`` children
-          merged in as extra keys.
-        - statistics (list[dict]): ``WorkoutStatistics`` elements with
-          ``_WORKOUT_STATISTICS_KEYS`` fields.
-        - route (dict | None): ``WorkoutRoute`` attributes from
-          ``_WORKOUT_ROUTE_KEYS`` plus ``files`` (list of GPX file paths)
-          and ``meta`` (dict of ``MetadataEntry`` children); ``None`` if no
-          route is present.
-        - activities (list[dict]): ``WorkoutActivity`` elements, each with
-          ``_WORKOUT_ACTIVITY_KEYS`` fields plus ``meta`` (dict), ``events``
-          (list[dict]) and ``statistics`` (list[dict]) using the same
-          structure as the workout-level fields above.
+        - ``meta`` (dict): ``MetadataEntry`` children.
+        - ``events`` (list[dict]): ``WorkoutEvent`` elements, each with
+          their own ``MetadataEntry`` children merged in as extra keys.
+        - ``statistics`` (list[dict]): ``WorkoutStatistics`` elements.
+        - ``route`` (dict | None): ``WorkoutRoute`` attributes plus
+          ``files`` (list of GPX paths) and ``meta`` (dict).
+        - ``activities`` (list[dict]): ``WorkoutActivity`` elements, each
+          carrying its own ``meta``/``events``/``statistics``.
 
-        **activities** — one row per ``ActivitySummary`` element. Columns
-        follow ``_ACTIVITY_COLUMNS``.
+        **activities** — one row per ``ActivitySummary``.  Columns follow
+        ``_ACTIVITY_ATTRS``.
 
     Raises:
-        NoHealthDataError: If all four returned DataFrames are empty, i.e. the
-            archive contained no recognisable health data.
-        NotImplementedError: If an element has a child element that is not yet
-            handled by the parser.
+        NoHealthDataError: If all four returned DataFrames are empty.
+        NotImplementedError: If a known parent contains a child element
+            with a tag this parser does not handle.
 
     Example:
         >>> records, corr, workouts, activities = parse_apple_health("export.zip")
-        >>> records.to_feather("records.feather")
-        >>> heart_rate = records[records["type"] == "HKQuantityTypeIdentifierHeartRate"]
-        >>> heart_rate["value"].astype(float).mean()
+        >>> hr = records[records["type"] == "HKQuantityTypeIdentifierHeartRate"]
+        >>> resting = hr[hr["meta"].apply(
+        ...     lambda m: m and m.get("HKMetadataKeyHeartRateMotionContext") == "1"
+        ... )]
+        >>> bp = corr.iloc[0]
+        >>> records.iloc[bp["records"]]  # the two BP readings as a DataFrame
 
     """
-    # Per-column lists for records — avoids list-of-dicts intermediate.
-    record_cols: dict[str, list[str | None]] = {col: [] for col in _RECORD_COLUMNS}
-    correlation_rows: list[
-        dict[str, str | dict[str, str | None] | list[dict[str, str | None]] | None]
-    ] = []
-    workout_rows: list[
-        dict[
-            str,
-            str
-            | None
-            | list[
-                dict[
-                    str,
-                    str | dict[str, str | None] | list[dict[str, str | None]] | None,
-                ]
-            ]
-            | list[dict[str, str | None]]
-            | dict[str, str | None]
-            | list[dict[str, str | list[str] | dict[str, str | None] | None]]
-            | list[dict[str, str | None]],
-        ]
-    ] = []
-    activity_rows: list[dict[str, str | None]] = []
+    record_cols: dict[str, list] = {col: [] for col in _RECORD_ATTRS}  # type: ignore[type-arg]
+    record_meta: list[dict[str, str] | None] = []
+    correlation_rows: list[dict] = []  # type: ignore[type-arg]
+    workout_rows: list[dict] = []  # type: ignore[type-arg]
+    activity_rows: list[dict] = []  # type: ignore[type-arg]
     unknown_counts: Counter[str] = Counter()
+    from_iso = from_date.strftime("%Y-%m-%d") if from_date is not None else None
 
     with (
         zipfile.ZipFile(zip_path) as zf,
         zf.open("apple_health_export/export.xml") as f,
     ):
         root = None
-        inside_complex = (
-            False  # True while iterating children of Workout or Correlation
-        )
-        for event, elem in ETree.iterparse(f, events=("start", "end")):
+        for event, elem in etree.iterparse(
+            f,
+            events=("start", "end"),
+            load_dtd=False,
+            resolve_entities=False,
+            no_network=True,
+            huge_tree=False,
+        ):
+            # One-shot: capture root from its start event.  Holding a
+            # stable identity lets us test top-level-ness by `is`.
             if event == "start":
                 if root is None:
                     root = elem
-                elif elem.tag in ("Correlation", "Workout"):
-                    inside_complex = True
                 continue
 
-            # event == "end"
-            # if date before from_date: skip elem
-            skip_elem = False
-            if from_date is not None:
-                date = elem.attrib.get("endDate")
-                if date is None:
-                    date = elem.attrib.get("date")
-                if date is None:
-                    date = elem.attrib.get("dateComponents")
-                if date is not None and pd.to_datetime(date).date() < from_date.date():
-                    skip_elem = True
+            # End event.  Process only direct children of root; deeper
+            # descendants fire end events too but are read via their
+            # ancestor's helper.
+            if elem.getparent() is not root:
+                continue
 
-            if not skip_elem:
-                match elem.tag:
-                    case "Record":
-                        if inside_complex or skip_records:
-                            # Belongs to a parent Correlation; processed there.
-                            continue
-                        # Columnar accumulation — one list append per column.
-                        # Hoist attrib lookup once per record to skip repeated
-                        # attribute access through the C extension.
-                        attrib = elem.attrib
-                        for col in _RECORD_COLUMNS:
-                            record_cols[col].append(attrib.get(col))
+            if from_iso is not None and _is_before(elem, from_iso):
+                pass  # fall through to cleanup; nothing appended
+            else:
+                tag = elem.tag
+                if tag == "Record":
+                    if not skip_records:
+                        a = elem.attrib
+                        for col in _RECORD_ATTRS:
+                            record_cols[col].append(a.get(col))
+                        if parse_record_metadata:
+                            record_meta.append(_record_metadata(elem))
+                elif tag == "Correlation":
+                    correlation_rows.append(_parse_correlation(elem))
+                elif tag == "Workout":
+                    workout_rows.append(_parse_workout(elem))
+                elif tag == "ActivitySummary":
+                    activity_rows.append(_attrs(elem, _ACTIVITY_ATTRS))
+                else:
+                    unknown_counts[tag] += 1
 
-                    case "Correlation":
-                        corr: dict[
-                            str,
-                            str
-                            | dict[str, str | None]
-                            | list[dict[str, str | None]]
-                            | None,
-                        ] = {col: elem.attrib.get(col) for col in _CORRELATION_COLUMNS}
-
-                        meta_co: dict[str, str | None] = {}
-                        records: list[dict[str, str | None]] = []
-                        for child in elem:
-                            match child.tag:
-                                case "MetadataEntry":
-                                    if c := child.attrib.get("key"):
-                                        meta_co[c] = child.attrib.get("value")
-                                case "Record":
-                                    records.append(
-                                        {
-                                            col: child.attrib.get(col)
-                                            for col in _RECORD_COLUMNS
-                                        }
-                                    )
-                                case _:
-                                    raise NotImplementedError(
-                                        f"{elem.tag} child {child.tag} is not implemented."  # noqa: E501
-                                    )
-
-                        corr["meta"] = meta_co
-                        corr["records"] = records
-                        correlation_rows.append(corr)
-
-                    case "Workout":
-                        workout: dict[
-                            str,
-                            str
-                            | None
-                            | list[
-                                dict[
-                                    str,
-                                    str
-                                    | dict[str, str | None]
-                                    | list[dict[str, str | None]]
-                                    | None,
-                                ]
-                            ]
-                            | list[dict[str, str | None]]
-                            | dict[str, str | None]
-                            | list[
-                                dict[
-                                    str, str | list[str] | dict[str, str | None] | None
-                                ]
-                            ]
-                            | list[dict[str, str | None]],
-                        ] = {col: elem.attrib.get(col) for col in _WORKOUT_COLUMNS}
-
-                        activities: list[
-                            dict[
-                                str,
-                                str
-                                | dict[str, str | None]
-                                | list[dict[str, str | None]]
-                                | None,
-                            ]
-                        ] = []
-                        events_wo: list[dict[str, str | None]] = []
-                        meta_wo: dict[str, str | None] = {}
-                        route: list[
-                            dict[str, str | list[str] | dict[str, str | None] | None]
-                        ] = []
-                        stats: list[dict[str, str | None]] = []
-                        for child in elem:
-                            match child.tag:
-                                case "WorkoutActivity":
-                                    activity = {
-                                        col: child.attrib.get(col)
-                                        for col in _WORKOUT_ACTIVITY_KEYS
-                                    }
-                                    e_wo = []
-                                    m_wo = {}
-                                    s_wo = []
-                                    for c in child:
-                                        match c.tag:
-                                            case "WorkoutEvent":
-                                                _e = {
-                                                    col: c.attrib.get(col)
-                                                    for col in _WORKOUT_EVENT_KEYS
-                                                }
-                                                for _c in c:
-                                                    if _c.tag == "MetadataEntry":
-                                                        _e[_c.attrib.get("key")] = (
-                                                            _c.attrib.get("value")
-                                                        )
-                                                    else:
-                                                        raise NotImplementedError(
-                                                            f"{c.tag} child {_c.tag} is not implemented."  # noqa: E501
-                                                        )
-                                                e_wo.append(_e)
-                                            case "MetadataEntry":
-                                                m_wo[c.attrib.get("key")] = (
-                                                    c.attrib.get("value")
-                                                )
-                                            case "WorkoutStatistics":
-                                                s_wo.append(
-                                                    {
-                                                        col: c.attrib.get(col)
-                                                        for col in _WORKOUT_STATISTICS_KEYS  # noqa: E501
-                                                    }
-                                                )
-                                            case _:
-                                                raise NotImplementedError(
-                                                    f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
-                                                )
-
-                                    activity["meta"] = m_wo
-                                    activity["statistics"] = s_wo
-                                    activity["events"] = e_wo
-                                    activities.append(activity)
-
-                                case "WorkoutEvent":
-                                    e = {
-                                        col: child.attrib.get(col)
-                                        for col in _WORKOUT_EVENT_KEYS
-                                    }
-                                    for c in child:
-                                        if c.tag == "MetadataEntry":
-                                            e[c.attrib.get("key")] = c.attrib.get(
-                                                "value"
-                                            )
-                                        else:
-                                            raise NotImplementedError(
-                                                f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
-                                            )
-
-                                    events_wo.append(e)
-
-                                case "MetadataEntry":
-                                    meta_wo[child.attrib.get("key")] = child.attrib.get(
-                                        "value"
-                                    )
-
-                                case "WorkoutRoute":
-                                    route_wo = {
-                                        col: child.attrib.get(col)
-                                        for col in _WORKOUT_ROUTE_KEYS
-                                    }
-
-                                    files = []
-                                    m = {}
-                                    for c in child:
-                                        match c.tag:
-                                            case "FileReference":
-                                                files.append(c.attrib.get("path"))
-                                            case "MetadataEntry":
-                                                m[c.attrib.get("key")] = c.attrib.get(
-                                                    "value"
-                                                )
-                                            case _:
-                                                raise NotImplementedError(
-                                                    f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
-                                                )
-                                    route_wo["files"] = files
-                                    route_wo["meta"] = m
-                                    route.append(route_wo)
-
-                                case "WorkoutStatistics":
-                                    stats.append(
-                                        {
-                                            col: child.attrib.get(col)
-                                            for col in _WORKOUT_STATISTICS_KEYS
-                                        }
-                                    )
-
-                                case _:
-                                    raise NotImplementedError(
-                                        f"{elem.tag} child {child.tag} is not implemented."  # noqa: E501
-                                    )
-
-                        workout["meta"] = meta_wo
-                        workout["events"] = events_wo
-                        workout["statistics"] = stats
-                        workout["route"] = route
-                        workout["activities"] = activities
-                        workout_rows.append(workout)
-
-                    case "ActivitySummary":
-                        activity_rows.append(
-                            {col: elem.attrib.get(col) for col in _ACTIVITY_COLUMNS}
-                        )
-
-                    case _:
-                        # Unknown top-level element — record it but do not abort.
-                        # `root` is non-None at this point because the very first
-                        # `start` event sets it; the explicit guard satisfies
-                        # static analysis without changing behaviour.
-                        if root is not None and elem is root:
-                            # Closing tag of <HealthData> — nothing to count.
-                            continue
-                        if inside_complex:
-                            # Child of Workout or Correlation — already handled
-                            # by the parent's case branch; skip cleanly.
-                            continue
-                        unknown_counts[elem.tag] += 1
-
-            # Reset the complex-parent flag when the opening element's end
-            # event fires, regardless of whether the element was filtered out.
-            # If this is inside the match above, a skipped-by-date Workout or
-            # Correlation leaves inside_complex=True, causing subsequent
-            # top-level Records to be silently dropped.
-            if elem.tag in ("Correlation", "Workout"):
-                inside_complex = False
-
-            # Free memory of the just-finished top-level child of root.
-            # Done unconditionally so unknown elements do not accumulate
-            # while waiting for the next known one to trigger a clear.
-            if root is not None and elem is not root:
-                root.clear()
+            # Standard lxml fast-iterparse cleanup.  Clears the finished
+            # element's subtree, then drops already-processed preceding
+            # siblings from root.  Leaves the in-progress next sibling
+            # intact.
+            elem.clear()
+            while elem.getprevious() is not None:
+                del root[0]
 
     if unknown_counts:
         _log_unknown_elements(unknown_counts)
 
+    if parse_record_metadata:
+        record_cols["meta"] = record_meta
     record_df = pd.DataFrame(record_cols)
+
+    # Resolve correlation child-record keys to records_df row indices.
+    # The lookup is built from the column lists directly to avoid pandas
+    # indexing overhead.  Duplicate attribute tuples (rare in real data)
+    # are linked in document order via a per-key FIFO.
+    if correlation_rows:
+        if len(record_df) > 0:
+            cols = [record_cols[col] for col in _RECORD_ATTRS]
+            lookup: dict[tuple, deque[int]] = defaultdict(deque)  # type: ignore[type-arg]
+            for i in range(len(record_df)):
+                lookup[tuple(c[i] for c in cols)].append(i)
+        else:
+            lookup = {}
+
+        unlinked = 0
+        for corr in correlation_rows:
+            indices: list[int | None] = []
+            for k in corr.pop("_record_keys"):
+                q = lookup.get(k)
+                if q:
+                    indices.append(q.popleft())
+                else:
+                    indices.append(None)
+                    unlinked += 1
+            corr["records"] = indices
+
+        if unlinked:
+            logger.warning(
+                "%d correlation child record(s) could not be linked to "
+                "records_df (typically a date-filter side-effect or "
+                "skip_records=True).",
+                unlinked,
+            )
+
     correlation_df = pd.DataFrame(correlation_rows)
     workout_df = pd.DataFrame(workout_rows)
     activity_df = pd.DataFrame(activity_rows)
@@ -534,23 +571,30 @@ def parse_apple_health(
     return record_df, correlation_df, workout_df, activity_df
 
 
-def _log_unknown_elements(counts: Counter[str]) -> None:
-    """Emit a single WARNING summarising unhandled top-level elements.
-
-    Known-but-unhandled tags (``Me``, ``ExportDate`` …) and genuinely
-    unknown tags are reported together with their occurrence counts so a
-    new HealthKit element introduced by Apple in a future iOS release
-    becomes immediately visible in the import log.
-    """
-    parts = []
-    for tag, count in sorted(counts.items()):
-        marker = "" if tag in _KNOWN_UNHANDLED_TAGS else " (unrecognised)"
-        parts.append(f"{tag}={count}{marker}")
-    logger.warning("Skipped unhandled top-level element(s): %s", ", ".join(parts))
-
+# ---------------------------------------------------------------------------
+# route parser
+# ---------------------------------------------------------------------------
 
 _GPX_NS = "http://www.topografix.com/GPX/1/1"
 _GPX_EXT_FIELDS = ("speed", "course", "hAcc", "vAcc")
+
+
+def _gpx_ext_value(ext: etree._Element | None, field: str) -> float | None:
+    """Look up a GPX extension field, with and without the GPX namespace.
+
+    Avoids ``ext.find(a) or ext.find(b)``: lxml elements without children
+    are *falsy* in boolean context, so the ``or`` chain would skip an
+    existing-but-empty element and fall through to the namespaced lookup.
+    Use explicit ``is None`` checks instead.
+    """
+    if ext is None:
+        return None
+    child = ext.find(field)
+    if child is None:
+        child = ext.find(f"{{{_GPX_NS}}}{field}")
+    if child is None or child.text is None:
+        return None
+    return float(child.text)
 
 
 def parse_apple_health_routes(
@@ -559,48 +603,44 @@ def parse_apple_health_routes(
 ) -> pd.DataFrame:
     """Parse workout-route GPX files from an Apple Health export archive.
 
-    Each workout route is stored as a separate GPX file inside the archive.
-    File paths are available on the ``route["files"]`` field of rows
-    returned by :func:`parse_apple_health`.  If no paths are given, every
+    Each workout route is stored as a separate GPX file inside the archive,
+    under ``apple_health_export/workout-routes/``.  File paths are exposed
+    on the ``route["files"]`` field of rows returned by
+    :func:`parse_apple_health`.  If ``paths`` is ``None`` every
     ``workout-routes/*.gpx`` file in the archive is parsed.
 
-    The returned DataFrame is one row per trackpoint, with a ``file``
-    column that lets the caller join trackpoints back to their workout via
-    the route ``files`` list.
-
     Args:
-        zip_path: Path to the export.zip file generated by the Apple Health
-            app.  Accepts both :class:`str` and :class:`pathlib.Path`.
-        paths: Optional list of GPX file paths relative to the
-            ``apple_health_export/`` directory inside the archive, e.g.
-            ``["workout-routes/route_2024-03-15_123456789.gpx"]``.  If
-            ``None``, all ``workout-routes/*.gpx`` files are parsed.
+        zip_path: Path to ``export.zip``.  Accepts :class:`str` or
+            :class:`pathlib.Path`.
+        paths: Optional list of GPX file paths *relative to*
+            ``apple_health_export/`` inside the archive, e.g.
+            ``["workout-routes/route_2024-03-15_123456789.gpx"]``.
+            ``None`` parses all GPX files under ``workout-routes/``.
 
     Returns:
-        A DataFrame with one row per trackpoint and the following columns:
+        One row per ``trkpt`` with columns:
 
-        - file (str): GPX file path relative to ``apple_health_export/``.
-        - lat (float): Latitude in degrees (WGS84).
-        - lon (float): Longitude in degrees (WGS84).
-        - ele (float | None): Altitude in metres above sea level.
-        - time (datetime64[ns, UTC]): UTC timestamp of the sample.
-        - speed (float | None): Instantaneous speed in m/s.
-        - course (float | None): Heading in degrees (0–360).
-        - hAcc (float | None): Horizontal accuracy in metres.
-        - vAcc (float | None): Vertical accuracy in metres.
+        - ``file`` (str): GPX file path relative to ``apple_health_export/``,
+          so callers can join back to a workout via its ``route["files"]``.
+        - ``lat``, ``lon`` (float): Coordinates in WGS84 degrees.
+        - ``ele`` (float | None): Elevation in metres above sea level.
+        - ``time`` (datetime64[ns, UTC]): Sample timestamp.
+        - ``speed`` (float | None): Instantaneous speed in m/s.
+        - ``course`` (float | None): Heading in degrees (0–360).
+        - ``hAcc`` (float | None): Horizontal accuracy in metres.
+        - ``vAcc`` (float | None): Vertical accuracy in metres.
 
     Example:
         >>> records, corr, workouts, activities = parse_apple_health("export.zip")
-        >>> route_paths = [
-        ...     path
-        ...     for route in workouts["route"].dropna()
-        ...     for path in route["files"]
-        ... ]
+        >>> route_paths = [p for r in workouts["route"].dropna() for p in r["files"]]
         >>> routes = parse_apple_health_routes("export.zip", paths=route_paths)
-        >>> routes.head()
 
     """
     rows = []
+    trkpt_tag = f"{{{_GPX_NS}}}trkpt"
+    ele_tag = f"{{{_GPX_NS}}}ele"
+    time_tag = f"{{{_GPX_NS}}}time"
+    ext_tag = f"{{{_GPX_NS}}}extensions"
 
     with zipfile.ZipFile(zip_path) as zf:
         if paths is None:
@@ -613,8 +653,15 @@ def parse_apple_health_routes(
 
         for path in paths:
             with zf.open(f"apple_health_export/{path}") as f:
-                for _, elem in ETree.iterparse(f, events=("end",)):
-                    if elem.tag != f"{{{_GPX_NS}}}trkpt":
+                for _, elem in etree.iterparse(
+                    f,
+                    events=("end",),
+                    resolve_entities=False,
+                    no_network=True,
+                    load_dtd=False,
+                    huge_tree=False,
+                ):
+                    if elem.tag != trkpt_tag:
                         continue
 
                     row: dict[str, object] = {
@@ -623,18 +670,19 @@ def parse_apple_health_routes(
                         "lon": float(elem.attrib["lon"]),
                     }
 
-                    ele = elem.find(f"{{{_GPX_NS}}}ele")
-                    row["ele"] = float(ele.text) if ele is not None else None
+                    ele = elem.find(ele_tag)
+                    row["ele"] = (
+                        float(ele.text)
+                        if ele is not None and ele.text is not None
+                        else None
+                    )
 
-                    time_elem = elem.find(f"{{{_GPX_NS}}}time")
+                    time_elem = elem.find(time_tag)
                     row["time"] = time_elem.text if time_elem is not None else None
 
-                    ext = elem.find(f"{{{_GPX_NS}}}extensions")
+                    ext = elem.find(ext_tag)
                     for field in _GPX_EXT_FIELDS:
-                        child = None
-                        if ext is not None:
-                            child = ext.find(field) or ext.find(f"{{{_GPX_NS}}}{field}")
-                        row[field] = float(child.text) if child is not None else None
+                        row[field] = _gpx_ext_value(ext, field)
 
                     rows.append(row)
                     elem.clear()
