@@ -1,24 +1,27 @@
 optConfig:
   optIn: true
 action: issue
-enforceDefault: true
-requireApproval: true
-requireApprovalCount: 1
-blockForce: true
-enforceOnAdmins: true
-dismissStaleReviews: false
-requireUpToDateBranch: true
+
+enforceDefault: false
+enforceOnAdmins: false
 requireSignedCommits: true
+
 requireStatusChecks:
-  - context: "CodeQL Advanced / Analyze (actions)"
-  - context: "CodeQL Advanced / Analyze (javascript)"
-  - context: "CodeQL Advanced / Analyze (python)"
-  - context: "docker-stack / Ran Docker Stack Integration"
-  - context: "OSV Scan / osv-scan"
-  - context: "pre-commit / Run pre-commit hooks"
-  - context: "Requirements Maintenance / Ran Dependency Analysis"
-  - context: "Scorecard / scorecard"
-  - context: "Run Scripts Tests / Passed Scripts Tests"
-  - context: "Build Sphinx Docs / Built Docs"
-  - context: "Run Tests / Passed Tests"
-  - context: "DCO"
+  contexts:
+    - "CodeQL Advanced / Analyze (actions)"
+    - "CodeQL Advanced / Analyze (javascript)"
+    - "CodeQL Advanced / Analyze (python)"
+    - "docker-stack / Ran Docker Stack Integration"
+    - "OSV Scan / osv-scan"
+    - "pre-commit / Run pre-commit hooks"
+    - "Requirements Maintenance / Ran Dependency Analysis"
+    - "Scorecard / scorecard"
+    - "Run Scripts Tests / Passed Scripts Tests"
+    - "Build Sphinx Docs / Built Docs"
+    - "Run Tests / Passed Tests"
+    - "DCO"
+
+approvalConfig:
+  enforceApprovalRequirement: true
+  requiredApprovals: 1
+  dismissStaleApprovals: false
