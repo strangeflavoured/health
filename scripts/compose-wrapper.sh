@@ -52,10 +52,10 @@ write_secrets() {
   printf 'user admin on #%s ~* &* +@all\n' \
     "$(pass show health/redis/passwords/admin | tr -d '\n' | sha256sum | awk '{print $1}')" \
     >> "$ACL_FILE"
-  printf 'user app on #%s ~HK* resetchannels +ts.madd +ts.mrange +ts.create +ts.mrevrange +ts.info +json.set +json.get +multi +exec +ping +client|setname +client|getname\n' \
+  printf 'user app on #%s ~ts* ~activity* ~correlation* ~route* ~workout* resetchannels +json.get +json.set +ts.alter +ts.create +ts.info +ts.madd +ts.mrange +ts.mrevrange  +multi +exec +ping +client|setname +client|getname\n' \
     "$(pass show health/redis/passwords/app | tr -d '\n' | sha256sum | awk '{print $1}')" \
     >> "$ACL_FILE"
-  printf 'user insight on #%s ~HK* resetchannels +ts.get +ts.range +ts.revrange +ts.mget +ts.mrange +ts.mrevrange +ts.info +ts.queryindex +ping +info +client|setname +client|getname +scan +type +dbsize\n' \
+  printf 'user insight on #%s ~* resetchannels +json.get +ts.get +ts.range +ts.revrange +ts.mget +ts.mrange +ts.mrevrange +ts.info +ts.queryindex +ping +info +client|setname +client|getname +scan +type +dbsize\n' \
     "$(pass show health/redis/passwords/insight | tr -d '\n' | sha256sum | awk '{print $1}')" \
     >> "$ACL_FILE"
   printf 'user healthcheck on #%s resetchannels +ping\n' \
