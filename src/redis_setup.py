@@ -194,12 +194,9 @@ def index_exists(client: redis.Redis[str], name: str) -> bool:
     :class:`~redis.exceptions.ResponseError` is treated as "index not found"
     — which is the error Redis returns for unknown index names.
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance.
-    name:
-        Fully-qualified index name, e.g. ``"idx:workouts"``.
+    Args:
+        client: Connected :class:`redis.Redis` instance.
+        name: Fully-qualified index name, e.g. ``"idx:workouts"``.
 
     """
     try:
@@ -216,15 +213,11 @@ def drop_index(client: redis.Redis[str], name: str, *, dry_run: bool) -> None:
     will re-index them automatically if a new index with the same prefix is
     created afterward.
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance.
-    name:
-        Fully-qualified index name, e.g. ``"idx:workouts"``.
-    dry_run:
-        When ``True``, log the intended operation and return without issuing
-        any Redis commands.
+    Args:
+        client: Connected :class:`redis.Redis` instance.
+        name: Fully-qualified index name, e.g. ``"idx:workouts"``.
+        dry_run: When ``True``, log the intended operation and return without
+            issuing any Redis commands.
 
     """
     if dry_run:
@@ -241,15 +234,11 @@ def create_index(client: redis.Redis[str], spec: IndexSpec, *, dry_run: bool) ->
     *spec*.  The caller is responsible for ensuring the index does not already
     exist (or has been dropped) before calling this function.
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance.
-    spec:
-        Declarative description of the index to create.
-    dry_run:
-        When ``True``, log the intended operation (including field paths and
-        aliases) and return without issuing any Redis commands.
+    Args:
+        client: Connected :class:`redis.Redis` instance.
+        spec: Declarative description of the index to create.
+        dry_run: When ``True``, log the intended operation (including field paths
+            and aliases) and return without issuing any Redis commands.
 
     """
     field_names = [f.name for f in spec.fields]
@@ -288,17 +277,13 @@ def setup_indexes(
     This function is idempotent: calling it on a fully-provisioned Redis
     instance with ``force=False`` is a no-op (beyond logging).
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance.
-    dry_run:
-        When ``True``, log all intended operations and return without writing
-        to Redis.  Propagated to :func:`drop_index` and :func:`create_index`.
-    force:
-        When ``True``, drop and recreate indexes that already exist.  Use this
-        after changing field definitions in :data:`_INDICES`.  Has no effect
-        on indexes that are absent (they are created normally).
+    Args:
+        client: Connected :class:`redis.Redis` instance.
+        dry_run: When ``True``, log all intended operations and return without writing
+            to Redis.  Propagated to :func:`drop_index` and :func:`create_index`.
+        force: When ``True``, drop and recreate indexes that already exist.  Use this
+            after changing field definitions in :data:`_INDICES`.  Has no effect
+            on indexes that are absent (they are created normally).
 
     """
     for spec in _INDICES:
@@ -327,10 +312,8 @@ def print_status(client: redis.Redis[str]) -> None:
     Intended for post-setup verification and interactive debugging.  Output
     goes to the module logger at ``INFO`` level.
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance.
+    Args:
+        client: Connected :class:`redis.Redis` instance.
 
     """
     logger.info("─" * 60)
@@ -370,16 +353,12 @@ def ensure_ts_key(
     Labels are **not** updated on existing keys.
 
     Args:
-        client:
-            Connected :class:`redis.Redis` instance with RedisTimeSeries loaded.
-        key:
-            Full Redis key name, e.g. ``"ts:HKQuantityTypeIdentifierHeartRate:start"``.
-        labels:
-            Flat ``str → str`` metadata mapping attached at creation time.
-        duplicate_policy:
-            ``TS.MADD`` duplicate-conflict strategy for this key: ``"FIRST"``
-            (keep the oldest value, used by :meth:`~.HealthDataImporter.etl`) or
-            ``"LAST"`` (overwrite, used by :meth:`~.HealthDataImporter.update`).
+        client: Connected :class:`redis.Redis` instance with RedisTimeSeries loaded.
+        key: Full Redis key name, e.g. ``"ts:HKQuantityTypeIdentifierHeartRate:start"``.
+        labels: Flat ``str → str`` metadata mapping attached at creation time.
+        duplicate_policy: ``TS.MADD`` duplicate-conflict strategy for this key:
+            ``"FIRST"`` (keep oldest value, used by :meth:`~.HealthDataImporter.etl`)
+             or ``"LAST"`` (overwrite, used by :meth:`~.HealthDataImporter.update`).
             Accepts any string accepted by RedisTimeSeries.
 
     Raises:
