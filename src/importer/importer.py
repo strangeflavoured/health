@@ -54,7 +54,7 @@ from .document_loader import (
     load_routes,
     load_workouts,
 )
-from .parser import parse_apple_health, parse_apple_health_routes
+from .parser import RECORD_ATTRS, parse_apple_health, parse_apple_health_routes
 from .pipeline import upload_batch
 from .response import (
     BATCH_SIZE,
@@ -217,7 +217,7 @@ class HealthDataImporter:
             )
         )
 
-        records_df.drop_duplicates(inplace=True)  # noqa: PD002
+        records_df.drop_duplicates(subset=RECORD_ATTRS, inplace=True)  # noqa: PD002
         transform(records_df)
         self.failures = _load(records_df, self.connection)
         # Document uploads have their own failure paths; aggregate them.
@@ -293,7 +293,7 @@ class HealthDataImporter:
             return None
 
         records_df, *_ = self._extract(write_feather=False, no_cache=False)
-        records_df.drop_duplicates(inplace=True)  # noqa: PD002
+        records_df.drop_duplicates(subset=RECORD_ATTRS, inplace=True)  # noqa: PD002
 
         row_selectors: list[int] = []
         for f in self.failures:
@@ -371,7 +371,7 @@ class HealthDataImporter:
             )
         )
 
-        records_df.drop_duplicates(inplace=True)  # noqa: PD002
+        records_df.drop_duplicates(subset=RECORD_ATTRS, inplace=True)  # noqa: PD002
         transform(records_df)
         self.failures = _load(
             records_df,

@@ -33,10 +33,10 @@ from src.importer.parser import (
     _CORRELATION_ATTRS,
     _CORRELATION_COLUMNS,
     _KNOWN_UNHANDLED_TAGS,
-    _RECORD_ATTRS,
     _RECORD_COLUMNS,
     _WORKOUT_ATTRS,
     _WORKOUT_COLUMNS,
+    RECORD_ATTRS,
     NoHealthDataError,
     parse_apple_health,
     parse_apple_health_routes,
@@ -342,7 +342,7 @@ class TestSchemaConstants:
     than producing a silent breaking change in the DataFrame shape."""
 
     def test_record_attrs_pinned(self):
-        assert _RECORD_ATTRS == (
+        assert RECORD_ATTRS == (
             "type",
             "sourceName",
             "sourceVersion",
@@ -355,7 +355,7 @@ class TestSchemaConstants:
         )
 
     def test_record_columns_extends_record_attrs(self):
-        assert _RECORD_COLUMNS == _RECORD_ATTRS + ("meta",)
+        assert _RECORD_COLUMNS == RECORD_ATTRS + ("meta",)
 
     def test_correlation_columns_extends_correlation_attrs(self):
         assert _CORRELATION_COLUMNS == _CORRELATION_ATTRS + ("meta", "records")
@@ -378,7 +378,7 @@ class TestSchemaConstants:
         constants don't drift back into the previous conflated state."""
         derived = {"meta", "records", "events", "statistics", "route", "activities"}
         for const_name, attrs in [
-            ("_RECORD_ATTRS", _RECORD_ATTRS),
+            ("_RECORD_ATTRS", RECORD_ATTRS),
             ("_CORRELATION_ATTRS", _CORRELATION_ATTRS),
             ("_WORKOUT_ATTRS", _WORKOUT_ATTRS),
             ("_ACTIVITY_ATTRS", _ACTIVITY_ATTRS),
@@ -487,7 +487,7 @@ class TestRecordParsing:
         zp = tmp_path / "x.zip"
         zp.write_bytes(_xml_zip(_RECORD_XML))
         records, *_ = parse_apple_health(zp)
-        for col in _RECORD_ATTRS:
+        for col in RECORD_ATTRS:
             assert pd.api.types.is_string_dtype(records[col]), (
                 f"{col} should be string dtype"
             )
@@ -536,7 +536,7 @@ class TestRecordParsing:
         zp.write_bytes(_xml_zip(_RECORD_WITH_META_XML))
         records, *_ = parse_apple_health(zp, parse_record_metadata=False)
         assert "meta" not in records.columns
-        assert set(records.columns) == set(_RECORD_ATTRS)
+        assert set(records.columns) == set(RECORD_ATTRS)
 
 
 # ---------------------------------------------------------------------------

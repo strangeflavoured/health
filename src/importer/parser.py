@@ -85,7 +85,7 @@ logger = logging.getLogger(__name__)
 # and derived fields ("meta", "records", "events", ...).
 # ---------------------------------------------------------------------------
 
-_RECORD_ATTRS = (
+RECORD_ATTRS = (
     "type",
     "sourceName",
     "sourceVersion",
@@ -96,7 +96,7 @@ _RECORD_ATTRS = (
     "creationDate",
     "value",
 )
-_RECORD_COLUMNS = _RECORD_ATTRS + ("meta",)
+_RECORD_COLUMNS = RECORD_ATTRS + ("meta",)
 
 _CORRELATION_ATTRS = (
     "type",
@@ -317,7 +317,7 @@ def _parse_correlation(
                 meta[k] = c.attrib.get("value")
         elif c.tag == "Record":
             a = c.attrib
-            keys.append(tuple(a.get(col) for col in _RECORD_ATTRS))
+            keys.append(tuple(a.get(col) for col in RECORD_ATTRS))
         else:
             raise NotImplementedError(f"Correlation child {c.tag} is not implemented.")
     return out | {"meta": meta, "_record_keys": keys}  # type: ignore[return-value]
@@ -446,7 +446,7 @@ def parse_apple_health(
         >>> records.iloc[bp["records"]]  # the two BP readings as a DataFrame
 
     """
-    record_cols: dict[str, list] = {col: [] for col in _RECORD_ATTRS}  # type: ignore[type-arg]
+    record_cols: dict[str, list] = {col: [] for col in RECORD_ATTRS}  # type: ignore[type-arg]
     record_meta: list[dict[str, str] | None] = []
     correlation_rows: list[dict] = []  # type: ignore[type-arg]
     workout_rows: list[dict] = []  # type: ignore[type-arg]
@@ -487,7 +487,7 @@ def parse_apple_health(
                 if tag == "Record":
                     if not skip_records:
                         a = elem.attrib
-                        for col in _RECORD_ATTRS:
+                        for col in RECORD_ATTRS:
                             record_cols[col].append(a.get(col))
                         if parse_record_metadata:
                             record_meta.append(_record_metadata(elem))
@@ -521,7 +521,7 @@ def parse_apple_health(
     # are linked in document order via a per-key FIFO.
     if correlation_rows:
         if len(record_df) > 0:
-            cols = [record_cols[col] for col in _RECORD_ATTRS]
+            cols = [record_cols[col] for col in RECORD_ATTRS]
             lookup: dict[tuple, deque[int]] = defaultdict(deque)  # type: ignore[type-arg]
             for i in range(len(record_df)):
                 lookup[tuple(c[i] for c in cols)].append(i)
