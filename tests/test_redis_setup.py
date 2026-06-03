@@ -8,12 +8,6 @@ import redis
 from redis.exceptions import ResponseError
 
 import src.redis_setup as redis_setup
-from src.model import (
-    HKCategoryTypeIdentifierRegistry,
-    HKMiscTypeIdentifierRegistry,
-    HKQuantityTypeIdentifierRegistry,
-    HKTypeIdentifierRegistry,
-)
 from src.redis_setup import (
     _INDICES,
     create_index,
@@ -21,9 +15,7 @@ from src.redis_setup import (
     ensure_ts_key,
     index_exists,
     print_status,
-    records_labels,
     setup_indexes,
-    upsert_ts_labels,
 )
 
 # ---------------------------------------------------------------------------
@@ -298,63 +290,6 @@ class TestPrintStatus:
 
 
 # ===========================================================================
-# TestUpsertTsLabels
-# ===========================================================================
-
-
-class TestUpsertTsLabels:
-    def _ts(self, client):
-        return client.ts.return_value
-
-    def test_calls_alter_when_key_exists(self):
-        client = _make_client()
-        upsert_ts_labels(client, [("ts:HR:start", {"unit": "bpm"})], dry_run=False)
-        self._ts(client).alter.assert_called_once_with(
-            "ts:HR:start", labels={"unit": "bpm"}
-        )
-
-    def test_falls_back_to_create_when_alter_raises(self):
-        client = _make_client()
-        self._ts(client).alter.side_effect = redis.ResponseError("not found")
-        upsert_ts_labels(client, [("ts:HR:start", {"unit": "bpm"})], dry_run=False)
-        self._ts(client).create.assert_called_once_with(
-            "ts:HR:start", labels={"unit": "bpm"}
-        )
-
-    def test_dry_run_skips_all_writes(self):
-        client = _make_client()
-        upsert_ts_labels(client, [("ts:HR:start", {}), ("ts:HR:end", {})], dry_run=True)
-        self._ts(client).alter.assert_not_called()
-        self._ts(client).create.assert_not_called()
-
-    def test_dry_run_logs_each_key(self, caplog):
-        client = _make_client()
-        with caplog.at_level(logging.INFO):
-            upsert_ts_labels(
-                client, [("ts:HR:start", {}), ("ts:HR:end", {})], dry_run=True
-            )
-        assert "ts:HR:start" in caplog.text
-        assert "ts:HR:end" in caplog.text
-
-    def test_processes_multiple_pairs(self):
-        client = _make_client()
-        pairs = [("ts:A:start", {}), ("ts:A:end", {}), ("ts:B:start", {})]
-        upsert_ts_labels(client, pairs, dry_run=False)
-        assert self._ts(client).alter.call_count == 3
-
-    def test_empty_list_is_noop(self):
-        client = _make_client()
-        upsert_ts_labels(client, [], dry_run=False)
-        self._ts(client).alter.assert_not_called()
-        self._ts(client).create.assert_not_called()
-
-    def test_create_not_called_when_alter_succeeds(self):
-        client = _make_client()
-        upsert_ts_labels(client, [("ts:HR:start", {})], dry_run=False)
-        self._ts(client).create.assert_not_called()
-
-
-# ===========================================================================
 # TestEnsureTsKey
 # ===========================================================================
 
@@ -429,103 +364,3 @@ class TestEnsureTsKey:
         ensure_ts_key(client, "ts:HR:start", {})
         _, kwargs = self._ts(client).create.call_args
         assert kwargs["duplicate_policy"] == "FIRST"
-
-
-# ===========================================================================
-# TestRecordsLabels
-# ===========================================================================
-
-
-class TestRecordsLabels:
-    """Tests for :func:`records_labels`.
-
-    ``records_labels`` produces ``(key, labels)`` pairs for every registered
-    type *except* correlations — correlations are stored as JSON documents
-    rather than TimeSeries, so they do not get ``ts:`` keys.  These tests
-    encode that contract explicitly.
-    """
-
-    @staticmethod
-    def _ts_eligible_types() -> dict:
-        """Registry view of types that should yield TS keys."""
-        return {
-            name: cls
-            for name, cls in HKTypeIdentifierRegistry.items()
-            if cls.identifier_type != "correlation"
-        }
-
-    def test_returns_two_entries_per_ts_eligible_type(self):
-        assert len(records_labels()) == len(self._ts_eligible_types()) * 2
-
-    def test_correlation_types_excluded(self):
-        keys = [k for k, _ in records_labels()]
-        for name, cls in HKTypeIdentifierRegistry.items():
-            if cls.identifier_type == "correlation":
-                assert f"ts:{name}:start" not in keys
-                assert f"ts:{name}:end" not in keys
-
-    def test_start_and_end_keys_present_for_each_ts_eligible_type(self):
-        keys = [k for k, _ in records_labels()]
-        for name in self._ts_eligible_types():
-            assert f"ts:{name}:start" in keys
-            assert f"ts:{name}:end" in keys
-
-    def test_event_type_label_is_start_or_end(self):
-        for _, labels in records_labels():
-            assert labels["event_type"] in {"start", "end"}
-
-    def test_start_key_has_event_type_start(self):
-        for key, labels in records_labels():
-            if key.endswith(":start"):
-                assert labels["event_type"] == "start"
-
-    def test_end_key_has_event_type_end(self):
-        for key, labels in records_labels():
-            if key.endswith(":end"):
-                assert labels["event_type"] == "end"
-
-    def test_unit_populated_for_quantity_type(self):
-        for key, labels in records_labels():
-            identifier = key.split(":")[1]
-            if identifier in HKQuantityTypeIdentifierRegistry:
-                assert labels["unit"] != "Categorical"
-
-    def test_unit_populated_for_misc_type(self):
-        for key, labels in records_labels():
-            identifier = key.split(":")[1]
-            if identifier in HKMiscTypeIdentifierRegistry:
-                assert labels["unit"] != "Categorical"
-
-    def test_unit_is_categorical_for_category_type(self):
-        for key, labels in records_labels():
-            identifier = key.split(":")[1]
-            if identifier in HKCategoryTypeIdentifierRegistry:
-                assert labels["unit"] == "Categorical"
-
-    def test_identifier_label_matches_key_name(self):
-        for key, labels in records_labels():
-            assert labels["identifier"] == key.split(":")[1]
-
-    def test_group_label_present(self):
-        for _, labels in records_labels():
-            assert "group" in labels
-
-    def test_base_labels_not_mutated_across_start_end(self):
-        by_name: dict = {}
-        for key, labels in records_labels():
-            parts = key.split(":")
-            by_name[(parts[1], parts[2])] = labels
-
-        for name in self._ts_eligible_types():
-            s = by_name[(name, "start")]
-            e = by_name[(name, "end")]
-            for field in ("unit", "identifier", "group"):
-                assert s[field] == e[field]
-            assert s["event_type"] != e["event_type"]
-
-    def test_returns_list_of_tuples(self):
-        result = records_labels()
-        assert isinstance(result, list)
-        for key, labels in result:
-            assert isinstance(key, str)
-            assert isinstance(labels, dict)

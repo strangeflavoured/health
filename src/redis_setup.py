@@ -74,9 +74,6 @@ from redis.commands.search.field import Field, NumericField, TagField
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.exceptions import ResponseError
 
-from .model import HKTypeIdentifierRegistry
-from .model.base import MissingUnit
-
 logger = logging.getLogger(__name__)
 
 
@@ -354,47 +351,6 @@ def print_status(client: redis.Redis[str]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def upsert_ts_labels(
-    client: redis.Redis[str],
-    key_labels: list[tuple[str, dict[str, str]]],
-    *,
-    dry_run: bool = False,
-) -> None:
-    """Provision RedisTimeSeries keys with metadata labels.
-
-    For each ``(key, labels)`` pair, attempts ``TS.ALTER`` to update labels on
-    an existing key.  Falls back to ``TS.CREATE`` when the key is absent.
-
-    This function is designed as a **one-off provisioning or migration tool**,
-    not as part of the hot import path.  During normal imports, keys are created
-    on-demand via :func:`ensure_ts_key`; calling this function on every import
-    would redundantly alter labels on every existing key.
-
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance with RedisTimeSeries loaded.
-    key_labels:
-        List of ``(key, labels)`` pairs as returned by :func:`records_labels`.
-        Labels must be a flat ``str → str`` mapping; ``None`` values are
-        permitted and are passed through to the TimeSeries module as-is.
-    dry_run:
-        When ``True``, log the intended operations and return without writing
-        to Redis.
-
-    """
-    for key, labels in key_labels:
-        if dry_run:
-            logger.info("[dry-run] would upsert labels  %s  %s", key, labels)
-            continue
-        try:
-            client.ts().alter(key, labels=labels)
-            logger.info("altered        labels  %s  %s", key, labels)
-        except redis.ResponseError:
-            client.ts().create(key, labels=labels)
-            logger.info("created        labels  %s  %s", key, labels)
-
-
 def ensure_ts_key(
     client: redis.Redis[str],
     key: str,
@@ -435,60 +391,3 @@ def ensure_ts_key(
     except redis.ResponseError:
         client.ts().create(key, labels=labels, duplicate_policy=duplicate_policy)
         logger.warning("Created key=%s  labels=%s", key, labels)
-
-
-def records_labels() -> list[tuple[str, dict[str, str]]]:
-    """Build the full list of TimeSeries ``(key, labels)`` pairs from the type registry.
-
-    Iterates over :data:`~src.model.HKTypeIdentifierRegistry` and produces
-    entries for every registered type.  Quantity and category types receive
-    two entries each — one ``:start`` series and one ``:end`` series, with
-    the ``event_type`` label distinguishing them.  Correlation types do not
-    get TimeSeries keys (correlations live as RediSearch JSON documents);
-    they are filtered out here.
-
-    The ``unit`` label is read from ``cls.unit`` and falls back to the
-    categorical sentinel (``"Categorical"``) for types that have no
-    canonical SI unit.
-
-    Label schema per key
-    --------------------
-    ============  ==================================================
-    Label         Value
-    ============  ==================================================
-    identifier    HKTypeIdentifier string, e.g.
-                  ``"HKQuantityTypeIdentifierHeartRate"``
-    unit          SI / Apple unit string, e.g. ``"count/min"``, or
-                  ``"Categorical"`` for category types
-    group         Logical grouping from the model, e.g. ``"vital_signs"``
-    event_type    ``"start"`` or ``"end"``
-    ============  ==================================================
-
-    Using ``event_type`` as a single label (rather than separate boolean
-    ``start`` / ``end`` labels) allows ``TS.MRANGE`` callers to filter on
-    ``identifier=X`` alone to retrieve **both** series, or additionally on
-    ``event_type=start`` to retrieve only one.
-
-    Returns
-    -------
-    list[tuple[str, dict[str, str]]]
-        Ordered list of ``(key, labels)`` pairs ready to be passed to
-        :func:`upsert_ts_labels`.
-
-    """
-    key_labels: list[tuple[str, dict[str, str]]] = []
-    for name, cls in HKTypeIdentifierRegistry.items():
-        # Correlations are stored as JSON documents, not as TimeSeries.
-        if cls.identifier_type == "correlation":
-            continue
-
-        unit = getattr(cls, "unit", MissingUnit.CATEGORICAL.value)
-        base_labels: dict[str, str] = {
-            "unit": unit,
-            "identifier": name,
-            "group": cls.group,
-        }
-        key_labels.append((f"ts:{name}:start", base_labels | {"event_type": "start"}))
-        key_labels.append((f"ts:{name}:end", base_labels | {"event_type": "end"}))
-
-    return key_labels

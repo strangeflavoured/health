@@ -35,9 +35,7 @@ from setup_logger import configure_logging
 from src.connection import docker_redis_connect
 from src.redis_setup import (
     print_status,
-    records_labels,
     setup_indexes,
-    upsert_ts_labels,
 )
 
 
@@ -92,7 +90,6 @@ def main(argv: list[str] | None = None) -> int:
             logger.warning("--force is ignored in dry-run mode (use --execute).")
 
     setup_indexes(r, dry_run=dry_run, force=force)
-    upsert_ts_labels(r, records_labels(), dry_run=dry_run)
 
     if not dry_run:
         print_status(r)
