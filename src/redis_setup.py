@@ -364,30 +364,45 @@ def ensure_ts_key(
     is updated via ``TS.ALTER`` so that the policy for the current run (e.g.
     ``"FIRST"`` for :meth:`~.HealthDataImporter.etl` vs ``"LAST"`` for
     :meth:`~.HealthDataImporter.update`) takes effect before the first
-    ``TS.MADD`` for that key.
+    ``TS.MADD`` for that key. If the labels don't match ValueError is raised,
+    it could be caused by data corruption or a schema drift.
 
-    Labels are **not** updated on existing keys; use :func:`upsert_ts_labels`
-    for bulk label migrations.
+    Labels are **not** updated on existing keys.
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance with RedisTimeSeries loaded.
-    key:
-        Full Redis key name, e.g. ``"ts:HKQuantityTypeIdentifierHeartRate:start"``.
-    labels:
-        Flat ``str → str`` metadata mapping attached at creation time.
-    duplicate_policy:
-        ``TS.MADD`` duplicate-conflict strategy for this key: ``"FIRST"``
-        (keep the oldest value, used by :meth:`~.HealthDataImporter.etl`) or
-        ``"LAST"`` (overwrite, used by :meth:`~.HealthDataImporter.update`).
-        Accepts any string accepted by RedisTimeSeries.
+    Args:
+        client:
+            Connected :class:`redis.Redis` instance with RedisTimeSeries loaded.
+        key:
+            Full Redis key name, e.g. ``"ts:HKQuantityTypeIdentifierHeartRate:start"``.
+        labels:
+            Flat ``str → str`` metadata mapping attached at creation time.
+        duplicate_policy:
+            ``TS.MADD`` duplicate-conflict strategy for this key: ``"FIRST"``
+            (keep the oldest value, used by :meth:`~.HealthDataImporter.etl`) or
+            ``"LAST"`` (overwrite, used by :meth:`~.HealthDataImporter.update`).
+            Accepts any string accepted by RedisTimeSeries.
+
+    Raises:
+        ValueError: If input labels and labels in redis don't match.
 
     """
     try:
-        client.ts().info(key)
-        # Key exists — update the policy so the current run's strategy applies.
-        client.ts().alter(key, duplicate_policy=duplicate_policy)
+        resp = client.ts().info(key)
+
+        # raise if labels don't match
+        if resp["labels"] != labels:
+            raise ValueError(
+                "Key %s: labels don't match: expected %s, got %s",
+                key,
+                resp["labels"],
+                labels,
+            )
+
+        # update the policy so the current run's strategy applies.
+        if resp["duplicate_policy"] != duplicate_policy:
+            client.ts().alter(key, duplicate_policy=duplicate_policy)
+            logging.debug("Altered  key=%s  duplicate_policy=%s", key, duplicate_policy)
+
     except redis.ResponseError:
         client.ts().create(key, labels=labels, duplicate_policy=duplicate_policy)
-        logger.warning("Created key=%s  labels=%s", key, labels)
+        logger.warning("Created  key=%s  labels=%s", key, labels)
