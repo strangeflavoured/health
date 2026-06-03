@@ -35,11 +35,6 @@ contains data or indexes:
   ``force=True``.  Dropping an index does **not** delete documents —
   RediSearch re-indexes existing JSON documents automatically after
   recreation.
-* :func:`upsert_ts_labels` calls ``TS.ALTER`` on existing keys and falls
-  back to ``TS.CREATE`` only when the key is absent.  Labels are therefore
-  only written once at key-creation time during normal import; this
-  function is intended as a one-off provisioning or migration tool, not as
-  part of every import cycle.
 
 Dry-run mode
 ------------
@@ -58,10 +53,9 @@ Run directly from the project root::
 
 Or call programmatically::
 
-    from src.redis_setup import setup_indexes, upsert_ts_labels, records_labels
+    from src.redis_setup import setup_indexes
 
     setup_indexes(client, dry_run=False, force=False)
-    upsert_ts_labels(client, records_labels(), dry_run=False)
 """
 
 from __future__ import annotations
