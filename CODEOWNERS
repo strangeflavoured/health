@@ -40,7 +40,7 @@
 # Dependency manifests
 # deps-bot opens automated PRs against these but is not a code owner —
 # human review is still required before merge.
-/requirements\*.txt @strangeflavoured
+/requirements*.txt @strangeflavoured
 /pip-requirements.txt @strangeflavoured
 /requirements-dev.txt @strangeflavoured
 /backend/requirements/ @strangeflavoured
