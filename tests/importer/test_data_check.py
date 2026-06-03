@@ -22,7 +22,7 @@ import pytest
 # ---------------------------------------------------------------------------
 from src.importer.data_check import (
     DataSanityError,
-    _check_all_missing_units_are_categorical_identifiers,
+    _check_all_missing_units_are_categorical_identifiers_or_meta,
     _check_all_string_values_are_categorical_identifiers,
     _check_category_values_exist,
     _check_identifiers_exist,
@@ -334,26 +334,30 @@ class TestCheckStringValuesAreCategoricalIdentifiers:
 
 
 # ===========================================================================
-# _check_all_missing_units_are_categorical_identifiers
+# _check_all_missing_units_are_categorical_identifiers_or_meta
 # ===========================================================================
 
 
 class TestCheckMissingUnitsAreCategoricalIdentifiers:
     def test_passes_when_quantity_type_has_unit(self) -> None:
-        _check_all_missing_units_are_categorical_identifiers(_df(_quantity_row()))
+        _check_all_missing_units_are_categorical_identifiers_or_meta(
+            _df(_quantity_row())
+        )
 
     def test_passes_when_category_type_has_no_unit(self) -> None:
-        _check_all_missing_units_are_categorical_identifiers(_df(_category_row()))
+        _check_all_missing_units_are_categorical_identifiers_or_meta(
+            _df(_category_row())
+        )
 
     def test_passes_for_mixed_valid_data(self) -> None:
-        _check_all_missing_units_are_categorical_identifiers(
+        _check_all_missing_units_are_categorical_identifiers_or_meta(
             _df(_quantity_row(), _category_row())
         )
 
     def test_raises_when_quantity_type_has_null_unit(self) -> None:
         df = _df(_quantity_row(unit=None))
         with pytest.raises(DataSanityError, match=QUANTITY_TYPE):
-            _check_all_missing_units_are_categorical_identifiers(df)
+            _check_all_missing_units_are_categorical_identifiers_or_meta(df)
 
     def test_error_lists_all_offending_types(self) -> None:
         df = _df(
@@ -361,25 +365,25 @@ class TestCheckMissingUnitsAreCategoricalIdentifiers:
             _quantity_row(type_=QUANTITY_TYPE_BODY_MASS, value="70", unit=None),
         )
         with pytest.raises(DataSanityError) as exc_info:
-            _check_all_missing_units_are_categorical_identifiers(df)
+            _check_all_missing_units_are_categorical_identifiers_or_meta(df)
         msg = str(exc_info.value)
         assert QUANTITY_TYPE in msg
         assert QUANTITY_TYPE_BODY_MASS in msg
 
     def test_passes_when_quantity_unit_is_empty_string(self) -> None:
         """Empty string is not NaN — should pass this check (upstream issue)."""
-        _check_all_missing_units_are_categorical_identifiers(
+        _check_all_missing_units_are_categorical_identifiers_or_meta(
             _df(_quantity_row(unit=""))
         )
 
     def test_raises_for_misc_type_with_null_unit(self) -> None:
         df = _df({"type": MISC_TYPE, "value": "x", "unit": None})
         with pytest.raises(DataSanityError, match=MISC_TYPE):
-            _check_all_missing_units_are_categorical_identifiers(df)
+            _check_all_missing_units_are_categorical_identifiers_or_meta(df)
 
     def test_passes_for_empty_dataframe(self) -> None:
         df = pd.DataFrame({"type": [], "value": [], "unit": []})
-        _check_all_missing_units_are_categorical_identifiers(df)
+        _check_all_missing_units_are_categorical_identifiers_or_meta(df)
 
 
 # ===========================================================================

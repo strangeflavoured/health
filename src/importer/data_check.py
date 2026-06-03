@@ -143,11 +143,14 @@ def _check_all_string_values_are_categorical_identifiers(df: pd.DataFrame) -> No
         )
 
 
-def _check_all_missing_units_are_categorical_identifiers(df: pd.DataFrame) -> None:
+def _check_all_missing_units_are_categorical_identifiers_or_meta(
+    df: pd.DataFrame,
+) -> None:
     """Assert that only category-type rows may have a missing ``unit``.
 
-    Quantity-type records are always expected to carry a unit string.  A ``NaN``
-    unit on a quantity-type row indicates a parsing problem upstream.
+    Quantity-type records are always expected to carry a unit string, or derived
+    metadata. A ``NaN`` unit on a quantity-type row indicates a parsing problem
+    upstream.
 
     Args:
         df: The export DataFrame.  Must contain ``type`` and ``unit`` columns.
@@ -157,7 +160,7 @@ def _check_all_missing_units_are_categorical_identifiers(df: pd.DataFrame) -> No
 
     """
     missing_unit_types = df.loc[df["unit"].isna(), "type"].unique()
-    is_category = pd.Index(missing_unit_types).isin(_CATEGORY_TYPES)
+    is_category = pd.Index(missing_unit_types).isin(_CATEGORY_TYPES | {"meta"})
     if not is_category.all():
         offending = list(missing_unit_types[~is_category])
         raise DataSanityError(
@@ -333,7 +336,7 @@ def check_export_data(df: pd.DataFrame) -> None:
     checks = [
         _check_identifiers_exist,
         _check_all_string_values_are_categorical_identifiers,
-        _check_all_missing_units_are_categorical_identifiers,
+        _check_all_missing_units_are_categorical_identifiers_or_meta,
         _check_category_values_exist,
         _check_units,
     ]
