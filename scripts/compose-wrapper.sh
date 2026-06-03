@@ -52,7 +52,7 @@ write_secrets() {
   printf 'user admin on #%s ~* &* +@all\n' \
     "$(pass show health/redis/passwords/admin | tr -d '\n' | sha256sum | awk '{print $1}')" \
     >> "$ACL_FILE"
-  printf 'user app on #%s ~HK* resetchannels +ts.madd +ts.mrange +ts.create +ts.mrevrange +multi +exec +ping +client|setname +client|getname\n' \
+  printf 'user app on #%s ~HK* resetchannels +ts.madd +ts.mrange +ts.create +ts.mrevrange +ts.info +json.set +json.get +multi +exec +ping +client|setname +client|getname\n' \
     "$(pass show health/redis/passwords/app | tr -d '\n' | sha256sum | awk '{print $1}')" \
     >> "$ACL_FILE"
   printf 'user insight on #%s ~HK* resetchannels +ts.get +ts.range +ts.revrange +ts.mget +ts.mrange +ts.mrevrange +ts.info +ts.queryindex +ping +info +client|setname +client|getname +scan +type +dbsize\n' \
