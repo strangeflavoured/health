@@ -81,10 +81,13 @@ def _make_records_df(
         {
             "type": [type_val] * n,
             "sourceName": ["Watch"] * n,
+            "device": ["Watch"] * n,
+            "sourceVersion": ["1.0"] * n,
             "unit": [unit] * n,
             "value": [72.0] * n,
             "startDate": [1_700_000_000 + i for i in range(n)],
             "endDate": [1_700_000_060 + i for i in range(n)],
+            "creationDate": [1_700_000_060 + i for i in range(n)],
             "group": [group] * n,
         }
     )
