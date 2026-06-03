@@ -45,7 +45,7 @@ from .data_check import (
 logger = logging.getLogger(__name__)
 
 # these columns are expected to contain entries without value
-COLUMNS_WITHOUT_VALUE = ["unit", "device"]
+COLUMNS_WITHOUT_VALUE = ["unit", "device", "meta"]
 
 # dt.dtype.unit is one of "s", "ms", "us", "ns" depending on pandas
 # version and input precision.  Map it to ticks-per-second.
