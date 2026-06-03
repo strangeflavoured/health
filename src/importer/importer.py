@@ -602,6 +602,9 @@ def _upload_type(
         List of :class:`~.response.UploadFailure` objects; empty on
         full success.
 
+    Raises:
+        ValueError: If ensure_ts_label finds that labels don't match.
+
     """
     n = len(batch_df)
     rts = r.ts()

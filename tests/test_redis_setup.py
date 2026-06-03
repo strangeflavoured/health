@@ -295,20 +295,32 @@ class TestPrintStatus:
 
 
 class TestEnsureTsKey:
+    labels = {"unit": "bpm"}
+    info_return_value = {"labels": labels, "duplicate_policy": "FIRST"}
+
     def _ts(self, client):
         return client.ts.return_value
 
     def test_does_not_create_when_key_exists(self):
         client = _make_client()
-        self._ts(client).info.return_value = {}
-        ensure_ts_key(client, "ts:HR:start", {"unit": "bpm"})
+        self._ts(client).info.return_value = self.info_return_value
+        ensure_ts_key(client, "ts:HR:start", labels=self.labels)
         self._ts(client).create.assert_not_called()
+
+    def test_raises_when_labels_dont_match(self):
+        client = _make_client()
+        labels = {"unit": "%"}
+        self._ts(client).info.return_value = self.info_return_value
+        with pytest.raises(ValueError, match="labels don't match: expected"):
+            ensure_ts_key(client, "ts:HR:start", labels=labels)
 
     def test_alters_existing_key_duplicate_policy(self):
         """When the key already exists the policy must be updated via TS.ALTER."""
         client = _make_client()
-        self._ts(client).info.return_value = {}
-        ensure_ts_key(client, "ts:HR:start", {"unit": "bpm"}, duplicate_policy="LAST")
+        self._ts(client).info.return_value = self.info_return_value
+        ensure_ts_key(
+            client, "ts:HR:start", labels=self.labels, duplicate_policy="LAST"
+        )
         self._ts(client).alter.assert_called_once_with(
             "ts:HR:start", duplicate_policy="LAST"
         )
@@ -316,10 +328,10 @@ class TestEnsureTsKey:
     def test_creates_key_when_absent(self):
         client = _make_client()
         self._ts(client).info.side_effect = redis.ResponseError("not found")
-        ensure_ts_key(client, "ts:HR:start", {"unit": "bpm"})
+        ensure_ts_key(client, "ts:HR:start", self.labels)
         self._ts(client).create.assert_called_once_with(
             "ts:HR:start",
-            labels={"unit": "bpm"},
+            labels=self.labels,
             duplicate_policy="FIRST",
         )
 
@@ -354,8 +366,8 @@ class TestEnsureTsKey:
 
     def test_info_called_with_correct_key(self):
         client = _make_client()
-        self._ts(client).info.return_value = {}
-        ensure_ts_key(client, "ts:SpO2:end", {})
+        self._ts(client).info.return_value = self.info_return_value
+        ensure_ts_key(client, "ts:SpO2:end", self.labels)
         self._ts(client).info.assert_called_once_with("ts:SpO2:end")
 
     def test_default_policy_is_first(self):
