@@ -310,9 +310,9 @@ dj-database-url==3.1.2 \
     # via
     #   -c docs/../backend/requirements/base.txt
     #   -r docs/../backend/requirements/base.in
-django==6.0.5 \
-    --hash=sha256:9d58a7cb49244e74c8e161d5e403a46d6209f1009ba40f5a66d6aa0d0786a8f0 \
-    --hash=sha256:bc6d6872e98a2864c836e42edd644b362db311147dd5aa8d5b82ba7a032f5269
+django==6.0.6 \
+    --hash=sha256:25148b1194c47c2e685e5f5e9c5d59c78b075dfd282cb9618861ba6c1708f4d2 \
+    --hash=sha256:ad03916ba59523d781ae5c3f631960c23d69a9d9c43cecda52fc23b47e953713
     # via
     #   -c docs/../backend/requirements/base.txt
     #   -r docs/../backend/requirements/base.in
@@ -341,9 +341,9 @@ furo==2025.12.19 \
     --hash=sha256:188d1f942037d8b37cd3985b955839fea62baa1730087dc29d157677c857e2a7 \
     --hash=sha256:bb0ead5309f9500130665a26bee87693c41ce4dbdff864dbfb6b0dae4673d24f
     # via -r docs/requirements.in
-idna==3.17 \
-    --hash=sha256:466e48829084efe2548012b855df21540b96f2e20e51bd124c851536556a592c \
-    --hash=sha256:5eb0cb53bc467c12eadcf6de83163ad8527cec9416f44b9b61b19caedad2b87f
+idna==3.18 \
+    --hash=sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2 \
+    --hash=sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848
     # via requests
 imagesize==2.0.0 \
     --hash=sha256:5667c5bbb57ab3f1fa4bc366f4fbc971db3d5ed011fd2715fd8001f782718d96 \
@@ -790,9 +790,9 @@ six==1.17.0 \
     #   -c docs/../src/./importer/requirements.txt
     #   -c docs/../src/requirements.txt
     #   python-dateutil
-snowballstemmer==3.1.0 \
-    --hash=sha256:17e6d1da216aa07db6dad37139ea70cf13c4b2e9a096f6e64a9648fc657d3154 \
-    --hash=sha256:fd9e34526b23340cd23ffea6c9f9760974ecc2c2ac9e1d81401443ccdb2a801f
+snowballstemmer==3.1.1 \
+    --hash=sha256:7e207fa178741da09cdee59d3ecec3827ad5f92b1fc5c9ff3755b639f71f5752 \
+    --hash=sha256:e07bbc54a0d798fe6010a12398422e62a8bfbba95c394fd0956ef58cb4d3e260
     # via sphinx
 soupsieve==2.8.4 \
     --hash=sha256:e121fd02e975c695e4e9e8774a5ee35d74714b59307868dcc5319ad2d9e3328e \
@@ -809,9 +809,9 @@ sphinx==9.1.0 \
     #   sphinx-basic-ng
     #   sphinx-design
     #   sphinx-tippy
-sphinx-autodoc-typehints==3.10.4 \
-    --hash=sha256:53f5273956497c96d44a149025a8f8eed2f3a0e8c36adec7fb09d8c02da2e11a \
-    --hash=sha256:8fa06b4c92f4bd883928d9d38a7c676d94a05a170b7ee20084a1ad360d6b25ea
+sphinx-autodoc-typehints==3.10.5 \
+    --hash=sha256:7155748080735731c892d09b5128bc4e5303795691ca8515ccf333b1efd8d964 \
+    --hash=sha256:a54dfab95a6b5e8601543d25474497e98ed59268ac0ab01b3daba9817cf9707e
     # via -r docs/requirements.in
 sphinx-basic-ng==1.0.0b2 \
     --hash=sha256:9ec55a47c90c8c002b5960c57492ec3021f5193cb26cebc2dc4ea226848651c9 \
