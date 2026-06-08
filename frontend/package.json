@@ -10,7 +10,7 @@
     "@eslint/compat": "1.4.1",
     "@eslint/js": "9.39.4",
     "@react-docgen/cli": "3.0.6",
-    "@tanstack/react-query-devtools": "5.100.14",
+    "@tanstack/react-query-devtools": "5.101.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@trivago/prettier-plugin-sort-imports": "6.0.2",
