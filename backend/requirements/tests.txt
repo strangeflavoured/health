@@ -142,9 +142,9 @@ djangorestframework==3.17.1 \
     # via
     #   -c backend/requirements/base.txt
     #   -r backend/requirements/base.in
-fakeredis==2.36.0 \
-    --hash=sha256:43536ed9eb7af34a31226ee4e52c8471d1c3cc522ba2852a9985d3291e71287b \
-    --hash=sha256:66d00953c9bfd3e345266ded342a2e54c611417344f43ad1467cb68f30bc8354
+fakeredis==2.36.1 \
+    --hash=sha256:220a77bebb985c59076951336478c4c983be76b5d9f44d3011dd61171d082062 \
+    --hash=sha256:7240567f4e1c07a2b3d30c0fd88e5e598e948c2e25850a560727de1d1d3dc946
     # via -r backend/requirements/tests.in
 iniconfig==2.3.0 \
     --hash=sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730 \
