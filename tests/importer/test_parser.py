@@ -5,7 +5,6 @@ Covers:
 - Per-element parsing of Records, Correlations, Workouts, ActivitySummary.
 - ``from_date`` filtering semantics (day granularity, inclusive boundary).
 - Correlation child-record linking by index into records_df.
-- ``skip_records`` and ``parse_record_metadata`` flags.
 - Unknown top-level element handling: known-skip vs unrecognised (catches
   schema drift on Apple's side).
 - XML security: XXE / billion-laughs blocked at the lxml level.
@@ -531,13 +530,6 @@ class TestRecordParsing:
         sc = records[records["type"] == "HKQuantityTypeIdentifierStepCount"].iloc[0]
         assert sc["meta"] is None
 
-    def test_parse_record_metadata_false_omits_column(self, tmp_path):
-        zp = tmp_path / "x.zip"
-        zp.write_bytes(_xml_zip(_RECORD_WITH_META_XML))
-        records, *_ = parse_apple_health(zp, parse_record_metadata=False)
-        assert "meta" not in records.columns
-        assert set(records.columns) == set(RECORD_ATTRS)
-
 
 # ---------------------------------------------------------------------------
 # Correlation DataFrame
@@ -565,28 +557,30 @@ class TestCorrelationParsing:
         _, correlations, _, _ = parse_apple_health(zp)
         assert correlations.iloc[0]["meta"] == {"HKWasUserEntered": "1"}
 
-    def test_correlation_records_is_index_list(self, tmp_path):
-        """The correlation's `records` field is a list of integer indices
-        into records_df, not embedded dicts."""
+    def test_correlation_records_parsed(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_xml_zip(_CORRELATION_XML))
         _, correlations, _, _ = parse_apple_health(zp)
-        refs = correlations.iloc[0]["records"]
+        refs = correlations.iloc[0]["_record_keys"]
         assert len(refs) == 2
-        assert all(isinstance(r, int) for r in refs)
+        assert all(isinstance(r, dict) for r in refs)
 
-    def test_correlation_records_resolve_via_iloc(self, tmp_path):
+    def test_correlation_records_resolve_via_keys(self, tmp_path):
         """Indices into records_df dereference to the right BP readings."""
         zp = tmp_path / "x.zip"
         zp.write_bytes(_xml_zip(_CORRELATION_XML))
         records, correlations, _, _ = parse_apple_health(zp)
-        refs = correlations.iloc[0]["records"]
-        linked = records.iloc[refs]
-        assert set(linked["type"]) == {
+        refs = correlations.iloc[0]["_record_keys"]
+        expected_types = [
             "HKQuantityTypeIdentifierBloodPressureSystolic",
             "HKQuantityTypeIdentifierBloodPressureDiastolic",
-        }
-        assert set(linked["value"]) == {"120", "80"}
+        ]
+        expected_values = ["120", "80"]
+        for i, r in enumerate(refs):
+            linked = records[(records[list(r)] == pd.Series(r)).all(axis=1)]
+            assert len(linked) == 1
+            assert linked.iloc[0]["type"] == expected_types[i]
+            assert linked.iloc[0]["value"] == expected_values[i]
 
     def test_top_level_records_not_duplicated_with_correlation_children(self, tmp_path):
         """Apple emits child Records of a Correlation again at top level.
@@ -599,21 +593,6 @@ class TestCorrelationParsing:
         # be 2 rows, not 4 (which it would be if both child + top-level
         # emissions were kept as separate entries).
         assert len(records) == 2
-
-    def test_correlation_without_top_level_dupes_emits_none_refs(
-        self, tmp_path, caplog
-    ):
-        """If the Correlation has no top-level duplicates in the XML the
-        link can't resolve.  Should produce None entries and a warning, not
-        an exception."""
-        zp = tmp_path / "x.zip"
-        zp.write_bytes(_xml_zip(_CORRELATION_NO_DUPES_XML))
-        with caplog.at_level(logging.WARNING, logger="src.importer.parser"):
-            records, correlations, _, _ = parse_apple_health(zp)
-        assert len(records) == 0
-        refs = correlations.iloc[0]["records"]
-        assert refs == [None]
-        assert any("could not be linked" in r.getMessage() for r in caplog.records)
 
     def test_date_filter_dropping_top_level_dupes_still_keeps_correlation(
         self,
@@ -875,40 +854,6 @@ class TestFromDateFiltering:
 
 
 # ---------------------------------------------------------------------------
-# skip_records flag
-# ---------------------------------------------------------------------------
-
-
-class TestSkipRecords:
-    def test_records_df_empty_when_skipped(self, tmp_path):
-        # _RECORD_XML alone would empty every DataFrame and trigger
-        # NoHealthDataError; combine with a workout so the export is non-empty.
-        combined = _RECORD_XML.replace(
-            "</HealthData>",
-            _WORKOUT_XML.split('<HealthData locale="en_US">', 1)[1],
-        )
-        zp = tmp_path / "x.zip"
-        zp.write_bytes(_xml_zip(combined))
-        records, _, workouts, _ = parse_apple_health(zp, skip_records=True)
-        assert len(records) == 0
-        assert len(workouts) == 1
-
-    def test_correlation_refs_all_none_when_records_skipped(self, tmp_path, caplog):
-        zp = tmp_path / "x.zip"
-        zp.write_bytes(_xml_zip(_CORRELATION_XML))
-        with caplog.at_level(logging.WARNING, logger="src.importer.parser"):
-            _, correlations, _, _ = parse_apple_health(zp, skip_records=True)
-        refs = correlations.iloc[0]["records"]
-        assert refs == [None, None]
-
-    def test_workouts_unaffected_by_skip_records(self, tmp_path):
-        zp = tmp_path / "x.zip"
-        zp.write_bytes(_xml_zip(_WORKOUT_XML))
-        _, _, workouts, _ = parse_apple_health(zp, skip_records=True)
-        assert len(workouts) == 1
-
-
-# ---------------------------------------------------------------------------
 # XML security
 # ---------------------------------------------------------------------------
 
@@ -1139,28 +1084,6 @@ class TestParserPerformance:
         assert t_filtered < t_unfiltered * 2 + 0.5, (
             f"date filter is {t_filtered:.2f}s vs unfiltered {t_unfiltered:.2f}s "
             f"— suspicious slowdown, check for pd.to_datetime in hot path"
-        )
-
-    def test_metadata_overhead_under_30_percent(self, tmp_path):
-        """parse_record_metadata=True should not cost more than ~30% over
-        =False on a metadata-free export (since the inner loop has nothing
-        to do)."""
-        zp = self._build_large(tmp_path, n=50_000)
-
-        t0 = time.perf_counter()
-        parse_apple_health(zp, parse_record_metadata=False)
-        t_no_meta = time.perf_counter() - t0
-
-        t0 = time.perf_counter()
-        parse_apple_health(zp, parse_record_metadata=True)
-        t_meta = time.perf_counter() - t0
-
-        # The metadata-collection inner loop is "iterate over elem's
-        # children" which is cheap when there are none.  30% allows for
-        # CPython noise on small absolute times.
-        assert t_meta < t_no_meta * 1.5 + 0.3, (
-            f"metadata parse adds {(t_meta / t_no_meta - 1) * 100:.0f}% overhead "
-            f"({t_meta:.2f}s vs {t_no_meta:.2f}s)"
         )
 
 

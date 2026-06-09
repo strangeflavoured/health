@@ -64,7 +64,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import zipfile
-from collections import Counter, defaultdict, deque
+from collections import Counter
 from pathlib import Path
 
 import pandas as pd
@@ -347,7 +347,7 @@ def _parse_correlation(
                 meta[k] = c.attrib.get("value")
         elif c.tag == "Record":
             a = c.attrib
-            keys.append(tuple(a.get(col) for col in RECORD_ATTRS))
+            keys.append({col: a.get(col) for col in RECORD_ATTRS})
         else:
             raise NotImplementedError(f"Correlation child {c.tag} is not implemented.")
     correlation_id = uuid({"data_type": "correlation"} | meta)  # type: ignore[operator]
@@ -535,40 +535,6 @@ def parse_apple_health(
 
     record_cols["meta"] = record_meta
     record_df = pd.DataFrame(record_cols)
-
-    # Resolve correlation child-record keys to records_df row indices.
-    # The lookup is built from the column lists directly to avoid pandas
-    # indexing overhead.  Duplicate attribute tuples (rare in real data)
-    # are linked in document order via a per-key FIFO.
-    if correlation_rows:
-        if len(record_df) > 0:
-            cols = [record_cols[col] for col in RECORD_ATTRS]
-            lookup: dict[tuple, deque[int]] = defaultdict(deque)  # type: ignore[type-arg]
-            for i in range(len(record_df)):
-                lookup[tuple(c[i] for c in cols)].append(i)
-        else:
-            lookup = {}
-
-        unlinked = 0
-        for corr in correlation_rows:
-            indices: list[int | None] = []
-            for k in corr.pop("_record_keys"):
-                q = lookup.get(k)
-                if q:
-                    indices.append(q.popleft())
-                else:
-                    indices.append(None)
-                    unlinked += 1
-            corr["records"] = indices
-
-        if unlinked:
-            logger.warning(
-                "%d correlation child record(s) could not be linked to "
-                "records_df (typically a date-filter side-effect or "
-                "skip_records=True).",
-                unlinked,
-            )
-
     correlation_df = pd.DataFrame(correlation_rows)
     workout_df = pd.DataFrame(workout_rows)
     activity_df = pd.DataFrame(activity_rows)

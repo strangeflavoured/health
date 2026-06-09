@@ -453,7 +453,6 @@ class HealthDataImporter:
                 _, correlations_df, workouts_df, activities_df = parse_apple_health(
                     zip_path=self.zip_file,
                     from_date=from_date,
-                    skip_records=True,
                 )
                 routes_df = self._extract_routes(workouts_df)
             else:
