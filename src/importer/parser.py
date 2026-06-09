@@ -561,7 +561,7 @@ def _gpx_ext_value(ext: etree._Element | None, field: str) -> float | None:
 
 def parse_apple_health_routes(
     zip_path: str | Path,
-    paths: list[str] | None = None,
+    paths: pd.Series,
 ) -> pd.DataFrame:
     """Parse workout-route GPX files from an Apple Health export archive.
 
@@ -574,10 +574,10 @@ def parse_apple_health_routes(
     Args:
         zip_path: Path to ``export.zip``.  Accepts :class:`str` or
             :class:`pathlib.Path`.
-        paths: Optional list of GPX file paths *relative to*
+        paths: Series of GPX file paths *relative to*
             ``apple_health_export/`` inside the archive, e.g.
             ``["workout-routes/route_2024-03-15_123456789.gpx"]``.
-            ``None`` parses all GPX files under ``workout-routes/``.
+            Index is workout_id.
 
     Returns:
         One row per ``trkpt`` with columns:
@@ -594,7 +594,9 @@ def parse_apple_health_routes(
 
     Example:
         >>> records, corr, workouts, activities = parse_apple_health("export.zip")
-        >>> route_paths = [p for r in workouts["route"].dropna() for p in r["files"]]
+        >>> route_paths = pd.Series(
+                [p for r in workouts["route"].dropna() for p in r["files"]]
+            )
         >>> routes = parse_apple_health_routes("export.zip", paths=route_paths)
 
     """
@@ -605,15 +607,7 @@ def parse_apple_health_routes(
     ext_tag = f"{{{_GPX_NS}}}extensions"
 
     with zipfile.ZipFile(zip_path) as zf:
-        if paths is None:
-            paths = [
-                name.removeprefix("apple_health_export/")
-                for name in zf.namelist()
-                if name.startswith("apple_health_export/workout-routes/")
-                and name.endswith(".gpx")
-            ]
-
-        for path in paths:
+        for workout_id, path in paths.items():
             with zf.open(f"apple_health_export/{path}") as f:
                 for _, elem in etree.iterparse(
                     f,
@@ -628,6 +622,7 @@ def parse_apple_health_routes(
 
                     row: dict[str, object] = {
                         "file": path,
+                        "workout_id": workout_id,
                         "lat": float(elem.attrib["lat"]),
                         "lon": float(elem.attrib["lon"]),
                     }
