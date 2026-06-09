@@ -66,13 +66,23 @@ from .response import (
     failures_from_json,
     failures_to_json,
 )
-from .transform import transform
+from .transform import transform_records
 
 logger = logging.getLogger(__name__)
 
 # Number of data types uploaded concurrently.  Each worker handles
 # all batches for one type sequentially; types are independent.
 MAX_UPLOAD_WORKERS: int = 4
+
+# columns to group record by before upload (for keys and labels)
+_UPLOAD_GROUPS = (
+    "sourceName",
+    "wasUserEntered",
+    "motionContext",
+    "insulinReason",
+    "mealTime",
+    "correlation_id",
+)
 
 
 class HealthDataImporter:
@@ -218,7 +228,9 @@ class HealthDataImporter:
         )
 
         records_df.drop_duplicates(subset=RECORD_ATTRS, inplace=True)  # noqa: PD002
-        transform(records_df)
+        transform_records(
+            records_df, correlations_df[["_record_keys", "correlation_id"]]
+        )
         self.failures = _load(records_df, self.connection)
         # Document uploads have their own failure paths; aggregate them.
         self.failures.extend(load_workouts(self.connection, workouts_df))
@@ -251,7 +263,7 @@ class HealthDataImporter:
 
         * Reads the records DataFrame from ``out_file`` and selects the
           rows referenced by the failures file.
-        * Runs :func:`transform` on the selection and calls
+        * Runs :func:`transform_records` on the selection and calls
           :func:`_load` again.
 
         After the retry:
@@ -292,7 +304,9 @@ class HealthDataImporter:
             logger.warning("retry_failed: failures file is empty, nothing to retry.")
             return None
 
-        records_df, *_ = self._extract(write_feather=False, no_cache=False)
+        records_df, correlations_df, *_ = self._extract(
+            write_feather=False, no_cache=False
+        )
         records_df.drop_duplicates(subset=RECORD_ATTRS, inplace=True)  # noqa: PD002
 
         row_selectors: list = []
@@ -311,7 +325,9 @@ class HealthDataImporter:
                     continue
 
         retry_df = records_df[records_df.index.isin(row_selectors)]
-        transform(retry_df)
+        transform_records(
+            retry_df, correlations_df[[["_record_keys", "correlation_id"]]]
+        )
 
         r = self.connection
         n_before = count_failures(self.failures, records_df)
@@ -372,7 +388,9 @@ class HealthDataImporter:
         )
 
         records_df.drop_duplicates(subset=RECORD_ATTRS, inplace=True)  # noqa: PD002
-        transform(records_df)
+        transform_records(
+            records_df, correlations_df[["_record_keys", "correlation_id"]]
+        )
         self.failures = _load(
             records_df,
             self.connection,
@@ -505,12 +523,17 @@ class HealthDataImporter:
         if not self.zip_file.exists():
             return pd.DataFrame()
 
-        route_paths = [
-            path.lstrip("/")
-            for route in workouts_df["route"].dropna()
-            for path in (route.get("files") or [])
-        ]
-        if not route_paths:
+        workouts_with_route = workouts_df.dropna().set_index("workout_id")
+
+        route_paths = pd.Series(
+            [
+                path.lstrip("/")
+                for route in workouts_with_route
+                for path in (route.get("files") or [])
+            ],
+            index=workouts_with_route.index,
+        )
+        if route_paths.empty:
             return pd.DataFrame()
 
         logger.info("Parsing %d workout route GPX file(s).", len(route_paths))
@@ -610,64 +633,79 @@ def _upload_type(
     rts = r.ts()
     failures: list[UploadFailure] = []
 
-    sample = batch_df.iloc[0]
-    base_labels: dict[str, str] = {
-        "unit": str(sample["unit"]),
-        "identifier": data_type,
-        "group": str(sample["group"]),
-    }
-    ensure_ts_key(
-        r,
-        f"ts:{data_type}:start",
-        labels=base_labels | {"event_type": "start"},
-        duplicate_policy=duplicate_policy.value,
+    g = batch_df.groupby(
+        [col for col in _UPLOAD_GROUPS if col in batch_df.columns],
+        sort=False,
+        observed=True,
     )
-    ensure_ts_key(
-        r,
-        f"ts:{data_type}:end",
-        labels=base_labels | {"event_type": "end"},
-        duplicate_policy=duplicate_policy.value,
-    )
+    logging.info("%s: Uploading %i rows in %i groups.", data_type, n, len(g))
+    for group_nr, (group_val, r) in enumerate(g):
+        nn = len(r)
+        # calculate keys and labels
+        base_labels: dict[str, str] = {
+            "unit": str(r.iloc[0]["unit"]),
+            "identifier": data_type,
+            "group": str(r.iloc[0]["group"]),
+        }
+        key = f"ts:{data_type}:#event_type#"
+        for i, j in zip(sorted(g.keys), group_val, strict=True):
+            if pd.notna(j):
+                base_labels[i] = j
+                key += f":{i}:{j}"
 
-    logger.info(
-        "%s: uploading %d rows in %d batch(es).",
-        data_type,
-        n,
-        -(-n // BATCH_SIZE),
-    )
+        ensure_ts_key(
+            r,
+            key.replace("#event_type#", "start"),
+            labels=base_labels | {"event_type": "start"},
+            duplicate_policy=duplicate_policy.value,
+        )
+        ensure_ts_key(
+            r,
+            key.replace("#event_type#", "end"),
+            labels=base_labels | {"event_type": "end"},
+            duplicate_policy=duplicate_policy.value,
+        )
 
-    for i in range(0, n, BATCH_SIZE):
-        _df = batch_df.iloc[i : i + BATCH_SIZE]
-        try:
-            row_failures = upload_batch(rts, _df)
-            if row_failures:
-                logger.warning(
-                    "	Batch %d: %d/%d row(s) failed.",
-                    i // BATCH_SIZE + 1,
-                    len(row_failures),
-                    len(_df),
+        logger.info(
+            "\tGroup %i: uploading %d rows in %d batch(es).",
+            data_type,
+            group_nr,
+            nn,
+            -(-nn // BATCH_SIZE),
+        )
+
+        for i in range(0, nn, BATCH_SIZE):
+            _df = r.iloc[i : i + BATCH_SIZE]
+            try:
+                row_failures = upload_batch(rts, _df)
+                if row_failures:
+                    logger.warning(
+                        "\t\tBatch %d: %d/%d row(s) failed.",
+                        i // BATCH_SIZE + 1,
+                        len(row_failures),
+                        len(_df),
+                    )
+                    failures.extend(row_failures)
+            except IndexError as exc:
+                batch_failure = BatchFailure(
+                    data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
                 )
-                failures.extend(row_failures)
-        except IndexError as exc:
-            batch_failure = BatchFailure(
-                data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
-            )
-            logger.exception(
-                "\t\tBatch %d: could not resolve failures: %s",
-                i // BATCH_SIZE + 1,
-                batch_failure,
-            )
-            failures.append(batch_failure)
-        except redis.RedisError as exc:
-            batch_failure = BatchFailure(
-                data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
-            )
-            logger.exception(
-                "\t\tBatch %d: entire batch failed: %s",
-                i // BATCH_SIZE + 1,
-                batch_failure,
-            )
-            failures.append(batch_failure)
+                logger.exception(
+                    "\t\tBatch %d: could not resolve failures: %s",
+                    i // BATCH_SIZE + 1,
+                    batch_failure,
+                )
+                failures.append(batch_failure)
+            except redis.RedisError as exc:
+                batch_failure = BatchFailure(
+                    data_type=data_type, batch_nr=i // BATCH_SIZE, error=str(exc)
+                )
+                logger.exception(
+                    "\t\tBatch %d: entire batch failed: %s",
+                    i // BATCH_SIZE + 1,
+                    batch_failure,
+                )
+                failures.append(batch_failure)
 
     return failures
 
