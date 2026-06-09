@@ -66,7 +66,7 @@ from .response import (
     failures_from_json,
     failures_to_json,
 )
-from .transform import transform
+from .transform import transform_records
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +218,7 @@ class HealthDataImporter:
         )
 
         records_df.drop_duplicates(subset=RECORD_ATTRS, inplace=True)  # noqa: PD002
-        transform(records_df)
+        transform_records(records_df)
         self.failures = _load(records_df, self.connection)
         # Document uploads have their own failure paths; aggregate them.
         self.failures.extend(load_workouts(self.connection, workouts_df))
@@ -251,7 +251,7 @@ class HealthDataImporter:
 
         * Reads the records DataFrame from ``out_file`` and selects the
           rows referenced by the failures file.
-        * Runs :func:`transform` on the selection and calls
+        * Runs :func:`transform_records` on the selection and calls
           :func:`_load` again.
 
         After the retry:
@@ -311,7 +311,7 @@ class HealthDataImporter:
                     continue
 
         retry_df = records_df[records_df.index.isin(row_selectors)]
-        transform(retry_df)
+        transform_records(retry_df)
 
         r = self.connection
         n_before = count_failures(self.failures, records_df)
@@ -372,7 +372,7 @@ class HealthDataImporter:
         )
 
         records_df.drop_duplicates(subset=RECORD_ATTRS, inplace=True)  # noqa: PD002
-        transform(records_df)
+        transform_records(records_df)
         self.failures = _load(
             records_df,
             self.connection,
@@ -499,17 +499,19 @@ class HealthDataImporter:
             no routes are referenced.
 
         """
-        if workouts_df.empty or "route" not in workouts_df.columns:
+        if workouts_df.empty or "routes" not in workouts_df.columns:
             return pd.DataFrame()
         if not self.zip_file.exists():
             return pd.DataFrame()
 
-        route_paths = [
-            path.lstrip("/")
-            for route in workouts_df["route"].dropna()
-            for path in (route.get("files") or [])
-        ]
-        if not route_paths:
+        route_paths = pd.Series(
+            {
+                path.lstrip("/"): row.workout_id  # type: ignore[misc]
+                for row in workouts_df[["routes", "workout_id"]].itertuples()
+                for path in (row.routes.get("files") or [])  # type: ignore[union-attr]  # ty: ignore[unresolved-attribute]
+            }
+        )
+        if route_paths.empty:
             return pd.DataFrame()
 
         logger.info("Parsing %d workout route GPX file(s).", len(route_paths))

@@ -116,16 +116,14 @@ def transform_records(
     _replace_unit_mismatches(df)
 
     # promote some meta data to cols for grouping
-    df[
-        ["sourceName", "wasUserEntered", "motionContext", "insulinReason", "mealTime"]
-    ] = df.file.apply(
+    df[["wasUserEntered", "motionContext", "insulinReason", "mealTime"]] = df.apply(
         lambda x: [
-            x.get("sourceName"),
             x.get("wasUserEntered"),
             x.get("motionContext"),
             x.get("insulinReason"),
             x.get("mealTime"),
-        ]
+        ],
+        axis=1,
     ).to_list()
 
     _resolve_correlation_uuid(df, correlation_df or pd.DataFrame())
@@ -340,8 +338,9 @@ def _resolve_correlation_uuid(df: pd.DataFrame, correlation_df: pd.DataFrame) ->
         return
 
     df.set_index(RECORD_ATTRS, inplace=True)  # noqa: PD002
-    for corr in correlation_df:
-        for k in corr.pop("_record_keys"):
-            idx = tuple(k[c] for c in RECORD_ATTRS)
-            df.loc[idx, "correlation_id"] = corr["correlation_id"]
+    for correlation_id, _record_keys in zip(
+        correlation_df["correlation_id"], correlation_df["_record_keys"], strict=True
+    ):
+        idx = tuple(_record_keys[c] for c in RECORD_ATTRS)
+        df.loc[idx, "correlation_id"] = correlation_id
     df.reset_index(inplace=True)  # noqa: PD002

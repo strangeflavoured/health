@@ -632,7 +632,7 @@ def parse_apple_health_routes(
     ext_tag = f"{{{_GPX_NS}}}extensions"
 
     with zipfile.ZipFile(zip_path) as zf:
-        for workout_id, path in paths.items():
+        for path, workout_id in paths.items():
             with zf.open(f"apple_health_export/{path}") as f:
                 for _, elem in etree.iterparse(
                     f,

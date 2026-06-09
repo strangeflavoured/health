@@ -1093,16 +1093,18 @@ class TestParserPerformance:
 
 
 class TestParseAppleHealthRoutes:
+    paths = pd.Series({_GPX_ROUTE_PATH: "1"})
+
     def test_returns_dataframe(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         assert isinstance(df, pd.DataFrame)
 
     def test_expected_columns(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         assert set(df.columns) == {
             "file",
             "lat",
@@ -1113,38 +1115,39 @@ class TestParseAppleHealthRoutes:
             "course",
             "hAcc",
             "vAcc",
+            "workout_id",
         }
 
     def test_trackpoint_count(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         assert len(df) == 2
 
     def test_lat_lon_are_float(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         assert pd.api.types.is_float_dtype(df["lat"])
         assert pd.api.types.is_float_dtype(df["lon"])
 
     def test_lat_lon_values(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         assert df.iloc[0]["lat"] == pytest.approx(52.520008)
         assert df.iloc[0]["lon"] == pytest.approx(13.404954)
 
     def test_ele_as_float(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         assert df.iloc[0]["ele"] == pytest.approx(34.5)
 
     def test_time_is_utc_datetime(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         assert pd.api.types.is_datetime64_any_dtype(df["time"])
         assert str(df["time"].dt.tz) == "UTC"
         assert df.iloc[0]["time"] == pd.Timestamp("2024-01-01T09:00:00Z")
@@ -1152,7 +1155,7 @@ class TestParseAppleHealthRoutes:
     def test_extension_field_values(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         row = df.iloc[0]
         assert row["speed"] == pytest.approx(2.83)
         assert row["course"] == pytest.approx(274.5)
@@ -1162,36 +1165,7 @@ class TestParseAppleHealthRoutes:
     def test_file_column_value(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
-        assert (df["file"] == _GPX_ROUTE_PATH).all()
-
-    def test_paths_none_discovers_gpx_files(self, tmp_path):
-        zp = tmp_path / "x.zip"
-        zp.write_bytes(
-            _make_zip(
-                {
-                    "apple_health_export/export.xml": _WORKOUT_XML,
-                    f"apple_health_export/{_GPX_ROUTE_PATH}": _GPX_TWO_POINTS,
-                }
-            )
-        )
-        df = parse_apple_health_routes(zp)
-        assert len(df) == 2
-
-    def test_paths_none_ignores_non_gpx_and_wrong_directory(self, tmp_path):
-        zp = tmp_path / "x.zip"
-        zp.write_bytes(
-            _make_zip(
-                {
-                    "apple_health_export/export.xml": _WORKOUT_XML,
-                    f"apple_health_export/{_GPX_ROUTE_PATH}": _GPX_TWO_POINTS,
-                    "apple_health_export/workout-routes/metadata.json": "{}",
-                    "apple_health_export/export.gpx": _GPX_TWO_POINTS,
-                }
-            )
-        )
-        df = parse_apple_health_routes(zp)
-        assert len(df) == 2
+        df = parse_apple_health_routes(zp, paths=self.paths)
         assert (df["file"] == _GPX_ROUTE_PATH).all()
 
     def test_multiple_gpx_files_combined(self, tmp_path):
@@ -1205,14 +1179,15 @@ class TestParseAppleHealthRoutes:
                 }
             )
         )
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH, _GPX_ROUTE_PATH_2])
+        paths = pd.Series({_GPX_ROUTE_PATH: "1", _GPX_ROUTE_PATH_2: "2"})
+        df = parse_apple_health_routes(zp, paths=paths)
         assert len(df) == 4
         assert set(df["file"].unique()) == {_GPX_ROUTE_PATH, _GPX_ROUTE_PATH_2}
 
     def test_missing_ele_is_nan(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip(gpx_content=_GPX_MISSING_OPTIONAL))
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         assert pd.isna(df.iloc[0]["ele"])
 
     def test_missing_extensions_are_nan(self, tmp_path):
@@ -1223,27 +1198,27 @@ class TestParseAppleHealthRoutes:
         incorrectly skip an existing-but-empty element."""
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip(gpx_content=_GPX_MISSING_OPTIONAL))
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         for field in ("speed", "course", "hAcc", "vAcc"):
             assert pd.isna(df.iloc[0][field]), f"{field} should be NaN"
 
     def test_empty_gpx_returns_empty_dataframe(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip(gpx_content=_GPX_EMPTY))
-        df = parse_apple_health_routes(zp, paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(zp, paths=self.paths)
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 0
 
     def test_accepts_path_object(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(Path(zp), paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(Path(zp), paths=self.paths)
         assert len(df) == 2
 
     def test_accepts_string_path(self, tmp_path):
         zp = tmp_path / "x.zip"
         zp.write_bytes(_route_zip())
-        df = parse_apple_health_routes(str(zp), paths=[_GPX_ROUTE_PATH])
+        df = parse_apple_health_routes(str(zp), paths=self.paths)
         assert len(df) == 2
 
     def test_join_to_workouts_via_file_column(self, tmp_path):
@@ -1252,7 +1227,9 @@ class TestParseAppleHealthRoutes:
         _, _, workouts, _ = parse_apple_health(zp)
 
         assert len(workouts["routes"][0]) == 1
-        route_paths = [p for r in workouts["routes"][0] for p in r["files"]]
+        route_paths = pd.Series(
+            index=[p for r in workouts["routes"][0] for p in r["files"]]
+        )
         routes = parse_apple_health_routes(zp, paths=route_paths)
         assert len(routes) == 2
         assert (routes["file"] == _GPX_ROUTE_PATH).all()

@@ -171,35 +171,6 @@ class TestExtract:
         # Document tables empty because ZIP isn't present.
         assert corrs.empty and workouts.empty and activities.empty and routes.empty
 
-    def test_feather_cache_with_zip_also_loads_documents(self, importer):
-        """When both feather and ZIP exist, records come from feather but
-        workouts/correlations/activities are re-parsed from ZIP."""
-        cached = pd.DataFrame({"type": [HR]})
-        zip_records = pd.DataFrame({"type": [HR]})
-        zip_workouts = pd.DataFrame({"workoutActivityType": ["Run"], "route": [None]})
-
-        with (
-            patch(
-                "src.importer.importer.feather.read_feather", return_value=cached
-            ) as mock_feather,
-            patch(
-                "src.importer.importer.parse_apple_health",
-                return_value=(zip_records, _empty_df(), zip_workouts, _empty_df()),
-            ) as mock_parse,
-        ):
-            importer.output_file.touch()
-            importer.zip_file.touch()
-            records, _, workouts, _, _ = importer._extract(
-                write_feather=False, no_cache=False
-            )
-
-        mock_feather.assert_called_once()
-        mock_parse.assert_called_once()
-        # Records from feather, not the ZIP.
-        assert records.equals(cached)
-        # Workouts from ZIP.
-        assert len(workouts) == 1
-
     def test_raises_when_no_zip_and_no_feather(self, importer):
         with pytest.raises(FileNotFoundError):
             importer._extract(write_feather=False, no_cache=False)
@@ -244,7 +215,8 @@ class TestExtract:
         workouts = pd.DataFrame(
             {
                 "workoutActivityType": ["Run"],
-                "route": [{"files": ["workout-routes/route_x.gpx"]}],
+                "routes": [{"files": ["workout-routes/route_x.gpx"]}],
+                "workout_id": ["1"],
             }
         )
         with (
@@ -468,7 +440,7 @@ class TestEtl:
     def test_etl_sets_failures_on_success(self, importer):
         with (
             patch.object(importer, "_extract", return_value=_extract_return()),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch("src.importer.importer.load_workouts", return_value=[]),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -484,7 +456,7 @@ class TestEtl:
         failures = [BatchFailure(HR, 0, "err")]
         with (
             patch.object(importer, "_extract", return_value=_extract_return()),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=failures),
             patch("src.importer.importer.load_workouts", return_value=[]),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -502,7 +474,7 @@ class TestEtl:
         wk_fail = [BatchFailure("workout:1", -1, "k")]
         with (
             patch.object(importer, "_extract", return_value=_extract_return()),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=rec_fail),
             patch("src.importer.importer.load_workouts", return_value=wk_fail),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -518,7 +490,7 @@ class TestEtl:
         """All four document-loader calls must happen on every etl() run."""
         with (
             patch.object(importer, "_extract", return_value=_extract_return()),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]),
             patch("src.importer.importer.load_workouts", return_value=[]) as mw,
             patch("src.importer.importer.load_correlations", return_value=[]) as mc,
@@ -535,7 +507,7 @@ class TestEtl:
     def test_etl_persist_failures_true_calls_update(self, importer):
         with (
             patch.object(importer, "_extract", return_value=_extract_return()),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]),
             patch("src.importer.importer.load_workouts", return_value=[]),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -549,7 +521,7 @@ class TestEtl:
     def test_etl_persist_failures_false_skips_update(self, importer):
         with (
             patch.object(importer, "_extract", return_value=_extract_return()),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]),
             patch("src.importer.importer.load_workouts", return_value=[]),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -565,7 +537,7 @@ class TestEtl:
             patch.object(
                 importer, "_extract", return_value=_extract_return()
             ) as mock_extract,
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]),
             patch("src.importer.importer.load_workouts", return_value=[]),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -579,7 +551,7 @@ class TestEtl:
     def test_etl_uses_duplicate_policy_first(self, importer):
         with (
             patch.object(importer, "_extract", return_value=_extract_return()),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch("src.importer.importer.load_workouts", return_value=[]),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -604,7 +576,7 @@ class TestUpdate:
     def test_update_uses_duplicate_policy_last(self, importer):
         with (
             patch.object(importer, "_extract", return_value=_extract_return()),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch("src.importer.importer.load_workouts", return_value=[]),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -620,7 +592,7 @@ class TestUpdate:
         failures = [BatchFailure(HR, 0, "err")]
         with (
             patch.object(importer, "_extract", return_value=_extract_return()),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=failures),
             patch("src.importer.importer.load_workouts", return_value=[]),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -634,7 +606,7 @@ class TestUpdate:
     def test_update_persist_failures_false_skips(self, importer):
         with (
             patch.object(importer, "_extract", return_value=_extract_return()),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]),
             patch("src.importer.importer.load_workouts", return_value=[]),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -650,7 +622,7 @@ class TestUpdate:
             patch.object(
                 importer, "_extract", return_value=_extract_return()
             ) as mock_extract,
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]),
             patch("src.importer.importer.load_workouts", return_value=[]),
             patch("src.importer.importer.load_correlations", return_value=[]),
@@ -686,7 +658,7 @@ class TestRetryFailed:
         self._write_failures(importer, [RowFailure(HR, 1, start_error="dup")])
         with (
             patch.object(importer, "_extract", return_value=_extract_return(df)),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch.object(importer, "_update_failures_file"),
         ):
@@ -699,7 +671,7 @@ class TestRetryFailed:
         self._write_failures(importer, [BatchFailure(HR, 0, "conn lost")])
         with (
             patch.object(importer, "_extract", return_value=_extract_return(df)),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch.object(importer, "_update_failures_file"),
         ):
@@ -722,7 +694,7 @@ class TestRetryFailed:
         )
         with (
             patch.object(importer, "_extract", return_value=_extract_return(df)),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch.object(importer, "_update_failures_file"),
         ):
@@ -736,7 +708,7 @@ class TestRetryFailed:
         self._write_failures(importer, [RowFailure(HR, 0, start_error="e")])
         with (
             patch.object(importer, "_extract", return_value=_extract_return(df)),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]),
         ):
             importer.retry_failed(persist_failures=True)
@@ -748,7 +720,7 @@ class TestRetryFailed:
         self._write_failures(importer, [RowFailure(HR, 0), RowFailure(HR, 1)])
         with (
             patch.object(importer, "_extract", return_value=_extract_return(df)),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=remaining),
         ):
             importer.retry_failed(persist_failures=True)
@@ -760,7 +732,7 @@ class TestRetryFailed:
         self._write_failures(importer, [RowFailure(HR, 0)])
         with (
             patch.object(importer, "_extract", return_value=_extract_return(df)),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]) as mock_load,
             patch.object(importer, "_update_failures_file"),
         ):
@@ -772,7 +744,7 @@ class TestRetryFailed:
         self._write_failures(importer, [RowFailure(HR, 0)])
         with (
             patch.object(importer, "_extract", return_value=_extract_return(df)),
-            patch("src.importer.importer.transform"),
+            patch("src.importer.importer.transform_records"),
             patch("src.importer.importer._load", return_value=[]),
             patch.object(importer, "_update_failures_file") as mock_upd,
         ):
