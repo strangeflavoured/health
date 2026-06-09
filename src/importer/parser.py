@@ -61,6 +61,7 @@ libxml2's amplification factor in attribute values).
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import zipfile
 from collections import Counter, defaultdict, deque
@@ -252,6 +253,35 @@ def _log_unknown_elements(counts: Counter[str]) -> None:
 # ---------------------------------------------------------------------------
 
 
+def uuid(
+    identifiers: dict[
+        str,
+        str
+        | None
+        | list[dict[str, str | list[str | None] | dict[str, str | None] | None]],
+    ],
+) -> str:
+    """Generate a uuid from dict of identifiers.
+
+    Args:
+        identifiers: Dict of identifiers, should be unique to each entry.
+
+    Returns:
+        UUID of len 16
+
+    Example:
+        identifiers = {"data_type": "workout", "start_date": "2026-04-01",
+            "sourceName": "Apple Watch"}
+        uuid(identifiers)
+
+    """
+    kv: list[str] = []
+    for k in sorted(identifiers.keys()):
+        kv.append(f"{k}:{identifiers[k]}")
+    fingerprint = "|".join(kv)
+    return hashlib.sha256(fingerprint.encode(), usedforsecurity=False).hexdigest()[:16]
+
+
 def _parse_workout_event(elem: etree._Element) -> dict[str, str | None]:
     out = _attrs(elem, _WORKOUT_EVENT_ATTRS)
     for c in elem:
@@ -320,7 +350,8 @@ def _parse_correlation(
             keys.append(tuple(a.get(col) for col in RECORD_ATTRS))
         else:
             raise NotImplementedError(f"Correlation child {c.tag} is not implemented.")
-    return out | {"meta": meta, "_record_keys": keys}  # type: ignore[return-value]
+    correlation_id = uuid({"data_type": "correlation"} | meta)  # type: ignore[operator]
+    return out | {"meta": meta, "_record_keys": keys, "correlation_id": correlation_id}  # type: ignore[return-value]
 
 
 def _parse_workout(
@@ -351,12 +382,14 @@ def _parse_workout(
             stats.append(_attrs(c, _WORKOUT_STATISTICS_ATTRS))
         else:
             raise NotImplementedError(f"Workout child {c.tag} is not implemented.")
+    workout_id = uuid({"data_type": "workout"} | meta | {"routes": route})
     return out | {
         "meta": meta,
         "events": events,
         "statistics": stats,
         "route": route,
         "activities": activities,
+        "workout_id": workout_id,
     }  # type: ignore[return-value]
 
 
