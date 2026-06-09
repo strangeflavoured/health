@@ -376,8 +376,6 @@ def parse_apple_health(
     zip_path: str | Path,
     *,
     from_date: pd.Timestamp | None = None,
-    skip_records: bool = False,
-    parse_record_metadata: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Parse an Apple Health ``export.zip`` into four DataFrames.
 
@@ -393,16 +391,6 @@ def parse_apple_health(
             filter does NOT recurse into ``Correlation`` or ``Workout``:
             if a complex parent passes the filter, all its children are
             kept regardless of their own dates.  ``None`` disables filtering.
-        skip_records: If ``True``, top-level ``Record`` elements are not
-            accumulated into ``records_df`` (which is returned with the
-            correct columns but no rows).  Correlation ``records``
-            references will then all be ``None``.
-        parse_record_metadata: If ``True`` (default), ``MetadataEntry``
-            children of top-level Records are collected into a ``meta``
-            column on ``records_df`` (``dict[str, str] | None`` per row).
-            If ``False``, the column is omitted and the parse is marginally
-            faster.  ``HeartRateVariabilityMetadataList`` children are
-            always discarded regardless of this flag.
 
     Returns:
         A 4-tuple ``(records, correlations, workouts, activities)``.
@@ -437,6 +425,9 @@ def parse_apple_health(
 
         **activities** — one row per ``ActivitySummary``.  Columns follow
         ``_ACTIVITY_ATTRS``.
+
+    Note:
+        ``HeartRateVariabilityMetadataList`` children are always discarded.
 
     Raises:
         NoHealthDataError: If all four returned DataFrames are empty.
@@ -492,12 +483,10 @@ def parse_apple_health(
             else:
                 tag = elem.tag
                 if tag == "Record":
-                    if not skip_records:
-                        a = elem.attrib
-                        for col in RECORD_ATTRS:
-                            record_cols[col].append(a.get(col))
-                        if parse_record_metadata:
-                            record_meta.append(_record_metadata(elem))
+                    a = elem.attrib
+                    for col in RECORD_ATTRS:
+                        record_cols[col].append(a.get(col))
+                    record_meta.append(_record_metadata(elem))
                 elif tag == "Correlation":
                     correlation_rows.append(_parse_correlation(elem))
                 elif tag == "Workout":
@@ -518,8 +507,7 @@ def parse_apple_health(
     if unknown_counts:
         _log_unknown_elements(unknown_counts)
 
-    if parse_record_metadata:
-        record_cols["meta"] = record_meta
+    record_cols["meta"] = record_meta
     record_df = pd.DataFrame(record_cols)
 
     # Resolve correlation child-record keys to records_df row indices.
