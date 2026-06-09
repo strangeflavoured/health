@@ -61,6 +61,7 @@ libxml2's amplification factor in attribute values).
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import zipfile
 from collections import Counter, defaultdict, deque
@@ -251,6 +252,28 @@ def _log_unknown_elements(counts: Counter[str]) -> None:
 # ---------------------------------------------------------------------------
 
 
+def uuid(identifiers: dict[str, str]) -> str:
+    """Generate a uuid from dict of identifiers.
+
+    Args:
+        identifiers: Dict of identifiers, should be unique to each entry.
+
+    Returns:
+        UUID of len 16
+
+    Example:
+        identifiers = {"data_type": "workout", "start_date": "2026-04-01",
+            "sourceName": "Apple Watch"}
+        uuid(identifiers)
+
+    """
+    kv: list = []
+    for k in sorted(identifiers.keys()):
+        kv.append(f"{k}:{identifiers[k]}")
+    fingerprint = "|".join(kv)
+    return hashlib.sha256(fingerprint.encode(), usedforsecurity=False).hexdigest()[:16]
+
+
 def _parse_workout_event(elem: etree._Element) -> dict[str, str]:
     out = _attrs(elem, _WORKOUT_EVENT_ATTRS)
     for c in elem:
@@ -315,6 +338,7 @@ def _parse_correlation(elem: etree._Element) -> dict[str, str]:
             raise NotImplementedError(f"Correlation child {c.tag} is not implemented.")
     out["meta"] = meta
     out["_record_keys"] = keys
+    out["correlation_id"] = uuid({"data_type": "correlation"} | meta)
     return out
 
 
@@ -339,6 +363,7 @@ def _parse_workout(elem: etree._Element) -> dict[str, str]:
     out["statistics"] = stats
     out["route"] = route
     out["activities"] = activities
+    out["workout_id"] = uuid({"data_type": "workout"} | meta | route)
     return out
 
 
