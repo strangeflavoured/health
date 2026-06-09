@@ -367,7 +367,7 @@ def _parse_workout(
     | dict[str, str | None],
 ]:
     out = _attrs(elem, _WORKOUT_ATTRS)
-    activities, events, meta, route, stats = [], [], {}, [], []
+    activities, events, meta, routes, stats = [], [], {}, [], []
     for c in elem:
         if c.tag == "WorkoutActivity":
             activities.append(_parse_workout_activity(c))
@@ -377,17 +377,17 @@ def _parse_workout(
             if k := c.attrib.get("key"):
                 meta[k] = c.attrib.get("value")
         elif c.tag == "WorkoutRoute":
-            route.append(_parse_workout_route(c))
+            routes.append(_parse_workout_route(c))
         elif c.tag == "WorkoutStatistics":
             stats.append(_attrs(c, _WORKOUT_STATISTICS_ATTRS))
         else:
             raise NotImplementedError(f"Workout child {c.tag} is not implemented.")
-    workout_id = uuid({"data_type": "workout"} | meta | {"routes": route})
+    workout_id = uuid({"data_type": "workout"} | meta | {"routes": routes})
     return out | {
         "meta": meta,
         "events": events,
         "statistics": stats,
-        "route": route,
+        "routes": routes,
         "activities": activities,
         "workout_id": workout_id,
     }  # type: ignore[return-value]

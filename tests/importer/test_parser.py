@@ -679,7 +679,7 @@ class TestWorkoutParsing:
         zp = tmp_path / "x.zip"
         zp.write_bytes(_xml_zip(_WORKOUT_XML))
         _, _, workouts, _ = parse_apple_health(zp)
-        route = workouts.iloc[0]["route"]
+        route = workouts.iloc[0]["routes"]
         assert route is not None
         assert isinstance(route, list)
         assert len(route) == 1
@@ -692,7 +692,7 @@ class TestWorkoutParsing:
         zp = tmp_path / "x.zip"
         zp.write_bytes(_xml_zip(_minimal_workout_xml()))
         _, _, workouts, _ = parse_apple_health(zp)
-        assert workouts.iloc[0]["route"] == []
+        assert workouts.iloc[0]["routes"] == []
 
     def test_workout_activity_attributes(self, tmp_path):
         zp = tmp_path / "x.zip"
@@ -1251,8 +1251,8 @@ class TestParseAppleHealthRoutes:
         zp.write_bytes(_route_zip())
         _, _, workouts, _ = parse_apple_health(zp)
 
-        assert len(workouts["route"][0]) == 1
-        route_paths = [p for r in workouts["route"][0] for p in r["files"]]
+        assert len(workouts["routes"][0]) == 1
+        route_paths = [p for r in workouts["routes"][0] for p in r["files"]]
         routes = parse_apple_health_routes(zp, paths=route_paths)
         assert len(routes) == 2
         assert (routes["file"] == _GPX_ROUTE_PATH).all()
