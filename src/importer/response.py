@@ -234,7 +234,7 @@ class BatchFailure:
 UploadFailure = RowFailure | BatchFailure
 
 # batch size of redis uploads
-BATCH_SIZE = 500
+BATCH_SIZE: int = 500
 
 
 def count_failures(failures: list[UploadFailure], df: pd.DataFrame) -> int:
