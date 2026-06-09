@@ -1,6 +1,6 @@
 """Apple Health DataFrame transformation pipeline.
 
-Provides the public :func:`transform` function that prepares the raw records
+Provides the public :func:`transform_records` function that prepares the raw records
 DataFrame for upload to Redis TimeSeries.
 
 All public and private functions in this module accept a ``df`` argument
@@ -10,7 +10,7 @@ export size rather than a multiple of it.
 
 Order of operations matters
 ---------------------------
-:func:`transform` drops ``NaN``-value rows *before* running data-sanity
+:func:`transform_records` drops ``NaN``-value rows *before* running data-sanity
 checks.  This avoids spurious "missing unit" errors on rows that would be
 dropped anyway because their value is missing.
 
@@ -41,6 +41,7 @@ from .data_check import (
     KNOWN_UNIT_MISMATCHES,
     check_export_data,
 )
+from .parser import RECORD_ATTRS
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,9 @@ _FLAT_CATEGORY_SERIES: pd.Series = pd.Series(
 )
 
 
-def transform(df: pd.DataFrame) -> None:
+def transform_records(
+    df: pd.DataFrame, correlation_df: pd.DataFrame | None = None
+) -> None:
     """Clean and reshape *df* in-place for upload to Redis TimeSeries.
 
     Applies the following steps in order:
@@ -97,10 +100,12 @@ def transform(df: pd.DataFrame) -> None:
             step; mutated in-place.  ``startDate`` and ``endDate`` may be
             either Apple Health timestamp strings
             (``"2024-01-01 00:00:00 +0000"``) or pandas datetime objects.
+        correlation_df: Correlation DataFrame as produced by the parser.
+            Needs columns `_record_keys` and `correlation_id`.
 
     Example::
 
-        transform(df)
+        transform_records(df, correlation_df[['_record_keys', 'correlation_id']])
         # df["startDate"] and df["endDate"] are now int64 Unix timestamps
 
     """
@@ -109,6 +114,21 @@ def transform(df: pd.DataFrame) -> None:
     check_export_data(df)
     _handle_categorical_units(df)
     _replace_unit_mismatches(df)
+
+    # promote some meta data to cols for grouping
+    df[
+        ["sourceName", "wasUserEntered", "motionContext", "insulinReason", "mealTime"]
+    ] = df.file.apply(
+        lambda x: [
+            x.get("sourceName"),
+            x.get("wasUserEntered"),
+            x.get("motionContext"),
+            x.get("insulinReason"),
+            x.get("mealTime"),
+        ]
+    ).to_list()
+
+    _resolve_correlation_uuid(df, correlation_df or pd.DataFrame())
     df["value"] = pd.to_numeric(df["value"]).astype("float64")
     df["startDate"] = _timestamps_to_unix(df["startDate"])
     df["endDate"] = _timestamps_to_unix(df["endDate"])
@@ -308,3 +328,20 @@ def _replace_unit_mismatches(df: pd.DataFrame) -> None:
     keys = pd.MultiIndex.from_frame(df[["type", "unit"]])
     mask = keys.isin(KNOWN_UNIT_MISMATCHES.keys())
     df.loc[mask, "unit"] = keys[mask].map(KNOWN_UNIT_MISMATCHES)
+
+
+def _resolve_correlation_uuid(df: pd.DataFrame, correlation_df: pd.DataFrame) -> None:
+    """Resolve correlation UUIDs of records in-place."""
+    if correlation_df.empty:
+        logger.warning(
+            "No correlation_df provided for UUID resolution."
+            "\n\tUploading records without resolving correlation UUIDs."
+        )
+        return
+
+    df.set_index(RECORD_ATTRS, inplace=True)  # noqa: PD002
+    for corr in correlation_df:
+        for k in corr.pop("_record_keys"):
+            idx = tuple(k[c] for c in RECORD_ATTRS)
+            df.loc[idx, "correlation_id"] = corr["correlation_id"]
+    df.reset_index(inplace=True)  # noqa: PD002
