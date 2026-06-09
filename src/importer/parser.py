@@ -344,7 +344,7 @@ def _parse_correlation(elem: etree._Element) -> dict[str, str]:
 
 def _parse_workout(elem: etree._Element) -> dict[str, str]:
     out = _attrs(elem, _WORKOUT_ATTRS)
-    activities, events, meta, route, stats = [], [], {}, None, []
+    activities, events, meta, routes, stats = [], [], {}, [], []
     for c in elem:
         if c.tag == "WorkoutActivity":
             activities.append(_parse_workout_activity(c))
@@ -353,7 +353,7 @@ def _parse_workout(elem: etree._Element) -> dict[str, str]:
         elif c.tag == "MetadataEntry":
             meta[c.attrib.get("key")] = c.attrib.get("value")
         elif c.tag == "WorkoutRoute":
-            route = _parse_workout_route(c)
+            routes.append(_parse_workout_route(c))
         elif c.tag == "WorkoutStatistics":
             stats.append(_attrs(c, _WORKOUT_STATISTICS_ATTRS))
         else:
@@ -361,9 +361,9 @@ def _parse_workout(elem: etree._Element) -> dict[str, str]:
     out["meta"] = meta
     out["events"] = events
     out["statistics"] = stats
-    out["route"] = route
+    out["routes"] = routes
     out["activities"] = activities
-    out["workout_id"] = uuid({"data_type": "workout"} | meta | route)
+    out["workout_id"] = uuid({"data_type": "workout"} | meta | routes)
     return out
 
 
