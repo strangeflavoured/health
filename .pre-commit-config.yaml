@@ -21,34 +21,12 @@ repos:
       - id: no-commit-to-branch
       - id: trailing-whitespace
 
-  - repo: https://github.com/fpgmaas/deptry
-    rev: 0.25.1
-    hooks:
-      - id: deptry
-        entry: uvx deptry .
-        language: system
-
-  - repo: https://github.com/jorisroovers/gitlint
-    rev: v0.19.1
-    hooks:
-      - id: gitlint
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.17
     hooks:
       - id: ruff-check
-        args:
-          - --target-version
-          - py312
-          - --exit-non-zero-on-fix
-          - --fix
-          - --show-fixes
+        args: [--exit-non-zero-on-fix, --fix, --show-fixes]
       - id: ruff-format
-
-  - repo: https://github.com/jendrikseipp/vulture
-    rev: v2.16
-    hooks:
-      - id: vulture
 
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.11.0
@@ -67,39 +45,56 @@ repos:
     hooks:
       - id: yamlfmt
 
-  - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.38.0
-    hooks:
-      - id: yamllint
-        args: [--format, parsable, --strict]
-
   - repo: local
     hooks:
-      - id: compile-requirements
-        entry: scripts/compile-requirements.sh
-        files: \.in$
-        language: script
-        name: Recompile requirements (.in → .txt)
+      - id: deptry
+        name: deptry
+        entry: uvx deptry@0.25.1 .
+        language: system
         pass_filenames: false
-        require_serial: true
-        stages: [pre-commit]
+        files: \.(py|toml)$
+
+      - id: vulture
+        name: vulture
+        entry: uvx vulture@2.16
+        language: system
+        types: [python]
+
+      - id: yamllint
+        name: yamllint
+        entry: uvx yamllint@1.38.0
+        args: [--format, parsable, --strict]
+        language: system
+        types: [yaml]
+
+      - id: gitlint
+        name: gitlint
+        entry: uvx gitlint@0.19.1
+        language: system
+        stages: [commit-msg]
+        pass_filenames: false
+
+      - id: djlint
+        name: Jinja template formatting (docs)
+        entry: uvx djlint@1.36.4
+        args: [--reformat]
+        language: system
+        files: \.html$
+
+      - id: sphinx-lint
+        name: RST lint (docs)
+        entry: uvx sphinx-lint@1.0.0
+        language: system
+        files: \.rst$
 
       - id: dco-signoff
         name: DCO sign-off
-        language: script
         entry: .git-hooks/commit-msg-dco.sh
+        language: script
         stages: [commit-msg]
 
-      - id: djlint
-        additional_dependencies:
-          - djlint
-        args: [--reformat]
-        entry: djlint
-        files: \.html$
-        language: python
-        name: Jinja template formatting (docs)
-
       - id: eslint
+        name: ESLint (frontend)
         additional_dependencies:
           - eslint
           - eslint-plugin-jsdoc
@@ -109,37 +104,28 @@ repos:
           bash -c 'cd frontend && npx eslint --no-warn-ignored --max-warnings 0 .'
         files: ^frontend/.*\.(ts|tsx)$
         language: node
-        name: ESLint (frontend)
         pass_filenames: false
 
       - id: npm-audit
+        name: npm audit (frontend)
         entry: bash -c 'cd frontend && npm audit --audit-level=moderate'
         files: ^frontend/package.*\.json$
         language: node
-        name: npm audit (frontend)
         pass_filenames: false
 
       - id: prettier
+        name: prettier
         additional_dependencies:
           - prettier
-        args: [--write]
         entry: npx prettier
+        args: [--write]
         files: \.(js|jsx|ts|tsx|css|json|md)$
         language: node
-        name: prettier
         types: [file]
 
-      - id: sphinx-lint
-        additional_dependencies:
-          - sphinx-lint
-        entry: sphinx-lint
-        files: \.rst$
-        language: python
-        name: RST lint (docs)
-
       - id: typecheck
+        name: TypeScript type check
         entry: bash -c 'cd frontend && npx tsc --noEmit'
         files: ^frontend/.*\.(ts|tsx)$
         language: node
-        name: TypeScript type check
         pass_filenames: false
