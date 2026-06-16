@@ -57,6 +57,9 @@ build-backend = "uv_build"
 module-name = "src"
 module-root = ""
 
+[tool.ruff]
+target-version = "py312"
+
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/rules/
 select = [
@@ -160,3 +163,7 @@ DEP004 = ["pytest", "django", "sphinx", "dj_database_url", "fakeredis", "rest_fr
 [tool.coverage.run]
 relative_files = true
 source = ["src"]
+
+[tool.djlint]
+reformat = true
+profile = "jinja"
