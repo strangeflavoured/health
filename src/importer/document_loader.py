@@ -8,14 +8,14 @@ produced by :func:`~src.importer.parser.parse_apple_health_routes` are
 schema.  They are stored as RedisJSON documents whose key prefixes match
 the indexes declared in :mod:`~src.redis_setup`:
 
-============  ====================  =================================
-Source        Redis key prefix      Index
-============  ====================  =================================
-workouts      ``workout:<uuid>``    ``idx:workouts``
-correlations  ``correlation:<n>``   ``idx:correlations``
-activities    ``activity:<date>``   ``idx:activities``
-routes        ``route:<workoutId>`` ``idx:routes``
-============  ====================  =================================
+=============  =======================  ==================================
+Source          Redis key prefix         Index
+=============  =======================  ==================================
+workouts        ``workout:<uuid>``       ``idx:workouts``
+correlations    ``correlation:<n>``      ``idx:correlations``
+activities      ``activity:<date>``      ``idx:activities``
+routes          ``route:<workoutId>``    ``idx:routes``
+=============  =======================  ==================================
 
 Shape contract
 --------------
