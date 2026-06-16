@@ -1,39 +1,34 @@
 # syntax=docker/dockerfile:1.24@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
-FROM python:3.12-slim-bookworm@sha256:76d4b7b6305788c6b4c6a19d6a22a3921bf802e9af4d5e1e5bd771208dba74bf AS base
+FROM ghcr.io/astral-sh/uv:0.11.21-python3.12-trixie-slim@sha256:54c1de8440cebd445b38c4b0cdbc733f1efffbced64c1da2c96a8f10453fcffa AS base
 
-# Install system dependencies
-RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
-    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' \
-      > /etc/apt/apt.conf.d/keep-cache
-
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get dist-upgrade --yes -V
-
-# create user
 RUN useradd --create-home --uid 1000 health
 USER health
-WORKDIR /home/health/
+WORKDIR /home/health
 
-# Install requirements
-COPY --chown=health:health ./tests/requirements.txt .
-COPY --chown=health:health ./pip-requirements.txt .
-ENV PATH="/home/health/.local/bin:$PATH"
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --user --require-hashes -r pip-requirements.txt && \
-    pip install --user --require-hashes -r requirements.txt
+ENV UV_CACHE_DIR=/home/health/.cache/uv \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_DOWNLOADS=never \
+    PYTHONUNBUFFERED=1 \
+    PATH="/home/health/.venv/bin:$PATH"
 
-COPY --chown=health:health ./pyproject.toml .
+# Dependency layer
+COPY --chown=health:health pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --group test --no-install-project
+
+# Project layer — venv is finalised here, so prune cache in the same RUN
+COPY --chown=health:health ./src ./src
+COPY --chown=health:health versions.json README.md ./
+RUN uv sync --locked --no-dev --group test --no-editable \
+    && rm -rf /home/health/.cache/uv
+
 
 FROM base AS src-test
-COPY --chown=health:health ./src ./src
-COPY --chown=health:health ./versions.json .
-COPY --chown=health:health ./tests .
-
-ENTRYPOINT ["python3", "-m", "pytest"]
+COPY --chown=health:health ./tests ./tests
+ENTRYPOINT ["uv", "run", "--frozen", "-m", "pytest"]
 CMD ["--cov=src", "--cov-report=term-missing:skip-covered", "--cov-fail-under=80"]
+
 
 FROM base AS scripts-test
 COPY --chown=health:health ./scripts ./scripts
-
-ENTRYPOINT ["python3", "-m", "pytest"]
+ENTRYPOINT ["uv", "run", "--frozen", "-m", "pytest"]
