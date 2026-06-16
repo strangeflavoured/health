@@ -43,21 +43,15 @@ jobs:
           cache: "pip"
           python-version: "3.12"
 
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
       - name: Cache .venv
         id: venv-cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           key: >-
-            venv-${{ runner.os }}-py3.12-${{
-            hashFiles(
-            'pip-requirements.txt',
-            'requirements-dev.txt',
-            'src/requirements.txt',
-            'backend/requirements/base.txt',
-            'backend/requirements/tests.txt',
-            'docs/requirements.txt'
-            ) }}
-          path: .venv
+            uv-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}
+          path: ~/.cache/uv
 
       - name: Cache pre-commit environments
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -66,23 +60,7 @@ jobs:
           path: ~/.cache/pre-commit
 
       - name: Install Requirements
-        run: |
-          pip install --require-hashes -r pip-requirements.txt
-          pip install --require-hashes -r requirements-dev.txt
-
-      - name: Create .venv with dev dependencies
-        if: steps.venv-cache.outputs.cache-hit != 'true'
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install --require-hashes -r pip-requirements.txt -q
-          .venv/bin/pip install \
-            --require-hashes \
-            -r src/requirements.txt \
-            -r requirements-dev.txt \
-            -r backend/requirements/base.txt \
-            -r backend/requirements/tests.txt \
-            -r docs/requirements.txt \
-            -q
+        run: uv sync --locked
 
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -100,7 +78,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          pre-commit run \
+          uv run pre-commit run \
             --from-ref  $BASE_SHA \
             --to-ref   $HEAD_SHA
 
@@ -111,7 +89,7 @@ jobs:
           BASE_SHA: ${{ github.event.before }}
           HEAD_SHA: ${{ github.event.after }}
         run: |
-          pre-commit run \
+          uv run pre-commit run \
             --from-ref  $BASE_SHA \
             --to-ref   $HEAD_SHA
 
@@ -122,8 +100,8 @@ jobs:
         run: |
           if [ "$ALL_FILES" == "true" ]; then
             echo "Running on all files..."
-            pre-commit run --all-files
+            uv run pre-commit run --all-files
           else
             echo "Running on HEAD diff only..."
-            pre-commit run --from-ref HEAD~1 --to-ref HEAD
+            uv run pre-commit run --from-ref HEAD~1 --to-ref HEAD
           fi
