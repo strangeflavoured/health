@@ -3,7 +3,13 @@
   "automerge": true,
   "automergeStrategy": "rebase",
   "automergeType": "pr",
-  "enabledManagers": ["npm", "github-actions", "dockerfile", "pre-commit"],
+  "enabledManagers": [
+    "npm",
+    "github-actions",
+    "dockerfile",
+    "pre-commit",
+    "pep621"
+  ],
   "extends": ["config:best-practices", ":enablePreCommit"],
   "ignoreUnstable": true,
   "labels": ["automated", "dependencies"],
@@ -89,6 +95,23 @@
     {
       "groupName": "pre-commit hooks",
       "matchManagers": ["pre-commit"],
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "addLabels": ["python"],
+      "matchManagers": ["pep621"],
+      "commitMessagePrefix": "Chore: uv:"
+    },
+    {
+      "groupName": "python dependencies",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "groupName": "python dev dependencies",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependency-groups"],
       "matchUpdateTypes": ["minor", "patch"]
     }
   ],
