@@ -5,8 +5,11 @@ services:
       - ./backend/apps:/home/health/apps:ro
       - ./backend/config:/home/health/config:ro
       - ./src:/home/health/src:ro
+      - ~/.cache/uv:/home/health/.cache/uv
   backend-test:
     image: health-backend:test
+    volumes:
+      - ~/.cache/uv:/home/health/.cache/uv
   docs-compiler:
     image: health-docs
     volumes:
