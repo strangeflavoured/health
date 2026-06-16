@@ -1,5 +1,0 @@
-redis>=7.4.0
-python-dotenv>=1.0.0
-
--r ./importer/requirements.in
--c ./importer/requirements.txt

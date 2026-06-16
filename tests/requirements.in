@@ -1,7 +1,0 @@
--r ../src/requirements.in
--c ../src/requirements.txt
-
-pytest>=9.0.3
-pytest-cov>=7.1.0
-coverage>=7.13.5
-parameterized>=0.9.0
