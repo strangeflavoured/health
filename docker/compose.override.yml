@@ -15,6 +15,7 @@ services:
     volumes:
       - ./docs/build:/home/health/docs/build
       - ./docs/source:/home/health/docs/source
+      - ~/.cache/uv:/home/health/.cache/uv
   frontend:
     image: health-frontend:dev
   frontend-test:
