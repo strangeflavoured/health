@@ -21,6 +21,7 @@ docs/source/react_autodoc
 data/
 output/
 secrets/
+dist/
 
 *.asc
 
