@@ -25,7 +25,7 @@ repos:
     rev: 0.25.1
     hooks:
       - id: deptry
-        entry: .venv/bin/deptry .
+        entry: uvx deptry .
         language: system
 
   - repo: https://github.com/jorisroovers/gitlint
