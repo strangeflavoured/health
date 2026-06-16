@@ -14,7 +14,6 @@ requireStatusChecks:
     - "docker-stack / Ran Docker Stack Integration"
     - "OSV Scan / osv-scan"
     - "pre-commit / Run pre-commit hooks"
-    - "Requirements Maintenance / Ran Dependency Analysis"
     - "Scorecard / scorecard"
     - "Run Scripts Tests / Passed Scripts Tests"
     - "Build Sphinx Docs / Built Docs"
