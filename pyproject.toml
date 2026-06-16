@@ -150,23 +150,12 @@ ignore_names = []
 ignore_decorators = []
 
 [tool.deptry]
-# pep621_dev_dependency_groups would be cleaner once pyproject declares them;
-requirements_files = [
-    "src/requirements.txt",
-    "src/importer/requirements.txt",
-    "backend/requirements/base.txt",
-    "backend/requirements/tests.txt",
-    "docs/requirements.txt",
-]
-requirements_files_dev = ["requirements-dev.txt"]
-extend_exclude = ["scripts"]
-known_first_party = ["importer"]
-# deptry can't handle current requirements structure and would flag deps
-# imported in requirements.txt with "-r some/requirements.txt" as transitive.
-ignore = ["DEP003"]
+known_first_party = ["importer", "src", "setup_logger"]
+package_module_name_map = { djangorestframework = "rest_framework" }
 
 [tool.deptry.per_rule_ignores]
 DEP002 = ["furo"]
+DEP004 = ["pytest", "django", "sphinx", "dj_database_url", "fakeredis", "rest_framework", "dotenv"]
 
 [tool.coverage.run]
 relative_files = true
