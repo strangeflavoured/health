@@ -1,9 +1,9 @@
 services:
-  backend:
+  backend: &backend_base
     build:
       context: .
       dockerfile: ./docker/Dockerfile.backend
-      target: dev
+      target: prod
     container_name: health-backend
     depends_on:
       redis:
@@ -30,6 +30,13 @@ services:
       - source: app.pem
       - source: app.key
       - source: app_password
+  backend-dev:
+    !!merge <<: *backend_base
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.backend
+      target: dev
+    container_name: health-backend-dev
   backend-test:
     build:
       context: .
@@ -49,11 +56,11 @@ services:
     restart: no
     volumes:
       - ./docs/build:/home/health/docs/build
-  frontend:
+  frontend: &frontend_base
     build:
       context: .
       dockerfile: ./docker/Dockerfile.frontend
-      target: dev
+      target: prod
     container_name: health-frontend
     depends_on:
       backend:
@@ -68,6 +75,13 @@ services:
     ports:
       - "5173:5173"
     restart: unless-stopped
+  frontend-dev:
+    !!merge <<: *frontend_base
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.frontend
+      target: dev
+    container_name: health-frontend-dev
   frontend-test:
     build:
       context: .
