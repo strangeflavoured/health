@@ -132,6 +132,14 @@ repos:
         language: node
         pass_filenames: false
 
+      - id: test-suite
+        name: test suite
+        entry: .git-hooks/test-hook.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
       - id: verify-signatures
         name: verify commit signatures
         entry: bash .git-hooks/verify-signatures.sh
