@@ -71,7 +71,7 @@ repos:
 
       - id: gitlint
         name: gitlint
-        entry: uvx gitlint@0.19.1
+        entry: uvx --from gitlint-core@0.19.1 gitlint
         language: system
         stages: [commit-msg]
         pass_filenames: false
