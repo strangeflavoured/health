@@ -1,5 +1,9 @@
 services:
   backend:
+    image: health-backend:prod
+    volumes:
+      - ~/.cache/uv:/home/health/.cache/uv
+  backend-dev:
     image: health-backend:dev
     volumes:
       - ./backend/apps:/home/health/apps:ro
@@ -17,6 +21,8 @@ services:
       - ./docs/source:/home/health/docs/source
       - ~/.cache/uv:/home/health/.cache/uv
   frontend:
+    image: health-frontend:prod
+  frontend-dev:
     image: health-frontend:dev
   frontend-test:
     image: health-frontend:test
