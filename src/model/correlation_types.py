@@ -14,18 +14,14 @@ grouping definitions.
 from types import MappingProxyType
 from typing import Any
 
-from .base import HK_GROUPS, HKCorrelationTypeIdentifier
+from .base import HKCorrelationTypeIdentifier, Nutrition, VitalSigns
 
 
-class HKCorrelationTypeIdentifierBloodPressure(
-    HKCorrelationTypeIdentifier, HK_GROUPS["VitalSigns"]
-):
+class HKCorrelationTypeIdentifierBloodPressure(HKCorrelationTypeIdentifier, VitalSigns):
     """A single blood-pressure reading: bundles systolic + diastolic records."""
 
 
-class HKCorrelationTypeIdentifierFood(
-    HKCorrelationTypeIdentifier, HK_GROUPS["Nutrition"]
-):
+class HKCorrelationTypeIdentifierFood(HKCorrelationTypeIdentifier, Nutrition):
     """A logged food item: bundles its nutritional component records.
 
     Deprecated by Apple in HealthKit but may still appear in older exports.

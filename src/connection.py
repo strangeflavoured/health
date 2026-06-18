@@ -1,5 +1,7 @@
 """Redis connection from inside container network."""
 
+from __future__ import annotations
+
 import logging
 import os
 import ssl as ssl_module
@@ -10,17 +12,17 @@ import redis
 logger = logging.getLogger(__name__)
 
 
-def docker_redis_connect(acl_user: str = "app") -> redis.Redis:
+def docker_redis_connect(acl_user: str = "app") -> redis.Redis[str]:
     """Connect to redis from inside sandbox container.
 
     Args:
         acl_user (str): Account to connect to, defaults to `app`.
 
     """
-    conn_args = {
-        "host": os.getenv("REDIS_HOST"),
-        "port": int(os.getenv("REDIS_PORT")),
-        "db": int(os.getenv("REDIS_DB")),
+    conn_args: dict[str, str | int | bool] = {
+        "host": os.environ["REDIS_HOST"],
+        "port": int(os.environ["REDIS_PORT"]),
+        "db": int(os.environ["REDIS_DB"]),
         "username": acl_user,
         "password": Path(f"/run/secrets/{acl_user}_password").read_text().strip(),
         "decode_responses": True,
@@ -38,8 +40,5 @@ def docker_redis_connect(acl_user: str = "app") -> redis.Redis:
     logger.info(
         f"Connecting to redis://{conn_args['username']}:***@{conn_args['host']}:{conn_args['port']}/{conn_args['db']}"
     )
-
-    return redis.Redis(
-        **conn_args,
-        **mtls_kwargs,
-    )
+    client: redis.Redis[str] = redis.Redis(**conn_args, **mtls_kwargs)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload, invalid-assignment]
+    return client

@@ -75,13 +75,20 @@ class TestToUnixSeconds:
     def test_pd_nat_returns_none(self):
         assert _to_unix_seconds(pd.NaT) is None
 
-    def test_boolean_is_not_treated_as_int(self):
+    def test_boolean_raises_type_error(self):
         # ``bool`` is a subclass of int but is not a sensible timestamp.
         # The function passes it through int-pass-through; this is a
         # behavioural test so a future refactor doesn't break the contract.
-        assert _to_unix_seconds(value=True) is None
-        assert _to_unix_seconds(value=False) is None
-        assert _to_unix_seconds(value=None) is None
+        match = (
+            "but expects one of str, int, float,"
+            " np.integer, pd.Timestamp, NaTType or None"
+        )
+        for boolean in [True, False]:
+            with pytest.raises(
+                TypeError,
+                match=match,
+            ):
+                _to_unix_seconds(value=boolean)
 
 
 # ---------------------------------------------------------------------------
@@ -223,11 +230,12 @@ class TestLoadWorkouts:
         ]
         failures = load_workouts(mock_redis, df)
         assert len(failures) == 1
+        assert isinstance(failures[0], BatchFailure)
         assert failures[0].batch_nr == -1
 
     def test_nested_event_timestamps_coerced(self, mock_redis):
         df = _make_workouts_df(n=1)
-        df.loc[0, "events"] = [
+        df.loc[0, "events"] = [  # type: ignore[ty:invalid-assignment]
             {"type": "Lap", "date": "2024-01-01 00:10:00 +0000", "duration": "60"}
         ]
         _setup_pipe_responses(mock_redis, 1)
@@ -316,6 +324,7 @@ class TestLoadCorrelations:
         mock_redis.pipeline.return_value.execute.side_effect = RedisError("x")
         failures = load_correlations(mock_redis, df)
         assert len(failures) == 1
+        assert isinstance(failures[0], BatchFailure)
         assert failures[0].batch_nr == -1
 
 
@@ -384,6 +393,7 @@ class TestLoadActivities:
         mock_redis.pipeline.return_value.execute.side_effect = RedisError("x")
         failures = load_activities(mock_redis, df)
         assert len(failures) == 1
+        assert isinstance(failures[0], BatchFailure)
         assert failures[0].batch_nr == -1
 
 
@@ -473,4 +483,5 @@ class TestLoadRoutes:
         mock_redis.pipeline.return_value.execute.side_effect = RedisError("x")
         failures = load_routes(mock_redis, df)
         assert len(failures) == 1
+        assert isinstance(failures[0], BatchFailure)
         assert failures[0].batch_nr == -1

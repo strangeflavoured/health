@@ -94,7 +94,7 @@ class TestHKGroups:
 
     def test_mapping_is_immutable(self):
         with pytest.raises(TypeError):
-            HK_GROUPS["NewGroup"] = object()  # type: ignore[index]
+            HK_GROUPS["NewGroup"] = object()  # type: ignore[ty:invalid-assignment]
 
     def test_get_members(self):
         expected = {
@@ -158,7 +158,7 @@ class TestRegistryCompleteness:
 
     def test_category_registry_is_immutable(self):
         with pytest.raises(TypeError):
-            HKCategoryTypeIdentifierRegistry["NewKey"] = None  # type: ignore[index]
+            HKCategoryTypeIdentifierRegistry["NewKey"] = None  # type: ignore[ty:invalid-assignment]
 
     def test_quantity_registry_keys_match_class_names(self):
         for k, _v in HKQuantityTypeIdentifierRegistry.items():
@@ -172,18 +172,13 @@ class TestRegistryCompleteness:
 
     def test_categorical_maps_is_immutable(self):
         with pytest.raises(TypeError):
-            CATEGORICAL_IDENTIFIER_MAPS["X"] = {}  # type: ignore[index]
+            CATEGORICAL_IDENTIFIER_MAPS["X"] = {}  # type: ignore[ty:invalid-assignment]
 
     def test_quantity_is_subclass_of_hk_identifier(self):
         assert issubclass(HKQuantityTypeIdentifier, HKIdentifier)
 
     def test_category_is_subclass_of_hk_identifier(self):
         assert issubclass(HKCategoryTypeIdentifier, HKIdentifier)
-
-    def test_category_values_on_bare_base_raises(self):
-        """HKCategoryTypeIdentifier.Values is not an Enum; iterating it must raise."""
-        with pytest.raises(TypeError):
-            HKCategoryTypeIdentifier.category_values()
 
 
 class TestGroupClasses:

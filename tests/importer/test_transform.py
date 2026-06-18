@@ -98,18 +98,18 @@ class TestDropNullValues:
 
 class TestTimestampsToUnix:
     def test_converts_to_int64(self):
-        series = pd.to_datetime(["2024-01-01T00:00:00+00:00"])
+        series = pd.Series(pd.to_datetime(["2024-01-01T00:00:00+00:00"]))
         result = _timestamps_to_unix(series)
         assert result.dtype == "int64"
 
     def test_known_timestamp(self):
-        series = pd.to_datetime(["2024-01-01T00:00:00+00:00"])
+        series = pd.Series(pd.to_datetime(["2024-01-01T00:00:00+00:00"]))
         result = _timestamps_to_unix(series)
         assert result[0] == 1_704_067_200
 
     def test_no_floating_point_rounding(self):
         """Floor division must produce exact integers, not float-rounded values."""
-        series = pd.to_datetime(["2024-01-01T00:00:00.999999999+00:00"])
+        series = pd.Series(pd.to_datetime(["2024-01-01T00:00:00.999999999+00:00"]))
         result = _timestamps_to_unix(series)
         assert result[0] == 1_704_067_200
 
@@ -123,7 +123,7 @@ class TestTimestampsToUnix:
         assert elapsed < 5.0
 
     def test_epoch_zero(self):
-        series = pd.to_datetime(["1970-01-01T00:00:00+00:00"])
+        series = pd.Series(pd.to_datetime(["1970-01-01T00:00:00+00:00"]))
         result = _timestamps_to_unix(series)
         assert result[0] == 0
 
@@ -326,7 +326,9 @@ class TestTransform:
 
     def test_pre_epoch_is_negative(self):
         """Dates before 1970-01-01 should produce a negative Unix timestamp."""
-        result = _timestamps_to_unix(pd.to_datetime(["1969-12-31T23:59:59+00:00"]))
+        result = _timestamps_to_unix(
+            pd.Series(pd.to_datetime(["1969-12-31T23:59:59+00:00"]))
+        )
         assert result[0] == -1
 
     def test_tz_naive_series_coerces_to_utc(self):

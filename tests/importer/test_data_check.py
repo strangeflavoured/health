@@ -227,13 +227,13 @@ class TestCheckMissingUnitsAreCategoricalIdentifiers:
         )
 
     def test_raises_when_quantity_type_has_null_unit(self) -> None:
-        df = _df(_quantity_row(unit=None))
+        df = _df(_quantity_row(unit=None))  # type: ignore[ty:invalid-argument-type]
         with pytest.raises(ValueError, match=QUANTITY_TYPE):
             _check_all_missing_units_are_categorical_identifiers(df)
 
     def test_error_lists_all_offending_types(self) -> None:
         df = _df(
-            _quantity_row(unit=None),
+            _quantity_row(unit=None),  # type: ignore[ty:invalid-argument-type]
             {"type": QUANTITY_TYPE, "value": "1.0", "unit": None},
         )
         with pytest.raises(ValueError, match=QUANTITY_TYPE):

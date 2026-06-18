@@ -190,7 +190,7 @@ _INDICES: list[IndexSpec] = [
 # ---------------------------------------------------------------------------
 
 
-def index_exists(client: redis.Redis, name: str) -> bool:
+def index_exists(client: redis.Redis[str], name: str) -> bool:
     """Return ``True`` if a RediSearch index with *name* exists.
 
     Uses ``FT.INFO`` as the existence probe.  Any
@@ -206,13 +206,13 @@ def index_exists(client: redis.Redis, name: str) -> bool:
 
     """
     try:
-        client.ft(name).info()
+        client.ft(name).info()  # type: ignore[no-untyped-call]
         return True
     except ResponseError:
         return False
 
 
-def drop_index(client: redis.Redis, name: str, *, dry_run: bool) -> None:
+def drop_index(client: redis.Redis[str], name: str, *, dry_run: bool) -> None:
     """Drop a RediSearch index by name.
 
     Documents stored under the index's prefix are **not** deleted; RediSearch
@@ -237,7 +237,7 @@ def drop_index(client: redis.Redis, name: str, *, dry_run: bool) -> None:
     logger.info("dropped               %s", name)
 
 
-def create_index(client: redis.Redis, spec: IndexSpec, *, dry_run: bool) -> None:
+def create_index(client: redis.Redis[str], spec: IndexSpec, *, dry_run: bool) -> None:
     """Create a RediSearch JSON index from an :class:`IndexSpec`.
 
     Issues ``FT.CREATE`` with ``ON JSON`` and the prefix and fields defined in
@@ -266,7 +266,7 @@ def create_index(client: redis.Redis, spec: IndexSpec, *, dry_run: bool) -> None
         return
     client.ft(spec.name).create_index(
         spec.fields,
-        definition=IndexDefinition(
+        definition=IndexDefinition(  # type: ignore[no-untyped-call]
             prefix=[spec.prefix],
             index_type=IndexType.JSON,
         ),
@@ -275,7 +275,7 @@ def create_index(client: redis.Redis, spec: IndexSpec, *, dry_run: bool) -> None
 
 
 def setup_indexes(
-    client: redis.Redis,
+    client: redis.Redis[str],
     *,
     dry_run: bool = False,
     force: bool = False,
@@ -318,7 +318,7 @@ def setup_indexes(
         create_index(client, spec, dry_run=dry_run)
 
 
-def print_status(client: redis.Redis) -> None:
+def print_status(client: redis.Redis[str]) -> None:
     """Log a human-readable status table for all known indexes.
 
     For each index in :data:`_INDICES`, emits one log line showing either the
@@ -338,7 +338,7 @@ def print_status(client: redis.Redis) -> None:
     logger.info("index status:")
     for spec in _INDICES:
         if index_exists(client, spec.name):
-            info = client.ft(spec.name).info()
+            info = client.ft(spec.name).info()  # type: ignore[no-untyped-call]
             doc_count = info.get("num_docs", "?")
             indexing = info.get("indexing", "0")
             status = "indexing…" if indexing == "1" else f"{doc_count} docs"
@@ -353,7 +353,7 @@ def print_status(client: redis.Redis) -> None:
 
 
 def upsert_ts_labels(
-    client: redis.Redis,
+    client: redis.Redis[str],
     key_labels: list[tuple[str, dict[str, str]]],
     *,
     dry_run: bool = False,
@@ -392,7 +392,7 @@ def upsert_ts_labels(
 
 
 def ensure_ts_key(
-    client: redis.Redis,
+    client: redis.Redis[str],
     key: str,
     labels: dict[str, str],
 ) -> None:
@@ -419,7 +419,7 @@ def ensure_ts_key(
 
     """
     try:
-        client.ts().info(key)
+        client.ts().info(key)  # type: ignore[no-untyped-call]
     except redis.ResponseError:
         client.ts().create(key, labels=labels)
 

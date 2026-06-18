@@ -37,7 +37,7 @@ class TestConfigureLogging:
         assert "my_script" in log_path
 
     def test_stem_used_as_log_name_prefix(self):
-        captured_filename = None
+        captured_filename: str = ""
 
         def capture_basic_config(**kwargs):
             nonlocal captured_filename
@@ -49,7 +49,7 @@ class TestConfigureLogging:
         assert "import_data" in captured_filename
 
     def test_timestamp_included_in_log_filename(self):
-        captured_filename = None
+        captured_filename: str = ""
 
         def capture_basic_config(**kwargs):
             nonlocal captured_filename
@@ -64,11 +64,11 @@ class TestConfigureLogging:
         assert re.search(r"\d{4}-\d{2}-\d{2}", captured_filename)
 
     def test_log_level_is_info(self):
-        captured_level = None
+        captured_level: str = ""
 
         def capture_basic_config(**kwargs):
             nonlocal captured_level
-            captured_level = kwargs.get("level")
+            captured_level = kwargs.get("level", "")
 
         with patch("logging.basicConfig", side_effect=capture_basic_config):
             setup_logger.configure_logging("s.py")
@@ -76,7 +76,7 @@ class TestConfigureLogging:
         assert captured_level == logging.INFO
 
     def test_format_contains_process_id_and_level(self):
-        captured_format = None
+        captured_format: str = ""
 
         def capture_basic_config(**kwargs):
             nonlocal captured_format

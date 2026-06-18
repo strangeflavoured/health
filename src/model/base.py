@@ -59,7 +59,7 @@ class HKCategoryTypeIdentifier(HKIdentifier):
     identifier_type = "category"
     unit = MissingUnit.CATEGORICAL.value
 
-    class Values:
+    class Values(Enum):
         """HK category identifier values :class:`Enum` template.
 
         Subclasses overwrite this class as Enum with their associated values.

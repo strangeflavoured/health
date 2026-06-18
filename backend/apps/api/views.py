@@ -18,7 +18,7 @@ from .connection import get_redis_client
 logger = logging.getLogger(__name__)
 
 
-@api_view(["GET"])
+@api_view(["GET"])  # type: ignore[untyped-decorator]
 def health(_request: Request) -> Response:
     """Check API and Redis connectivity.
 

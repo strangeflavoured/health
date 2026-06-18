@@ -5,6 +5,8 @@ singleton so the mTLS and ACL handshake happens once per process rather
 than on every request. Celery workers each get their own instance.
 """
 
+from __future__ import annotations
+
 import logging
 
 import redis
@@ -13,10 +15,10 @@ from src.connection import docker_redis_connect
 
 logger = logging.getLogger(__name__)
 
-_client: redis.Redis | None = None
+_client: redis.Redis[str] | None = None
 
 
-def get_redis_client() -> redis.Redis:
+def get_redis_client() -> redis.Redis[str]:
     """Return a shared Redis client, creating it on first call.
 
     Delegates to docker_redis_connect() from src/connection.py, which

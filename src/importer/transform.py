@@ -227,9 +227,9 @@ def _timestamps_to_unix(series: pd.Series) -> pd.Series:
         # unix_ts.dtype == int64
 
     """
-    dt = pd.to_datetime(series, utc=True)
+    dt: pd.Series[pd.Timestamp] = pd.to_datetime(series, utc=True)
 
-    ticks_per_second = _UNIT_PER_SECOND[dt.dtype.unit]
+    ticks_per_second = _UNIT_PER_SECOND[getattr(dt.dtype, "unit")]  # noqa: B009
 
     return (dt.astype("int64") // ticks_per_second).astype("int64")
 

@@ -14,12 +14,18 @@ from enum import Enum
 from types import MappingProxyType
 from typing import Any
 
-from .base import HK_GROUPS, HKCategoryTypeIdentifier
+from .base import (
+    Fitness,
+    Hearing,
+    HKCategoryTypeIdentifier,
+    Other,
+    ReproductiveHealth,
+    Symptoms,
+    VitalSigns,
+)
 
 
-class HKCategoryTypeIdentifierSleepAnalysis(
-    HKCategoryTypeIdentifier, HK_GROUPS["Fitness"]
-):
+class HKCategoryTypeIdentifierSleepAnalysis(HKCategoryTypeIdentifier, Fitness):
     class Values(Enum):
         HKCategoryValueSleepAnalysisInBed = 0
         HKCategoryValueSleepAnalysisAsleepUnspecified = 1
@@ -29,30 +35,24 @@ class HKCategoryTypeIdentifierSleepAnalysis(
         HKCategoryValueSleepAnalysisAsleepREM = 5
 
 
-class HKCategoryTypeIdentifierAppleStandHour(
-    HKCategoryTypeIdentifier, HK_GROUPS["Fitness"]
-):
+class HKCategoryTypeIdentifierAppleStandHour(HKCategoryTypeIdentifier, Fitness):
     class Values(Enum):
         HKCategoryValueAppleStandHourIdle = 0
         HKCategoryValueAppleStandHourStood = 1
 
 
-class HKCategoryTypeIdentifierMindfulSession(
-    HKCategoryTypeIdentifier, HK_GROUPS["Fitness"]
-):
+class HKCategoryTypeIdentifierMindfulSession(HKCategoryTypeIdentifier, Fitness):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
-class HKCategoryTypeIdentifierLowCardioFitnessEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["Fitness"]
-):
+class HKCategoryTypeIdentifierLowCardioFitnessEvent(HKCategoryTypeIdentifier, Fitness):
     class Values(Enum):
         HKCategoryValueLowCardioFitnessEventLowFitness = 0
 
 
 class HKCategoryTypeIdentifierAppleWalkingSteadinessEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["Fitness"]
+    HKCategoryTypeIdentifier, Fitness
 ):
     class Values(Enum):
         HKCategoryValueAppleWalkingSteadinessEventInitialLow = 0
@@ -62,7 +62,7 @@ class HKCategoryTypeIdentifierAppleWalkingSteadinessEvent(
 
 
 class HKCategoryTypeIdentifierMenstrualFlow(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueMenstrualFlowUnspecified = 0
@@ -73,63 +73,63 @@ class HKCategoryTypeIdentifierMenstrualFlow(
 
 
 class HKCategoryTypeIdentifierIntermenstrualBleeding(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
 class HKCategoryTypeIdentifierInfrequentMenstrualCycles(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
 class HKCategoryTypeIdentifierIrregularMenstrualCycles(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
 class HKCategoryTypeIdentifierPersistentIntermenstrualBleeding(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
 class HKCategoryTypeIdentifierProlongedMenstrualPeriods(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
 class HKCategoryTypeIdentifierBleedingAfterPregnancy(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
 class HKCategoryTypeIdentifierBleedingDuringPregnancy(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
 class HKCategoryTypeIdentifierSexualActivity(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
 class HKCategoryTypeIdentifierOvulationTestResult(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueOvulationTestResultNegative = 0
@@ -139,7 +139,7 @@ class HKCategoryTypeIdentifierOvulationTestResult(
 
 
 class HKCategoryTypeIdentifierCervicalMucusQuality(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueCervicalMucusQualityDry = 0
@@ -149,22 +149,18 @@ class HKCategoryTypeIdentifierCervicalMucusQuality(
         HKCategoryValueCervicalMucusQualityEggWhite = 4
 
 
-class HKCategoryTypeIdentifierPregnancy(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
-):
+class HKCategoryTypeIdentifierPregnancy(HKCategoryTypeIdentifier, ReproductiveHealth):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
-class HKCategoryTypeIdentifierLactation(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
-):
+class HKCategoryTypeIdentifierLactation(HKCategoryTypeIdentifier, ReproductiveHealth):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
 class HKCategoryTypeIdentifierContraceptive(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueContraceptiveUnspecified = 0
@@ -177,7 +173,7 @@ class HKCategoryTypeIdentifierContraceptive(
 
 
 class HKCategoryTypeIdentifierPregnancyTestResult(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValuePregnancyTestResultNegative = 0
@@ -186,7 +182,7 @@ class HKCategoryTypeIdentifierPregnancyTestResult(
 
 
 class HKCategoryTypeIdentifierProgesteroneTestResult(
-    HKCategoryTypeIdentifier, HK_GROUPS["ReproductiveHealth"]
+    HKCategoryTypeIdentifier, ReproductiveHealth
 ):
     class Values(Enum):
         HKCategoryValueProgesteroneTestResultNegative = 0
@@ -194,65 +190,53 @@ class HKCategoryTypeIdentifierProgesteroneTestResult(
         HKCategoryValueProgesteroneTestResultIndeterminate = 2
 
 
-class HKCategoryTypeIdentifierAudioExposureEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["Hearing"]
-):
+class HKCategoryTypeIdentifierAudioExposureEvent(HKCategoryTypeIdentifier, Hearing):
     class Values(Enum):
         HKCategoryValueAudioExposureEventLoudEnvironment = 0
 
 
 class HKCategoryTypeIdentifierEnvironmentalAudioExposureEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["Hearing"]
+    HKCategoryTypeIdentifier, Hearing
 ):
     class Values(Enum):
         HKCategoryValueEnvironmentalAudioExposureEventMomentaryLimit = 0
 
 
 class HKCategoryTypeIdentifierHeadphoneAudioExposureEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["Hearing"]
+    HKCategoryTypeIdentifier, Hearing
 ):
     class Values(Enum):
         HKCategoryValueHeadphoneAudioExposureEventSevenDayLimit = 0
 
 
-class HKCategoryTypeIdentifierHighHeartRateEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["VitalSigns"]
-):
+class HKCategoryTypeIdentifierHighHeartRateEvent(HKCategoryTypeIdentifier, VitalSigns):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
-class HKCategoryTypeIdentifierLowHeartRateEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["VitalSigns"]
-):
+class HKCategoryTypeIdentifierLowHeartRateEvent(HKCategoryTypeIdentifier, VitalSigns):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
 class HKCategoryTypeIdentifierIrregularHeartRhythmEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["VitalSigns"]
+    HKCategoryTypeIdentifier, VitalSigns
 ):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
-class HKCategoryTypeIdentifierSleepApneaEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["VitalSigns"]
-):
+class HKCategoryTypeIdentifierSleepApneaEvent(HKCategoryTypeIdentifier, VitalSigns):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
-class HKCategoryTypeIdentifierHypertensionEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["VitalSigns"]
-):
+class HKCategoryTypeIdentifierHypertensionEvent(HKCategoryTypeIdentifier, VitalSigns):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
-class HKCategoryTypeIdentifierAbdominalCramps(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierAbdominalCramps(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -261,7 +245,7 @@ class HKCategoryTypeIdentifierAbdominalCramps(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierAcne(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierAcne(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -270,9 +254,7 @@ class HKCategoryTypeIdentifierAcne(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierAppetiteChanges(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierAppetiteChanges(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueAppetiteChangesUnspecified = 0
         HKCategoryValueAppetiteChangesNoChange = 1
@@ -280,9 +262,7 @@ class HKCategoryTypeIdentifierAppetiteChanges(
         HKCategoryValueAppetiteChangesIncreased = 3
 
 
-class HKCategoryTypeIdentifierBladderIncontinence(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierBladderIncontinence(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -291,7 +271,7 @@ class HKCategoryTypeIdentifierBladderIncontinence(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierBloating(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierBloating(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -300,9 +280,7 @@ class HKCategoryTypeIdentifierBloating(HKCategoryTypeIdentifier, HK_GROUPS["Symp
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierBreastPain(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierBreastPain(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -311,9 +289,7 @@ class HKCategoryTypeIdentifierBreastPain(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierChestTightnessOrPain(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierChestTightnessOrPain(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -322,7 +298,7 @@ class HKCategoryTypeIdentifierChestTightnessOrPain(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierChills(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierChills(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -331,9 +307,7 @@ class HKCategoryTypeIdentifierChills(HKCategoryTypeIdentifier, HK_GROUPS["Sympto
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierConstipation(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierConstipation(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -342,7 +316,7 @@ class HKCategoryTypeIdentifierConstipation(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierCoughing(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierCoughing(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -351,7 +325,7 @@ class HKCategoryTypeIdentifierCoughing(HKCategoryTypeIdentifier, HK_GROUPS["Symp
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierDiarrhea(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierDiarrhea(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -360,9 +334,7 @@ class HKCategoryTypeIdentifierDiarrhea(HKCategoryTypeIdentifier, HK_GROUPS["Symp
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierDizziness(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierDizziness(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -371,7 +343,7 @@ class HKCategoryTypeIdentifierDizziness(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierDrySkin(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierDrySkin(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -380,7 +352,7 @@ class HKCategoryTypeIdentifierDrySkin(HKCategoryTypeIdentifier, HK_GROUPS["Sympt
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierFainting(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierFainting(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -389,7 +361,7 @@ class HKCategoryTypeIdentifierFainting(HKCategoryTypeIdentifier, HK_GROUPS["Symp
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierFatigue(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierFatigue(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -398,7 +370,7 @@ class HKCategoryTypeIdentifierFatigue(HKCategoryTypeIdentifier, HK_GROUPS["Sympt
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierFever(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierFever(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -407,9 +379,7 @@ class HKCategoryTypeIdentifierFever(HKCategoryTypeIdentifier, HK_GROUPS["Symptom
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierGeneralizedBodyAche(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierGeneralizedBodyAche(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -418,7 +388,7 @@ class HKCategoryTypeIdentifierGeneralizedBodyAche(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierHairLoss(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierHairLoss(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -427,7 +397,7 @@ class HKCategoryTypeIdentifierHairLoss(HKCategoryTypeIdentifier, HK_GROUPS["Symp
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierHeadache(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierHeadache(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -436,9 +406,7 @@ class HKCategoryTypeIdentifierHeadache(HKCategoryTypeIdentifier, HK_GROUPS["Symp
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierHeartburn(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierHeartburn(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -447,9 +415,7 @@ class HKCategoryTypeIdentifierHeartburn(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierHotFlashes(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierHotFlashes(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -458,9 +424,7 @@ class HKCategoryTypeIdentifierHotFlashes(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierLossOfSmell(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierLossOfSmell(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -469,9 +433,7 @@ class HKCategoryTypeIdentifierLossOfSmell(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierLossOfTaste(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierLossOfTaste(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -480,9 +442,7 @@ class HKCategoryTypeIdentifierLossOfTaste(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierLowerBackPain(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierLowerBackPain(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -491,9 +451,7 @@ class HKCategoryTypeIdentifierLowerBackPain(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierMemoryLapse(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierMemoryLapse(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -502,15 +460,13 @@ class HKCategoryTypeIdentifierMemoryLapse(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierMoodChanges(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierMoodChanges(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValuePresencePresent = 0
         HKCategoryValuePresenceNotPresent = 1
 
 
-class HKCategoryTypeIdentifierNausea(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierNausea(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -519,9 +475,7 @@ class HKCategoryTypeIdentifierNausea(HKCategoryTypeIdentifier, HK_GROUPS["Sympto
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierNightSweats(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierNightSweats(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -530,9 +484,7 @@ class HKCategoryTypeIdentifierNightSweats(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierPelvicPain(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierPelvicPain(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -542,7 +494,7 @@ class HKCategoryTypeIdentifierPelvicPain(
 
 
 class HKCategoryTypeIdentifierRapidPoundingOrFlutteringHeartbeat(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
+    HKCategoryTypeIdentifier, Symptoms
 ):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
@@ -552,9 +504,7 @@ class HKCategoryTypeIdentifierRapidPoundingOrFlutteringHeartbeat(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierRunnyNose(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierRunnyNose(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -563,9 +513,7 @@ class HKCategoryTypeIdentifierRunnyNose(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierShortnessOfBreath(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierShortnessOfBreath(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -574,9 +522,7 @@ class HKCategoryTypeIdentifierShortnessOfBreath(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierSinusCongestion(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierSinusCongestion(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -585,9 +531,7 @@ class HKCategoryTypeIdentifierSinusCongestion(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierSkippedHeartbeat(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierSkippedHeartbeat(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -596,17 +540,13 @@ class HKCategoryTypeIdentifierSkippedHeartbeat(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierSleepChanges(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierSleepChanges(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValuePresencePresent = 0
         HKCategoryValuePresenceNotPresent = 1
 
 
-class HKCategoryTypeIdentifierSoreThroat(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierSoreThroat(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -615,9 +555,7 @@ class HKCategoryTypeIdentifierSoreThroat(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierVaginalDryness(
-    HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]
-):
+class HKCategoryTypeIdentifierVaginalDryness(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -626,7 +564,7 @@ class HKCategoryTypeIdentifierVaginalDryness(
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierVomiting(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierVomiting(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -635,7 +573,7 @@ class HKCategoryTypeIdentifierVomiting(HKCategoryTypeIdentifier, HK_GROUPS["Symp
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierWheezing(HKCategoryTypeIdentifier, HK_GROUPS["Symptoms"]):
+class HKCategoryTypeIdentifierWheezing(HKCategoryTypeIdentifier, Symptoms):
     class Values(Enum):
         HKCategoryValueSeverityUnspecified = 0
         HKCategoryValueSeverityNotPresent = 1
@@ -644,16 +582,12 @@ class HKCategoryTypeIdentifierWheezing(HKCategoryTypeIdentifier, HK_GROUPS["Symp
         HKCategoryValueSeveritySevere = 4
 
 
-class HKCategoryTypeIdentifierToothbrushingEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["Other"]
-):
+class HKCategoryTypeIdentifierToothbrushingEvent(HKCategoryTypeIdentifier, Other):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
 
-class HKCategoryTypeIdentifierHandwashingEvent(
-    HKCategoryTypeIdentifier, HK_GROUPS["Other"]
-):
+class HKCategoryTypeIdentifierHandwashingEvent(HKCategoryTypeIdentifier, Other):
     class Values(Enum):
         HKCategoryValueNotApplicable = 0
 
