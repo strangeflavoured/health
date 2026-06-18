@@ -212,10 +212,28 @@ def parse_apple_health(
 
     """
     # Per-column lists for records — avoids list-of-dicts intermediate.
-    record_cols: dict[str, list] = {col: [] for col in _RECORD_COLUMNS}
-    correlation_rows: list[dict] = []
-    workout_rows: list[dict] = []
-    activity_rows: list[dict] = []
+    record_cols: dict[str, list[str]] = {col: [] for col in _RECORD_COLUMNS}
+    correlation_rows: list[
+        dict[str, str | dict[str, str | None] | list[dict[str, str | None]] | None]
+    ] = []
+    workout_rows: list[
+        dict[
+            str,
+            str
+            | None
+            | list[
+                dict[
+                    str,
+                    str | dict[str, str | None] | list[dict[str, str | None]] | None,
+                ]
+            ]
+            | list[dict[str, str | None]]
+            | dict[str, str | None]
+            | list[dict[str, str | list[str] | dict[str, str | None] | None]]
+            | list[dict[str, str | None]],
+        ]
+    ] = []
+    activity_rows: list[dict[str, str | None]] = []
     unknown_counts: Counter[str] = Counter()
 
     with (
@@ -246,16 +264,20 @@ def parse_apple_health(
                         record_cols[col].append(attrib.get(col))
 
                 case "Correlation":
-                    corr = {col: elem.attrib.get(col) for col in _CORRELATION_COLUMNS}
-
-                    meta = {}
-                    records = []
+                    corr: dict[
+                        str,
+                        str
+                        | dict[str, str | None]
+                        | list[dict[str, str | None]]
+                        | None,
+                    ] = {col: elem.attrib.get(col) for col in _CORRELATION_COLUMNS}
+                    meta_co: dict[str, str | None] = {}
+                    records: list[dict[str, str | None]] = []
                     for child in elem:
                         match child.tag:
                             case "MetadataEntry":
-                                meta[child.attrib.get("key")] = child.attrib.get(
-                                    "value"
-                                )
+                                if c := child.attrib.get("key"):
+                                    meta_co[c] = child.attrib.get("value")
                             case "Record":
                                 records.append(
                                     {
@@ -268,53 +290,87 @@ def parse_apple_health(
                                     f"{elem.tag} child {child.tag} is not implemented."  # noqa: E501
                                 )
 
-                    corr["meta"] = meta
+                    corr["meta"] = meta_co
                     corr["records"] = records
                     correlation_rows.append(corr)
                     correlation = False
 
                 case "Workout":
-                    workout = {col: elem.attrib.get(col) for col in _WORKOUT_COLUMNS}
+                    workout: dict[
+                        str,
+                        str
+                        | None
+                        | list[
+                            dict[
+                                str,
+                                str
+                                | dict[str, str | None]
+                                | list[dict[str, str | None]]
+                                | None,
+                            ]
+                        ]
+                        | list[dict[str, str | None]]
+                        | dict[str, str | None]
+                        | list[
+                            dict[str, str | list[str] | dict[str, str | None] | None]
+                        ]
+                        | list[dict[str, str | None]],
+                    ] = {col: elem.attrib.get(col) for col in _WORKOUT_COLUMNS}
 
-                    activities = []
-                    events = []
-                    meta = {}
-                    route = None
-                    stats = []
+                    activities: list[
+                        dict[
+                            str,
+                            str
+                            | dict[str, str | None]
+                            | list[dict[str, str | None]]
+                            | None,
+                        ]
+                    ] = []
+                    events: list[dict[str, str | None]] = []
+                    meta_wo: dict[str, str | None] = {}
+                    route: list[
+                        dict[str, str | list[str] | dict[str, str | None] | None]
+                    ] = []
+                    stats: list[dict[str, str | None]] = []
                     for child in elem:
                         match child.tag:
                             case "WorkoutActivity":
-                                activity = {
+                                activity: dict[
+                                    str,
+                                    str
+                                    | dict[str, str | None]
+                                    | list[dict[str, str | None]]
+                                    | None,
+                                ] = {
                                     col: child.attrib.get(col)
                                     for col in _WORKOUT_ACTIVITY_KEYS
                                 }
 
-                                e = []
-                                m = {}
-                                s = []
+                                e_wo: list[dict[str, str | None]] = []
+                                m_wo: dict[str, str | None] = {}
+                                s_wo: list[dict[str, str | None]] = []
                                 for c in child:
                                     match c.tag:
                                         case "WorkoutEvent":
-                                            _e = {
+                                            _e: dict[str, str | None] = {
                                                 col: c.attrib.get(col)
                                                 for col in _WORKOUT_EVENT_KEYS
                                             }
                                             for _c in c:
-                                                if _c.tag == "MetadataEntry":
-                                                    _e[_c.attrib.get("key")] = (
-                                                        _c.attrib.get("value")
-                                                    )
+                                                if _c.tag == "MetadataEntry" and (
+                                                    _k := _c.attrib.get("key")
+                                                ):
+                                                    _e[_k] = _c.attrib.get("value")
                                                 else:
                                                     raise NotImplementedError(
                                                         f"{c.tag} child {_c.tag} is not implemented."  # noqa: E501
                                                     )
-                                            e.append(_e)
+                                            e_wo.append(_e)
                                         case "MetadataEntry":
-                                            m[c.attrib.get("key")] = c.attrib.get(
-                                                "value"
-                                            )
+                                            if k := c.attrib.get("key"):
+                                                m_wo[k] = c.attrib.get("value")
                                         case "WorkoutStatistics":
-                                            s.append(
+                                            s_wo.append(
                                                 {
                                                     col: c.attrib.get(col)
                                                     for col in _WORKOUT_STATISTICS_KEYS  # noqa: E501
@@ -325,52 +381,56 @@ def parse_apple_health(
                                                 f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
                                             )
 
-                                activity["meta"] = m
-                                activity["statistics"] = s
-                                activity["events"] = e
+                                activity["meta"] = m_wo
+                                activity["statistics"] = s_wo
+                                activity["events"] = e_wo
                                 activities.append(activity)
 
                             case "WorkoutEvent":
-                                e = {
+                                we: dict[str, str | None] = {
                                     col: child.attrib.get(col)
                                     for col in _WORKOUT_EVENT_KEYS
                                 }
                                 for c in child:
-                                    if c.tag == "MetadataEntry":
-                                        e[c.attrib.get("key")] = c.attrib.get("value")
+                                    if c.tag == "MetadataEntry" and (
+                                        k := c.attrib.get("key")
+                                    ):
+                                        we[k] = c.attrib.get("value")
                                     else:
                                         raise NotImplementedError(
                                             f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
                                         )
-                                events.append(e)
+                                events.append(we)
 
                             case "MetadataEntry":
-                                meta[child.attrib.get("key")] = child.attrib.get(
-                                    "value"
-                                )
+                                if k := child.attrib.get("key"):
+                                    meta_wo[k] = child.attrib.get("value")
 
                             case "WorkoutRoute":
-                                route = {
+                                r: dict[
+                                    str, str | list[str] | dict[str, str | None] | None
+                                ] = {
                                     col: child.attrib.get(col)
                                     for col in _WORKOUT_ROUTE_KEYS
                                 }
 
-                                files = []
-                                m = {}
+                                files: list[str] = []
+                                m_wr: dict[str, str | None] = {}
                                 for c in child:
                                     match c.tag:
                                         case "FileReference":
-                                            files.append(c.attrib.get("path"))
+                                            if p := c.attrib.get("path"):
+                                                files.append(p)
                                         case "MetadataEntry":
-                                            m[c.attrib.get("key")] = c.attrib.get(
-                                                "value"
-                                            )
+                                            if k := c.attrib.get("key"):
+                                                m_wr[k] = c.attrib.get("value")
                                         case _:
                                             raise NotImplementedError(
                                                 f"{child.tag} child {c.tag} is not implemented."  # noqa: E501
                                             )
-                                route["files"] = files
-                                route["meta"] = m
+                                r["files"] = files
+                                r["meta"] = m_wr
+                                route.append(r)
 
                             case "WorkoutStatistics":
                                 stats.append(
@@ -385,7 +445,7 @@ def parse_apple_health(
                                     f"{elem.tag} child {child.tag} is not implemented."  # noqa: E501
                                 )
 
-                    workout["meta"] = meta
+                    workout["meta"] = meta_wo
                     workout["events"] = events
                     workout["statistics"] = stats
                     workout["route"] = route

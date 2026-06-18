@@ -42,15 +42,19 @@ plumbing while remaining distinguishable from time-series batches.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 import redis
 from pandas.api.typing import NaTType
+from pandas.core.tools.datetimes import DatetimeScalar
 from redis.exceptions import RedisError
 
 from .response import BatchFailure, UploadFailure
+
+if TYPE_CHECKING:
+    from pandas.core.frame import PandasNamedTuple
 
 logger = logging.getLogger(__name__)
 
@@ -96,17 +100,27 @@ def _to_unix_seconds(
     """
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
-    # int-like → already Unix seconds; do not re-parse.
-    if isinstance(value, (int,)) and not isinstance(value, bool):
+
+    if (
+        isinstance(value, (int,))
+        and not isinstance(value, bool)
+        or isinstance(value, np.integer)
+    ):
         return int(value)
-    # numpy integer types
-    if hasattr(value, "dtype") and getattr(value.dtype, "kind", None) == "i":
-        return int(value)
-    ts = pd.to_datetime(value, utc=True, errors="coerce")
-    if pd.isna(ts):
-        return None
-    # ts.value is always nanoseconds since epoch on pandas Timestamp.
-    return int(ts.value // 1_000_000_000)
+
+    if isinstance(value, DatetimeScalar):
+        ts = pd.to_datetime(value, utc=True, errors="coerce")
+
+        if pd.isna(ts):
+            return None
+        # ts.value is always nanoseconds since epoch on pandas Timestamp.
+        return int(ts.value // 1_000_000_000)
+    else:
+        raise TypeError(
+            "_to_unix_seconds got %s but expects one of "
+            "str, int, float, np.integer, pd.Timestamp, NaTType or None",
+            type(value),
+        )
 
 
 def _coerce_timestamps(d: dict[str, Any], fields: tuple[str, ...] = _TS_FIELDS) -> None:
@@ -140,6 +154,7 @@ def _row_to_dict(row: pd.Series) -> dict[str, Any]:
     """
     out: dict[str, Any] = {}
     for k, v in row.items():
+        k = str(k) if not isinstance(k, str) else k
         if isinstance(v, float) and pd.isna(v) or v is pd.NaT:
             out[k] = None
         else:
@@ -148,7 +163,7 @@ def _row_to_dict(row: pd.Series) -> dict[str, Any]:
 
 
 def _execute_pipeline(
-    pipe: redis.client.Pipeline,
+    pipe: redis.client.Pipeline[str],
     keys: list[str],
     prefix: str,
 ) -> list[UploadFailure]:
@@ -185,7 +200,7 @@ def _execute_pipeline(
 # ---------------------------------------------------------------------------
 
 
-def load_workouts(r: redis.Redis, df: pd.DataFrame) -> list[UploadFailure]:
+def load_workouts(r: redis.Redis[str], df: pd.DataFrame) -> list[UploadFailure]:
     """Upload workouts as ``workout:<uuid>`` JSON documents.
 
     Each workout row becomes a single JSON document.  Nested
@@ -217,8 +232,9 @@ def load_workouts(r: redis.Redis, df: pd.DataFrame) -> list[UploadFailure]:
     pipe = r.pipeline()
     keys: list[str] = []
 
+    row: PandasNamedTuple
     for i, row in enumerate(df.itertuples(index=False), start=1):
-        doc = _row_to_dict(pd.Series(row._asdict()))
+        doc = _row_to_dict(pd.Series(row._asdict()))  # type: ignore[operator]  # ty: ignore[call-non-callable]
         _coerce_timestamps(doc)
         # Coerce nested event/activity timestamps as well.
         for ev in doc.get("events") or []:
@@ -250,7 +266,7 @@ def load_workouts(r: redis.Redis, df: pd.DataFrame) -> list[UploadFailure]:
     return failures
 
 
-def load_correlations(r: redis.Redis, df: pd.DataFrame) -> list[UploadFailure]:
+def load_correlations(r: redis.Redis[str], df: pd.DataFrame) -> list[UploadFailure]:
     """Upload correlations as ``correlation:<n>`` JSON documents.
 
     Each correlation bundles 2+ Record children (e.g. systolic + diastolic
@@ -274,8 +290,9 @@ def load_correlations(r: redis.Redis, df: pd.DataFrame) -> list[UploadFailure]:
     pipe = r.pipeline()
     keys: list[str] = []
 
+    row: PandasNamedTuple
     for i, row in enumerate(df.itertuples(index=False), start=1):
-        doc = _row_to_dict(pd.Series(row._asdict()))
+        doc = _row_to_dict(pd.Series(row._asdict()))  # type: ignore[operator]  # ty: ignore[call-non-callable]
         _coerce_timestamps(doc)
         for rec in doc.get("records") or []:
             _coerce_timestamps(rec)
@@ -295,7 +312,7 @@ def load_correlations(r: redis.Redis, df: pd.DataFrame) -> list[UploadFailure]:
     return failures
 
 
-def load_activities(r: redis.Redis, df: pd.DataFrame) -> list[UploadFailure]:
+def load_activities(r: redis.Redis[str], df: pd.DataFrame) -> list[UploadFailure]:
     """Upload activity summaries as ``activity:<date>`` JSON documents.
 
     Numeric attributes are coerced from string to ``float`` so the
@@ -320,8 +337,9 @@ def load_activities(r: redis.Redis, df: pd.DataFrame) -> list[UploadFailure]:
     pipe = r.pipeline()
     keys: list[str] = []
 
+    row: PandasNamedTuple
     for i, row in enumerate(df.itertuples(index=False), start=1):
-        doc = _row_to_dict(pd.Series(row._asdict()))
+        doc = _row_to_dict(pd.Series(row._asdict()))  # type: ignore[operator]  # ty: ignore[call-non-callable]
 
         for f in _NUMERIC_ACTIVITY_FIELDS:
             if doc.get(f) is not None:
@@ -347,7 +365,7 @@ def load_activities(r: redis.Redis, df: pd.DataFrame) -> list[UploadFailure]:
     return failures
 
 
-def load_routes(r: redis.Redis, routes_df: pd.DataFrame) -> list[UploadFailure]:
+def load_routes(r: redis.Redis[str], routes_df: pd.DataFrame) -> list[UploadFailure]:
     """Upload route GPX trackpoints as ``route:<gpx-filename>`` JSON documents.
 
     Each GPX file (one per workout) is collapsed into a single document
@@ -407,6 +425,7 @@ def load_routes(r: redis.Redis, routes_df: pd.DataFrame) -> list[UploadFailure]:
 
     grouped = routes_df.groupby("file", sort=False)
     for i, (file_path, group) in enumerate(grouped, start=1):
+        file_path = str(file_path) if not isinstance(file_path, str) else file_path
         # Drop the redundant ``file`` column from each point.
         point_cols = [c for c in group.columns if c != "file"]
         points = group[point_cols].to_dict(orient="records")

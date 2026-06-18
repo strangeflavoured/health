@@ -34,7 +34,7 @@ class TestRegistry:
 
     def test_registry_is_immutable(self):
         with pytest.raises(TypeError):
-            HKQuantityTypeIdentifierRegistry["NewKey"] = None  # type: ignore[index]
+            HKQuantityTypeIdentifierRegistry["NewKey"] = None  # type: ignore[ty:invalid-assignment]
 
     def test_all_keys_start_with_correct_prefix(self):
         for k in HKQuantityTypeIdentifierRegistry:

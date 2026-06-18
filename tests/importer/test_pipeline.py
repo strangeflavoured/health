@@ -160,12 +160,16 @@ class TestResolveFailures:
     def test_start_error_string_matches_response_error_message(self):
         err = ResponseError("TSDB: Duplicate sample")
         failures = _resolve_failures([err, 101], _make_df(1))
-        assert "TSDB: Duplicate sample" in failures[0].start_error
+        start_error = failures[0].start_error
+        assert isinstance(start_error, str)
+        assert "TSDB: Duplicate sample" in start_error
 
     def test_end_error_string_matches_response_error_message(self):
         err = ResponseError("TSDB: Duplicate sample")
         failures = _resolve_failures([100, err], _make_df(1))
-        assert "TSDB: Duplicate sample" in failures[0].end_error
+        end_error = failures[0].end_error
+        assert isinstance(end_error, str)
+        assert "TSDB: Duplicate sample" in end_error
 
 
 # ---------------------------------------------------------------------------

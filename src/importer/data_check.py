@@ -12,7 +12,9 @@ Typical usage::
 """
 
 import logging
+from collections.abc import Iterable
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -21,6 +23,9 @@ from ..model import (
     HKMiscTypeIdentifierRegistry,
     HKQuantityTypeIdentifierRegistry,
 )
+
+if TYPE_CHECKING:
+    from pandas.core.frame import PandasNamedTuple
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +133,9 @@ def _check_all_string_values_are_categorical_identifiers(df: pd.DataFrame) -> No
         bad_types = set(non_numeric_types[~is_category])
         bad_rows = df[is_non_numeric & df["type"].isin(bad_types)]
         bad_values: dict[str, list[str]] = {
-            row.Index: list(row.unique)
+            str(row.Index): [str(r) for r in row.unique]
+            if isinstance(row.unique, Iterable)
+            else [str(row.unique)]
             for row in bad_rows.groupby("type")["value"].agg(["unique"]).itertuples()
         }
         raise DataSanityError(
@@ -176,22 +183,26 @@ def _check_category_values_exist(df: pd.DataFrame) -> None:
     categorical_df = df[df["type"].isin(_CATEGORY_TYPES)]
     unknown: dict[str, list[str]] = {}
 
-    for row in categorical_df.groupby("type")["value"].agg(["unique"]).itertuples():
+    row: PandasNamedTuple
+    iterator = categorical_df.groupby("type")["value"].agg(["unique"]).itertuples()
+    for row in iterator:
+        row_index = getattr(row, "Index")  # noqa: B009
+        row_unique = getattr(row, "unique")  # noqa: B009
         known_values: set[str] = set(
-            HKCategoryTypeIdentifierRegistry[row.Index].category_values().keys()
+            HKCategoryTypeIdentifierRegistry[row_index].category_values().keys()
         )
-        bad_mask = ~pd.Index(row.unique).isin(known_values)
+        bad_mask = ~pd.Index(row_unique).isin(known_values)
         if bad_mask.any():
-            bad_values = row.unique[bad_mask]
+            bad_values = row_unique[bad_mask]
 
             # skip handled issues
-            if KNOWN_CATEGORY_TYPE_VIOLATIONS.get(row.Index, None):
+            if KNOWN_CATEGORY_TYPE_VIOLATIONS.get(row_index, None):
                 bad_values = set(bad_values).difference(
-                    KNOWN_CATEGORY_TYPE_VIOLATIONS[row.Index][0]
+                    KNOWN_CATEGORY_TYPE_VIOLATIONS[row_index][0]
                 )
 
             if bad_values:
-                unknown[row.Index] = list(bad_values)
+                unknown[row_index] = list(bad_values)
 
     if unknown:
         raise DataSanityError(

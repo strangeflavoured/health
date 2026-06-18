@@ -157,7 +157,7 @@ class TestCountFailures:
     def test_raises_type_error_on_wrong_input_types(self):
         failures = [object]
         with pytest.raises(TypeError, match="Unknown failure type"):
-            count_failures(failures, self.df)
+            count_failures(failures, self.df)  # type: ignore[ty:invalid-argument-type]
 
 
 # ---------------------------------------------------------------------------
@@ -215,6 +215,7 @@ class TestFailuresJson:
         text = failures_to_json(failures)
         restored = failures_from_json(text)
         assert len(restored) == 10_000
+        assert isinstance(restored[9999], RowFailure)
         assert restored[9999].row_index == 9999
 
     def test_pretty_printed_output(self):

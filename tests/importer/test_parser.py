@@ -5,9 +5,9 @@ from __future__ import annotations
 import io
 import logging
 import time
-import xml
 import zipfile
 from pathlib import Path
+from xml.etree.ElementTree import ParseError
 
 import defusedxml
 import pandas as pd
@@ -523,14 +523,15 @@ class TestWorkoutParsing:
         _, _, workouts, _ = parse_apple_health(zip_path)
         route = workouts.iloc[0]["route"]
         assert route is not None
-        assert route["files"] == [_GPX_ROUTE_PATH]
-        assert route["meta"] == {"HKMetadataKeyAltitudeType": "2"}
+        assert len(route) == 1
+        assert route[0]["files"] == [_GPX_ROUTE_PATH]
+        assert route[0]["meta"] == {"HKMetadataKeyAltitudeType": "2"}
 
-    def test_workout_route_absent_is_none(self, tmp_path):
+    def test_workout_route_absent_is_empty(self, tmp_path):
         zip_path = tmp_path / "export.zip"
         zip_path.write_bytes(_xml_zip(_minimal_workout_xml()))
         _, _, workouts, _ = parse_apple_health(zip_path)
-        assert workouts.iloc[0]["route"] is None
+        assert len(workouts.iloc[0]["route"]) == 0
 
     def test_workout_activity_attributes(self, tmp_path):
         zip_path = tmp_path / "export.zip"
@@ -655,7 +656,7 @@ class TestXXESecurity:
     def test_malformed_xml_raises(self, tmp_path):
         zip_path = tmp_path / "export.zip"
         zip_path.write_bytes(_xml_zip("<HealthData><Unclosed>"))
-        with pytest.raises(xml.etree.ElementTree.ParseError):
+        with pytest.raises(ParseError):
             parse_apple_health(zip_path)
 
 
@@ -858,7 +859,7 @@ class TestParseAppleHealthRoutes:
         zip_path.write_bytes(_route_zip())
         _, _, workouts, _ = parse_apple_health(zip_path)
         route_paths = [
-            path for route in workouts["route"].dropna() for path in route["files"]
+            path for route in workouts["route"].dropna() for path in route[0]["files"]
         ]
         routes = parse_apple_health_routes(zip_path, paths=route_paths)
         assert len(routes) == 2

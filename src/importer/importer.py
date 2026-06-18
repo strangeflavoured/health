@@ -107,7 +107,7 @@ class HealthDataImporter:
 
     def __init__(
         self,
-        connection: redis.Redis,
+        connection: redis.Redis[str],
         data_dir: str = "data",
         in_file: str = "export.zip",
         working_dir: Path | str | None = None,
@@ -286,7 +286,7 @@ class HealthDataImporter:
 
         records_df, *_ = self._extract(write_feather=False, no_cache=False)
 
-        row_selectors: list = []
+        row_selectors: list[int] = []
         for f in self.failures:
             match f:
                 case BatchFailure(data_type=t, batch_nr=n) if n >= 0:
@@ -426,7 +426,7 @@ class HealthDataImporter:
         # Feather cache fast path — only records, but it's the heavy one.
         if self.output_file.exists() and not no_cache:
             logger.info("Feather cache found; using cached records DataFrame.")
-            records_df = feather.read_feather(self.output_file)
+            records_df: pd.DataFrame = feather.read_feather(self.output_file)  # type: ignore[no-untyped-call]
 
             # We still need the document data — re-parse from ZIP if available.
             if self.zip_file.exists():
@@ -550,7 +550,7 @@ class HealthDataImporter:
 
 def _load(
     df: pd.DataFrame,
-    r: redis.Redis,
+    r: redis.Redis[str],
     duplicate_policy: DuplicatePolicy = DuplicatePolicy.FIRST,
 ) -> list[UploadFailure]:
     """Batch-upload all records to Redis TimeSeries.

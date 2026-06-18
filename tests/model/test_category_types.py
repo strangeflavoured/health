@@ -98,7 +98,7 @@ class TestRegistryLookup:
 
     def test_registry_is_immutable(self):
         with pytest.raises(TypeError):
-            HKCategoryTypeIdentifierRegistry["NewKey"] = None  # type: ignore[index]
+            HKCategoryTypeIdentifierRegistry["NewKey"] = None  # type: ignore[ty:invalid-assignment]
 
     def test_audio_exposure_event_in_registry(self):
         assert (
