@@ -2,6 +2,7 @@
 FROM ghcr.io/astral-sh/uv:0.11.23-python3.12-trixie-slim@sha256:bf72061021b1039aff0aee1c73da3f54e845b318502c3f5382e1c704dd800ba8 AS base
 
 RUN useradd --create-home --uid 1000 health
+RUN mkdir -p /home/health/.cache/uv && chown -R health:health /home/health
 USER health
 WORKDIR /home/health
 
@@ -14,13 +15,14 @@ ENV UV_CACHE_DIR=/home/health/.cache/uv \
 
 # Dependency layer
 COPY --chown=health:health pyproject.toml uv.lock ./
-RUN uv sync --locked --no-dev --group test --no-install-project
+RUN --mount=type=cache,target=/home/health/.cache/uv,uid=1000,gid=1000,sharing=shared \
+    uv sync --locked --no-dev --group test --no-install-project
 
-# Project layer — venv is finalised here, so prune cache in the same RUN
+# Project layer
 COPY --chown=health:health ./src ./src
 COPY --chown=health:health versions.json README.md ./
-RUN uv sync --locked --no-dev --group test --no-editable \
-    && rm -rf /home/health/.cache/uv
+RUN --mount=type=cache,target=/home/health/.cache/uv,uid=1000,gid=1000,sharing=shared \
+    uv sync --locked --no-dev --group test --no-editable
 
 
 FROM base AS src-test

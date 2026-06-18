@@ -2,24 +2,24 @@ services:
   backend:
     image: health-backend:prod
     volumes:
-      - ~/.cache/uv:/home/health/.cache/uv
+      - uv-runtime-cache:/home/health/.cache/uv
   backend-dev:
     image: health-backend:dev
     volumes:
       - ./backend/apps:/home/health/apps:ro
       - ./backend/config:/home/health/config:ro
       - ./src:/home/health/src:ro
-      - ~/.cache/uv:/home/health/.cache/uv
+      - uv-runtime-cache:/home/health/.cache/uv
   backend-test:
     image: health-backend:test
     volumes:
-      - ~/.cache/uv:/home/health/.cache/uv
+      - uv-runtime-cache:/home/health/.cache/uv
   docs-compiler:
     image: health-docs
     volumes:
       - ./docs/build:/home/health/docs/build
       - ./docs/source:/home/health/docs/source
-      - ~/.cache/uv:/home/health/.cache/uv
+      - uv-runtime-cache:/home/health/.cache/uv
   frontend:
     image: health-frontend:prod
   frontend-dev:
@@ -31,7 +31,10 @@ services:
       - ./src:/home/health/src:ro
       - ./scripts/setup_logger.py:/home/health/setup_logger.py:ro
       - ./scripts/import_to_redis.py:/home/health/import_to_redis.py:ro
-      - ~/.cache/uv:/home/health/.cache/uv
+      - uv-runtime-cache:/home/health/.cache/uv
   test-runner:
     volumes:
-      - ~/.cache/uv:/home/health/.cache/uv
+      - uv-runtime-cache:/home/health/.cache/uv
+volumes:
+  uv-runtime-cache:
+    driver: local

@@ -11,6 +11,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install --yes --no-install-recommends make nodejs npm && apt-get dist-upgrade --yes -V
 
 RUN useradd --create-home --uid 1000 health
+RUN mkdir -p /home/health/.cache/uv && chown -R health:health /home/health
 USER health
 WORKDIR /home/health
 
@@ -23,17 +24,18 @@ ENV UV_CACHE_DIR=/home/health/.cache/uv \
 
 # Dependency layer
 COPY --chown=health:health pyproject.toml uv.lock ./
-RUN uv sync --locked --no-dev --group backend --group docs --no-install-project
+RUN --mount=type=cache,target=/home/health/.cache/uv,uid=1000,gid=1000,sharing=shared \
+    uv sync --locked --no-dev --group backend --group docs --no-install-project
 
 # Project layer
 COPY --chown=health:health versions.json README.md ./
 COPY --chown=health:health ./src ./src
-RUN uv sync --locked --no-dev --group backend --group docs --no-editable \
-    && rm -rf /home/health/.cache/uv
+RUN --mount=type=cache,target=/home/health/.cache/uv,uid=1000,gid=1000,sharing=shared \
+    uv sync --locked --no-dev --group backend --group docs --no-editable
 
 # install npm deps
 COPY --chown=health:health ./frontend/package.json ./frontend/package-lock.json ./frontend/
-RUN --mount=type=cache,target=/home/health/.npm,uid=1000,gid=1000 \
+RUN --mount=type=cache,target=/home/health/.npm,uid=1000,gid=1000,sharing=shared \
     cd frontend && npm ci --ignore-scripts
 
 COPY --chown=health:health ./CHANGELOG.md ./CONTRIBUTING.md ./MAINTAINERS.md ./ROADMAP.md /CODE_OF_CONDUCT.md ./
