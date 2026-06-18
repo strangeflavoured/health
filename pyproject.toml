@@ -23,8 +23,11 @@ backend = [
 ]
 dev = [
     "deptry>=0.25.1",
+    "mypy>=2.1.0",
+    "pandera[mypy]>=0.31.1",
     "pre-commit>=4.5.1",
     "ruff>=0.15.12",
+    "types-redis>=4.6.0.20241004",
     "vulture>=2.16",
 ]
 docs = [
@@ -167,3 +170,30 @@ source = ["src"]
 [tool.djlint]
 reformat = true
 profile = "jinja"
+
+[tool.ty.src]
+include = ["src", "backend", "docs", "scripts", "tests"]
+exclude = ["**/site-packages/**", ".venv/**"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["."]
+exclude = ["scripts/tests"]
+
+strict = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+warn_unused_ignores = true
+warn_unreachable = true
+ignore_missing_imports = true
+
+plugins = ["pandera.mypy"]
+
+show_error_codes = true
+show_column_numbers = true
+color_output = true
+error_summary = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+allow_untyped_defs = true

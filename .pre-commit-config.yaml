@@ -133,6 +133,23 @@ repos:
         language: node
         pass_filenames: false
 
+      - id: mypy
+        name: mypy
+        entry: .git-hooks/mypy-hook.sh
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
+        stages: [pre-push]
+
+      - id: ty
+        name: ty
+        entry: uvx ty check
+        language: system
+        pass_filenames: false
+        require_serial: true
+        stages: [pre-push]
+
       - id: test-suite
         name: test suite
         entry: .git-hooks/test-hook.sh
