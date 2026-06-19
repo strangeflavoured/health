@@ -1,8 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "automerge": true,
-  "automergeStrategy": "rebase",
-  "automergeType": "pr",
+  "extends": ["config:best-practices", ":enablePreCommit"],
   "enabledManagers": [
     "npm",
     "github-actions",
@@ -10,116 +8,217 @@
     "pre-commit",
     "pep621"
   ],
-  "extends": ["config:best-practices", ":enablePreCommit"],
-  "ignoreUnstable": true,
+  "timezone": "Etc/UTC",
+  "schedule": ["* 2-5 * * 1"],
   "labels": ["automated", "dependencies"],
+  "semanticCommits": "enabled",
+  "automerge": true,
+  "automergeType": "pr",
+  "automergeStrategy": "rebase",
+  "platformAutomerge": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "extends": ["schedule:weekly"]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["automated", "dependencies", "security"]
+  },
   "packageRules": [
     {
+      "description": "Force chore for all dep commits (override best-practices' fix-for-deps so deps never trigger a release)",
+      "matchPackageNames": ["*"],
+      "semanticCommitType": "chore"
+    },
+
+    {
+      "description": "npm | base label + commit scope",
+      "matchManagers": ["npm"],
       "addLabels": ["javascript"],
+      "semanticCommitScope": "npm"
+    },
+    {
+      "description": "npm | group non-major (catch-all, overridden by framework groups below)",
       "matchManagers": ["npm"],
-      "respectLatest": true
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm (non-major)"
     },
     {
-      "groupName": "npm dependencies",
+      "description": "npm | TypeScript",
       "matchManagers": ["npm"],
-      "matchUpdateTypes": ["minor", "patch"]
+      "matchPackageNames": ["typescript", "ts-node", "@types/*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "typescript"
     },
     {
-      "groupName": "typescript",
-      "matchPackageNames": ["typescript", "ts-node", "@types/*"]
+      "description": "npm | ESLint",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["eslint*", "@eslint/*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "eslint"
     },
     {
-      "groupName": "eslint",
-      "matchPackageNames": ["eslint*", "@eslint/*"]
+      "description": "npm | React",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["react", "react-dom", "@types/react*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "react"
     },
     {
-      "groupName": "react",
-      "matchPackageNames": ["react", "react-dom", "@types/react*"]
-    },
-    {
-      "groupName": "testing",
+      "description": "npm | testing stack",
+      "matchManagers": ["npm"],
       "matchPackageNames": [
         "@testing-library/*",
         "vitest",
         "@vitest/*",
         "jsdom"
-      ]
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "testing"
     },
     {
-      "groupName": "vite",
-      "matchPackageNames": ["vite", "@vitejs/*"]
+      "description": "npm | Vite",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["vite", "@vitejs/*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "vite"
     },
+
     {
+      "description": "github-actions | base label + commit scope",
+      "matchManagers": ["github-actions"],
       "addLabels": ["gh-actions"],
-      "commitMessagePrefix": "Actions:",
-      "matchManagers": ["github-actions"],
+      "semanticCommitScope": "actions",
       "prConcurrentLimit": 2
     },
     {
-      "groupName": "github-actions dependencies",
+      "description": "github-actions | group non-major (excluding the python runtime)",
       "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["minor", "patch"]
+      "matchDepNames": ["!python"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "github-actions (non-major)"
     },
     {
-      "dependencyDashboardApproval": true,
+      "description": "github-actions | python runtime: individual PRs, split minors, require approval",
+      "matchManagers": ["github-actions"],
       "matchDepNames": ["python"],
-      "matchManagers": ["github-actions"],
-      "separateMultipleMinor": true
+      "addLabels": ["python"],
+      "separateMultipleMinor": true,
+      "dependencyDashboardApproval": true
     },
+
     {
-      "addLabels": ["docker"],
-      "commitMessagePrefix": "Docker:",
-      "matchFileNames": ["docker/**"],
+      "description": "dockerfile | base label + commit scope",
       "matchManagers": ["dockerfile"],
+      "matchFileNames": ["docker/**"],
+      "addLabels": ["docker"],
+      "semanticCommitScope": "docker",
       "prConcurrentLimit": 2
     },
     {
-      "groupName": "docker dependencies",
-      "matchFileNames": ["docker/**"],
+      "description": "dockerfile | group non-major",
       "matchManagers": ["dockerfile"],
-      "matchUpdateTypes": ["minor", "patch"]
+      "matchFileNames": ["docker/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "docker (non-major)"
     },
     {
-      "enabled": false,
+      "description": "dockerfile | pin python base image: patches only, block major+minor",
       "matchManagers": ["dockerfile"],
       "matchPackageNames": ["python"],
-      "matchUpdateTypes": ["major", "minor"]
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
     },
+
     {
-      "addLabels": ["pre-commit hooks"],
-      "commitMessagePrefix": "Chore: pre-commit:",
+      "description": "pre-commit | base label + commit scope, low volume, monthly",
       "matchManagers": ["pre-commit"],
+      "addLabels": ["pre-commit"],
+      "semanticCommitScope": "pre-commit",
       "prConcurrentLimit": 1,
-      "schedule": ["* 2-5 1-7 * 1"]
+      "extends": ["schedule:monthly"]
     },
     {
-      "groupName": "pre-commit hooks",
+      "description": "pre-commit | group non-major",
       "matchManagers": ["pre-commit"],
-      "matchUpdateTypes": ["minor", "patch"]
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "pre-commit hooks"
     },
+
     {
+      "description": "pep621/uv | base label + commit scope",
+      "matchManagers": ["pep621"],
       "addLabels": ["python"],
-      "matchManagers": ["pep621"],
-      "commitMessagePrefix": "Chore: uv:"
+      "semanticCommitScope": "uv"
     },
     {
-      "groupName": "python dependencies",
+      "description": "pep621/uv | group non-major runtime dependencies",
       "matchManagers": ["pep621"],
-      "matchDepTypes": ["dependencies"],
-      "matchUpdateTypes": ["minor", "patch"]
+      "matchDepTypes": [
+        "project.dependencies",
+        "project.optional-dependencies"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "python dependencies"
     },
     {
-      "groupName": "python dev dependencies",
+      "description": "pep621/uv | backend group (PEP 735)",
       "matchManagers": ["pep621"],
       "matchDepTypes": ["dependency-groups"],
-      "matchUpdateTypes": ["minor", "patch"]
+      "matchJsonata": ["managerData.depGroup = 'backend'"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "addLabels": ["backend"],
+      "groupName": "python dev (backend)"
+    },
+    {
+      "description": "pep621/uv | dev group (PEP 735)",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependency-groups"],
+      "matchJsonata": ["managerData.depGroup = 'dev'"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "addLabels": ["dev"],
+      "groupName": "python dev (dev)"
+    },
+    {
+      "description": "pep621/uv | docs group (PEP 735)",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependency-groups"],
+      "matchJsonata": ["managerData.depGroup = 'docs'"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "addLabels": ["docs"],
+      "groupName": "python dev (docs)"
+    },
+    {
+      "description": "pep621/uv | production group (PEP 735)",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependency-groups"],
+      "matchJsonata": ["managerData.depGroup = 'production'"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "addLabels": ["production"],
+      "groupName": "python dev (production)"
+    },
+    {
+      "description": "pep621/uv | test group",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependency-groups"],
+      "matchJsonata": ["managerData.depGroup = 'test'"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "addLabels": ["test"],
+      "groupName": "python dev (test)"
+    },
+    {
+      "description": "Lock-file maintenance | uv.lock",
+      "matchManagers": ["pep621"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "addLabels": ["lockfile", "python"],
+      "semanticCommitScope": "uv.lock"
+    },
+    {
+      "description": "Lock-file maintenance | package-lock.json",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "addLabels": ["lockfile", "javascript"],
+      "semanticCommitScope": "package-lock"
     }
-  ],
-  "platformAutomerge": true,
-  "schedule": ["* 2-5 * * 1"],
-  "timezone": "Etc/UTC",
-  "vulnerabilityAlerts": {
-    "enabled": true,
-    "labels": ["automated", "dependencies", "security"]
-  }
+  ]
 }
