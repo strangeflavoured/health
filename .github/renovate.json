@@ -148,13 +148,40 @@
       "groupName": "python dependencies"
     },
     {
-      "description": "pep621/uv | dev group (PEP 735) — adjust depGroup to your [dependency-groups] keys",
+      "description": "pep621/uv | backend group (PEP 735)",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependency-groups"],
+      "matchJsonata": ["managerData.depGroup = 'backend'"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "addLabels": ["backend"],
+      "groupName": "python dev (backend)"
+    },
+    {
+      "description": "pep621/uv | dev group (PEP 735)",
       "matchManagers": ["pep621"],
       "matchDepTypes": ["dependency-groups"],
       "matchJsonata": ["managerData.depGroup = 'dev'"],
       "matchUpdateTypes": ["minor", "patch"],
       "addLabels": ["dev"],
       "groupName": "python dev (dev)"
+    },
+    {
+      "description": "pep621/uv | docs group (PEP 735)",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependency-groups"],
+      "matchJsonata": ["managerData.depGroup = 'docs'"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "addLabels": ["docs"],
+      "groupName": "python dev (docs)"
+    },
+    {
+      "description": "pep621/uv | production group (PEP 735)",
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependency-groups"],
+      "matchJsonata": ["managerData.depGroup = 'production'"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "addLabels": ["production"],
+      "groupName": "python dev (production)"
     },
     {
       "description": "pep621/uv | test group",
@@ -165,16 +192,6 @@
       "addLabels": ["test"],
       "groupName": "python dev (test)"
     },
-    {
-      "description": "pep621/uv | docs group",
-      "matchManagers": ["pep621"],
-      "matchDepTypes": ["dependency-groups"],
-      "matchJsonata": ["managerData.depGroup = 'docs'"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "addLabels": ["docs"],
-      "groupName": "python dev (docs)"
-    },
-
     {
       "description": "Lock-file maintenance | uv.lock",
       "matchManagers": ["pep621"],
