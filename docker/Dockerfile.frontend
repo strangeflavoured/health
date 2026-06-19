@@ -1,5 +1,5 @@
-# syntax=docker/dockerfile:1.24@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
-FROM node:26.3.0-alpine@sha256:9c0e1e52125d6b67d505cf75b4880fcf1290ccea5c480849910e1d57b2cf72b5 AS base
+# syntax=docker/dockerfile:1.25@sha256:0adf442eae370b6087e08edc7c50b552d80ddf261576f4ebd6421006b2461f12
+FROM node:26.3.1-alpine@sha256:a2dc166a387cc6ca1e62d0c8e265e49ca985d6e60abc9fe6e6c3d6ce8e63f606 AS base
 
 RUN mkdir -p /app && chown node:node /app
 WORKDIR /app
@@ -21,7 +21,7 @@ ENTRYPOINT ["npm", "run", "test:coverage", "--"]
 FROM base AS builder
 RUN --mount=type=cache,target=/app/node_modules/.cache npm run build
 
-FROM nginx:1.31.1-alpine@sha256:8b1e78743a03dbb2c95171cc58639fef29abc8816598e27fb910ed2e621e589a AS prod
+FROM nginx:1.31.2-alpine@sha256:81595dd77c2cc4ec66c6721daa3c13b6a1f7bb3a8a2cd3247a874e3bd5c39dd2 AS prod
 COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
