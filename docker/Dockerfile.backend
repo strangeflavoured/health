@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.25@sha256:0adf442eae370b6087e08edc7c50b552d80ddf261576f4ebd6421006b2461f12
-FROM ghcr.io/astral-sh/uv:0.11.22-python3.12-trixie-slim@sha256:19a765e8ca941a161f9913588beb7aa6cf20794dd69aebf177d985b0b75a3a76 AS base
+FROM ghcr.io/astral-sh/uv:0.11.23-python3.12-trixie-slim@sha256:bf72061021b1039aff0aee1c73da3f54e845b318502c3f5382e1c704dd800ba8 AS base
 
 RUN useradd --create-home --uid 1000 health
 USER health
