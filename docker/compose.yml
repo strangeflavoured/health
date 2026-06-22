@@ -18,7 +18,7 @@ services:
     env_file: ./backend/.env
     environment:
       REDIS_CERTS_DIR: "/run/secrets"
-      REDIS_DB: $REDIS_DB
+      REDIS_DB: ${REDIS_DB:-0}
       REDIS_HOST: "redis"
       REDIS_PORT: "6380"
     mem_swappiness: 0
@@ -119,7 +119,7 @@ services:
         --aclfile /run/secrets/users.acl
     mem_swappiness: 0
     ports:
-      - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:?REDIS_PORT must be set}:6380"
+      - "${REDIS_HOST:-127.0.0.1}:${REDIS_PORT:-6380}:6380"
     restart: unless-stopped
     secrets:
       - source: users.acl
@@ -168,7 +168,7 @@ services:
           memory: 128M
     mem_swappiness: 0
     ports:
-      - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:?REDIS_INSIGHT_PORT must be set}:5540"
+      - "${REDIS_HOST:-127.0.0.1}:${REDIS_INSIGHT_PORT:-5540}:5540"
     restart: unless-stopped
     secrets:
       - source: ca.pem
@@ -196,7 +196,7 @@ services:
           memory: 64M
     environment:
       REDIS_CERTS_DIR: "/run/secrets"
-      REDIS_DB: $REDIS_DB
+      REDIS_DB: ${REDIS_DB:-0}
       REDIS_HOST: "redis"
       REDIS_PORT: "6380"
     mem_swappiness: 0
