@@ -133,15 +133,6 @@ repos:
         language: node
         pass_filenames: false
 
-      - id: mypy
-        name: mypy
-        entry: .git-hooks/mypy-hook.sh
-        language: system
-        types: [python]
-        pass_filenames: false
-        require_serial: true
-        stages: [pre-push]
-
       - id: ty
         name: ty
         entry: uvx ty check
@@ -150,18 +141,10 @@ repos:
         require_serial: true
         stages: [pre-push]
 
-      - id: test-suite
-        name: test suite
-        entry: .git-hooks/test-hook.sh
+      - id: pre-push
+        name: tests, mypy, signature verification
+        entry: .git-hooks/pre-push-hooks.sh
         language: system
         pass_filenames: false
-        always_run: true
-        stages: [pre-push]
-
-      - id: verify-signatures
-        name: verify commit signatures
-        entry: bash .git-hooks/verify-signatures.sh
-        language: system
-        pass_filenames: false
-        always_run: true
+        require_serial: true
         stages: [pre-push]
