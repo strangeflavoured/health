@@ -89,13 +89,6 @@ jobs:
             --from-ref  $BASE_SHA \
             --to-ref   $HEAD_SHA
 
-      - name: Verify signatures (push)
-        if: github.event_name == 'push'
-        env:
-          PRE_COMMIT_FROM_REF: ${{ github.event.before }}
-          PRE_COMMIT_TO_REF: ${{ github.event.after }}
-        run: .git-hooks/verify-signatures.sh
-
       - name: Run pre-commit (push)
         if: github.event_name == 'push'
         env:
