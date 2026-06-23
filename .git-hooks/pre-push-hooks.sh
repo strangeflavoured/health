@@ -22,6 +22,8 @@ cd "$tmp" || exit 1
 tests_rc=0 mypy_rc=0 signatures_rc=0
 tests_pid="" mypy_pid="" signatures_pid=""
 
+uv sync --all-groups
+
 if skip tests; then echo "SKIP tests" >&2
 else .git-hooks/test-hook.sh "$@" & tests_pid=$!; fi
 
