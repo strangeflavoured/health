@@ -133,6 +133,14 @@ repos:
         language: node
         pass_filenames: false
 
+      - id: uv-sync
+        name: uv-sync
+        entry: uv sync --all-groups
+        language: system
+        pass_filenames: false
+        require_serial: true
+        stages: [pre-commit, pre-push]
+
       - id: ty
         name: ty
         entry: uvx ty check
