@@ -47,14 +47,14 @@ jobs:
 
       - name: Cache .venv
         id: venv-cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           key: >-
             uv-${{ runner.os }}-py3.12-${{ hashFiles('uv.lock') }}
           path: ~/.cache/uv
 
       - name: Cache pre-commit environments
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           key: pre-commit-${{ runner.os }}-py3.12-${{ hashFiles('.pre-commit-config.yaml') }}
           path: ~/.cache/pre-commit
