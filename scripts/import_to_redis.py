@@ -2,10 +2,11 @@
 
 import logging
 
+import pandas as pd
 import redis
 from setup_logger import configure_logging, log_peak_memory
 
-from src.connection import docker_redis_connect
+from src.connection import docker_redis_connect, latest_ts_timestamp
 from src.importer import HealthDataImporter
 
 if __name__ == "__main__":
@@ -22,19 +23,25 @@ if __name__ == "__main__":
         logger.warning("FAILED to connect to Redis.")
         raise e
 
+    # get latest timestamp from DB
+    from_date = pd.Timestamp(latest_ts_timestamp(r)) - pd.Timedelta("7D")
+
+    # set up importer
     importer = HealthDataImporter(connection=r)
+    # retry if failures exist
     if importer.failures_file.exists():
         importer.retry_failed()
         logger.info("Successfully imported previously failed Apple Health data.")
         log_peak_memory(logger)
     else:
         try:
-            importer.etl(write_feather=True)
+            importer.etl(write_feather=True, from_date=from_date)
             logger.info("Successfully imported Apple Health Export Data.")
-            log_peak_memory(logger)
         except Exception as e:  # noqa: BLE001
             logger.error(e)
             if isinstance(e, ExceptionGroup):
                 for exc in e.exceptions:
                     logger.error(exc)
             logger.warning("FAILED to import Apple Health Export Data.")
+
+    log_peak_memory(logger)

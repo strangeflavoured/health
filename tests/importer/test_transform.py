@@ -12,7 +12,7 @@ from src.importer.transform import (
     _handle_categorical_units,
     _map_categories,
     _timestamps_to_unix,
-    transform,
+    transform_records,
 )
 from src.model.base import MissingUnit
 
@@ -257,32 +257,32 @@ class TestTransform:
 
     def test_start_date_is_int64_unix(self):
         df = self._make_full_df()
-        transform(df)
+        transform_records(df)
         assert df["startDate"].dtype == "int64"
 
     def test_end_date_is_int64_unix(self):
         df = self._make_full_df()
-        transform(df)
+        transform_records(df)
         assert df["endDate"].dtype == "int64"
 
     def test_value_is_float64(self):
         df = self._make_full_df()
-        transform(df)
+        transform_records(df)
         assert df["value"].dtype == "float64"
 
     def test_null_value_rows_dropped(self):
         df = self._make_full_df()
         df.loc[0, "value"] = None
-        transform(df)
+        transform_records(df)
         assert len(df) == 2
 
     def test_categorical_unit_set(self):
         df = self._make_full_df()
-        transform(df)
+        transform_records(df)
         cat_row = df[df["unit"] == MissingUnit.CATEGORICAL.value]
         assert len(cat_row) == 1
 
-    def test_transform_performance_large_df(self):
+    def test_transform_records_performance_large_df(self):
         n = 50_000
         df = pd.DataFrame(
             {
@@ -300,7 +300,7 @@ class TestTransform:
             }
         )
         start = time.perf_counter()
-        transform(df)
+        transform_records(df)
         elapsed = time.perf_counter() - start
         assert elapsed < 10.0
 
@@ -410,30 +410,30 @@ class TestTransform:
         assert isinstance(df["value"].iloc[0], str)
         assert df["value"].iloc[0] == "0"
 
-    def test_transform_returns_none(self):
-        assert transform(self._make_full_df()) is None
+    def test_transform_records_returns_none(self):
+        assert transform_records(self._make_full_df()) is None
 
     def test_start_date_value_is_plausible_unix(self):
         df = self._make_full_df()
-        transform(df)
+        transform_records(df)
         assert df["startDate"].iloc[0] == 1_704_067_200
 
-    def test_no_nan_in_value_after_transform(self):
+    def test_no_nan_in_value_after_transform_records(self):
         df = self._make_full_df()
-        transform(df)
+        transform_records(df)
         assert not df["value"].isna().any()
 
     def test_creation_date_untouched(self):
-        """creationDate is not converted by transform — it must survive unchanged."""
+        """creationDate is not converted by transform_records and stays unchanged."""
         df = self._make_full_df()
         original_creationDate = df["creationDate"].copy()  # noqa: N806
-        transform(df)
+        transform_records(df)
         assert "creationDate" in df.columns
         pd.testing.assert_series_equal(df["creationDate"], original_creationDate)
 
-    def test_transform_colums(self):
+    def test_transform_records_colums(self):
         df = self._make_full_df()
-        transform(df)
+        transform_records(df)
 
         expected = {
             "creationDate",
@@ -446,5 +446,9 @@ class TestTransform:
             "type",
             "unit",
             "value",
+            "wasUserEntered",
+            "motionContext",
+            "insulinReason",
+            "mealTime",
         }
         assert expected == set(df.columns)

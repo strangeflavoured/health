@@ -35,11 +35,6 @@ contains data or indexes:
   ``force=True``.  Dropping an index does **not** delete documents —
   RediSearch re-indexes existing JSON documents automatically after
   recreation.
-* :func:`upsert_ts_labels` calls ``TS.ALTER`` on existing keys and falls
-  back to ``TS.CREATE`` only when the key is absent.  Labels are therefore
-  only written once at key-creation time during normal import; this
-  function is intended as a one-off provisioning or migration tool, not as
-  part of every import cycle.
 
 Dry-run mode
 ------------
@@ -58,10 +53,9 @@ Run directly from the project root::
 
 Or call programmatically::
 
-    from src.redis_setup import setup_indexes, upsert_ts_labels, records_labels
+    from src.redis_setup import setup_indexes
 
     setup_indexes(client, dry_run=False, force=False)
-    upsert_ts_labels(client, records_labels(), dry_run=False)
 """
 
 from __future__ import annotations
@@ -73,9 +67,6 @@ import redis
 from redis.commands.search.field import Field, NumericField, TagField
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.exceptions import ResponseError
-
-from .model import HKTypeIdentifierRegistry
-from .model.base import MissingUnit
 
 logger = logging.getLogger(__name__)
 
@@ -197,12 +188,9 @@ def index_exists(client: redis.Redis[str], name: str) -> bool:
     :class:`~redis.exceptions.ResponseError` is treated as "index not found"
     — which is the error Redis returns for unknown index names.
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance.
-    name:
-        Fully-qualified index name, e.g. ``"idx:workouts"``.
+    Args:
+        client: Connected :class:`redis.Redis` instance.
+        name: Fully-qualified index name, e.g. ``"idx:workouts"``.
 
     """
     try:
@@ -219,15 +207,11 @@ def drop_index(client: redis.Redis[str], name: str, *, dry_run: bool) -> None:
     will re-index them automatically if a new index with the same prefix is
     created afterward.
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance.
-    name:
-        Fully-qualified index name, e.g. ``"idx:workouts"``.
-    dry_run:
-        When ``True``, log the intended operation and return without issuing
-        any Redis commands.
+    Args:
+        client: Connected :class:`redis.Redis` instance.
+        name: Fully-qualified index name, e.g. ``"idx:workouts"``.
+        dry_run: When ``True``, log the intended operation and return without
+            issuing any Redis commands.
 
     """
     if dry_run:
@@ -244,19 +228,15 @@ def create_index(client: redis.Redis[str], spec: IndexSpec, *, dry_run: bool) ->
     *spec*.  The caller is responsible for ensuring the index does not already
     exist (or has been dropped) before calling this function.
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance.
-    spec:
-        Declarative description of the index to create.
-    dry_run:
-        When ``True``, log the intended operation (including field paths and
-        aliases) and return without issuing any Redis commands.
+    Args:
+        client: Connected :class:`redis.Redis` instance.
+        spec: Declarative description of the index to create.
+        dry_run: When ``True``, log the intended operation (including field paths
+            and aliases) and return without issuing any Redis commands.
 
     """
+    field_names = [f.name for f in spec.fields]
     if dry_run:
-        field_names = [f.name for f in spec.fields]
         logger.info(
             "[dry-run] would create %s  prefix=%s  fields=%s",
             spec.name,
@@ -271,7 +251,9 @@ def create_index(client: redis.Redis[str], spec: IndexSpec, *, dry_run: bool) ->
             index_type=IndexType.JSON,
         ),
     )
-    logger.info("created               %s  prefix=%s", spec.name, spec.prefix)
+    logger.info(
+        "created        %s  prefix=%s  fields=%s", spec.name, spec.prefix, field_names
+    )
 
 
 def setup_indexes(
@@ -289,17 +271,13 @@ def setup_indexes(
     This function is idempotent: calling it on a fully-provisioned Redis
     instance with ``force=False`` is a no-op (beyond logging).
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance.
-    dry_run:
-        When ``True``, log all intended operations and return without writing
-        to Redis.  Propagated to :func:`drop_index` and :func:`create_index`.
-    force:
-        When ``True``, drop and recreate indexes that already exist.  Use this
-        after changing field definitions in :data:`_INDICES`.  Has no effect
-        on indexes that are absent (they are created normally).
+    Args:
+        client: Connected :class:`redis.Redis` instance.
+        dry_run: When ``True``, log all intended operations and return without writing
+            to Redis.  Propagated to :func:`drop_index` and :func:`create_index`.
+        force: When ``True``, drop and recreate indexes that already exist.  Use this
+            after changing field definitions in :data:`_INDICES`.  Has no effect
+            on indexes that are absent (they are created normally).
 
     """
     for spec in _INDICES:
@@ -328,10 +306,8 @@ def print_status(client: redis.Redis[str]) -> None:
     Intended for post-setup verification and interactive debugging.  Output
     goes to the module logger at ``INFO`` level.
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance.
+    Args:
+        client: Connected :class:`redis.Redis` instance.
 
     """
     logger.info("─" * 60)
@@ -352,130 +328,54 @@ def print_status(client: redis.Redis[str]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def upsert_ts_labels(
-    client: redis.Redis[str],
-    key_labels: list[tuple[str, dict[str, str]]],
-    *,
-    dry_run: bool = False,
-) -> None:
-    """Provision RedisTimeSeries keys with metadata labels.
-
-    For each ``(key, labels)`` pair, attempts ``TS.ALTER`` to update labels on
-    an existing key.  Falls back to ``TS.CREATE`` when the key is absent.
-
-    This function is designed as a **one-off provisioning or migration tool**,
-    not as part of the hot import path.  During normal imports, keys are created
-    on-demand via :func:`ensure_ts_key`; calling this function on every import
-    would redundantly alter labels on every existing key.
-
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance with RedisTimeSeries loaded.
-    key_labels:
-        List of ``(key, labels)`` pairs as returned by :func:`records_labels`.
-        Labels must be a flat ``str → str`` mapping; ``None`` values are
-        permitted and are passed through to the TimeSeries module as-is.
-    dry_run:
-        When ``True``, log the intended operations and return without writing
-        to Redis.
-
-    """
-    for key, labels in key_labels:
-        if dry_run:
-            logger.info("[dry-run] would upsert labels  %s  %s", key, labels)
-            continue
-        try:
-            client.ts().alter(key, labels=labels)
-        except redis.ResponseError:
-            client.ts().create(key, labels=labels)
-
-
 def ensure_ts_key(
     client: redis.Redis[str],
     key: str,
     labels: dict[str, str],
+    duplicate_policy: str = "FIRST",
 ) -> None:
-    """Create a RedisTimeSeries key with labels if it does not already exist.
+    """Create or update a RedisTimeSeries key.
 
-    Intended to be called by the importer immediately before the first
-    ``TS.ADD`` for a given key within an import run.  If the key already exists
-    (i.e. it was created during a previous import), the ``TS.INFO`` probe
-    succeeds and this function returns without any writes.
+    If the key does not yet exist it is created with *labels* and
+    *duplicate_policy*.  If it already exists, only the ``DUPLICATE_POLICY``
+    is updated via ``TS.ALTER`` so that the policy for the current run (e.g.
+    ``"FIRST"`` for :meth:`~.HealthDataImporter.etl` vs ``"LAST"`` for
+    :meth:`~.HealthDataImporter.update`) takes effect before the first
+    ``TS.MADD`` for that key. If the labels don't match ValueError is raised,
+    it could be caused by data corruption or a schema drift.
 
-    This is the preferred creation path during import; :func:`upsert_ts_labels`
-    is reserved for bulk provisioning and schema migrations.
+    Labels are **not** updated on existing keys.
 
-    Parameters
-    ----------
-    client:
-        Connected :class:`redis.Redis` instance with RedisTimeSeries loaded.
-    key:
-        Full Redis key name, e.g. ``"ts:HKQuantityTypeIdentifierHeartRate:start"``.
-    labels:
-        Flat ``str → str`` metadata mapping attached to the key at creation
-        time.  Labels are immutable after creation via this function; use
-        :func:`upsert_ts_labels` (``TS.ALTER``) to change them later.
+    Args:
+        client: Connected :class:`redis.Redis` instance with RedisTimeSeries loaded.
+        key: Full Redis key name, e.g. ``"ts:HKQuantityTypeIdentifierHeartRate:start"``.
+        labels: Flat ``str → str`` metadata mapping attached at creation time.
+        duplicate_policy: ``TS.MADD`` duplicate-conflict strategy for this key:
+            ``"FIRST"`` (keep oldest value, used by :meth:`~.HealthDataImporter.etl`)
+             or ``"LAST"`` (overwrite, used by :meth:`~.HealthDataImporter.update`).
+            Accepts any string accepted by RedisTimeSeries.
+
+    Raises:
+        ValueError: If input labels and labels in redis don't match.
 
     """
     try:
-        client.ts().info(key)  # type: ignore[no-untyped-call]
+        resp = client.ts().info(key)  # type: ignore[no-untyped-call]
+
+        # raise if labels don't match
+        if resp["labels"] != labels:
+            raise ValueError(
+                "Key %s: labels don't match: expected %s, got %s",
+                key,
+                resp["labels"],
+                labels,
+            )
+
+        # update the policy so the current run's strategy applies.
+        if resp["duplicate_policy"] != duplicate_policy:
+            client.ts().alter(key, duplicate_policy=duplicate_policy)
+            logging.debug("Altered  key=%s  duplicate_policy=%s", key, duplicate_policy)
+
     except redis.ResponseError:
-        client.ts().create(key, labels=labels)
-
-
-def records_labels() -> list[tuple[str, dict[str, str]]]:
-    """Build the full list of TimeSeries ``(key, labels)`` pairs from the type registry.
-
-    Iterates over :data:`~src.model.HKTypeIdentifierRegistry` and produces
-    entries for every registered type.  Quantity and category types receive
-    two entries each — one ``:start`` series and one ``:end`` series, with
-    the ``event_type`` label distinguishing them.  Correlation types do not
-    get TimeSeries keys (correlations live as RediSearch JSON documents);
-    they are filtered out here.
-
-    The ``unit`` label is read from ``cls.unit`` and falls back to the
-    categorical sentinel (``"Categorical"``) for types that have no
-    canonical SI unit.
-
-    Label schema per key
-    --------------------
-    ============  ==================================================
-    Label         Value
-    ============  ==================================================
-    identifier    HKTypeIdentifier string, e.g.
-                  ``"HKQuantityTypeIdentifierHeartRate"``
-    unit          SI / Apple unit string, e.g. ``"count/min"``, or
-                  ``"Categorical"`` for category types
-    group         Logical grouping from the model, e.g. ``"vital_signs"``
-    event_type    ``"start"`` or ``"end"``
-    ============  ==================================================
-
-    Using ``event_type`` as a single label (rather than separate boolean
-    ``start`` / ``end`` labels) allows ``TS.MRANGE`` callers to filter on
-    ``identifier=X`` alone to retrieve **both** series, or additionally on
-    ``event_type=start`` to retrieve only one.
-
-    Returns
-    -------
-    list[tuple[str, dict[str, str]]]
-        Ordered list of ``(key, labels)`` pairs ready to be passed to
-        :func:`upsert_ts_labels`.
-
-    """
-    key_labels: list[tuple[str, dict[str, str]]] = []
-    for name, cls in HKTypeIdentifierRegistry.items():
-        # Correlations are stored as JSON documents, not as TimeSeries.
-        if cls.identifier_type == "correlation":
-            continue
-
-        unit = getattr(cls, "unit", MissingUnit.CATEGORICAL.value)
-        base_labels: dict[str, str] = {
-            "unit": unit,
-            "identifier": name,
-            "group": cls.group,
-        }
-        key_labels.append((f"ts:{name}:start", base_labels | {"event_type": "start"}))
-        key_labels.append((f"ts:{name}:end", base_labels | {"event_type": "end"}))
-
-    return key_labels
+        client.ts().create(key, labels=labels, duplicate_policy=duplicate_policy)
+        logger.warning("Created  key=%s  labels=%s", key, labels)
