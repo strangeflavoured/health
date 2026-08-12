@@ -94,7 +94,7 @@ def _to_unix_seconds(
 
     The ``int`` pass-through matters because the records DataFrame's
     timestamp columns are already int64 Unix seconds by the time the
-    document loaders run (see :func:`~src.importer.transform.transform`);
+    document loaders run (see :func:`~src.importer.transform.transform_records`);
     re-parsing them would treat their values as nanoseconds and produce
     nonsense.
     """
@@ -247,12 +247,15 @@ def load_workouts(r: redis.Redis[str], df: pd.DataFrame) -> list[UploadFailure]:
                 _coerce_timestamps(ev, ("date",))
             for stat in activity.get("statistics") or []:
                 _coerce_timestamps(stat)
-        if doc.get("route") is not None:
-            _coerce_timestamps(doc["route"])
+        if doc.get("routes") is not None:
+            _coerce_timestamps(doc["routes"])
 
         _attach_meta_keys(doc)
 
-        key = f"workout:{doc.get('startDate')}-{i}"
+        key = (
+            f"workout:{doc.get('workout_id')}:"
+            f"{doc.get('startDate')}-{doc.get('endDate')}"
+        )
         pipe.json().set(key, "$", doc)
         keys.append(key)
 
@@ -298,7 +301,10 @@ def load_correlations(r: redis.Redis[str], df: pd.DataFrame) -> list[UploadFailu
             _coerce_timestamps(rec)
         _attach_meta_keys(doc)
 
-        key = f"correlation:{doc.get('startDate')}-{i}"
+        key = (
+            f"correlation:{doc.get('correlation_id')}:"
+            f"{doc.get('startDate')}-{doc.get('endDate')}"
+        )
         pipe.json().set(key, "$", doc)
         keys.append(key)
 
@@ -351,7 +357,7 @@ def load_activities(r: redis.Redis[str], df: pd.DataFrame) -> list[UploadFailure
         date_str = doc.get("dateComponents")
         doc["date"] = _to_unix_seconds(date_str) if date_str else None
 
-        key = f"activity:{date_str or i}"
+        key = f"activity:{date_str}"
         pipe.json().set(key, "$", doc)
         keys.append(key)
 
@@ -423,11 +429,11 @@ def load_routes(r: redis.Redis[str], routes_df: pd.DataFrame) -> list[UploadFail
     pipe = r.pipeline()
     keys: list[str] = []
 
-    grouped = routes_df.groupby("file", sort=False)
-    for i, (file_path, group) in enumerate(grouped, start=1):
+    grouped = routes_df.groupby(["workout_id", "file"], sort=False)
+    for i, ((workout_id, file_path), group) in enumerate(grouped, start=1):
         file_path = str(file_path) if not isinstance(file_path, str) else file_path
-        # Drop the redundant ``file`` column from each point.
-        point_cols = [c for c in group.columns if c != "file"]
+
+        point_cols = [c for c in routes_df.columns if c not in ("file", "workout_id")]
         points = group[point_cols].to_dict(orient="records")
 
         # JSON-clean NaN values from each point dict.
@@ -442,7 +448,7 @@ def load_routes(r: redis.Redis[str], routes_df: pd.DataFrame) -> list[UploadFail
 
         doc = {
             "file": file_path,
-            "workoutId": file_path.rsplit("/", 1)[-1].removesuffix(".gpx"),
+            "workoutId": workout_id,
             "numPoints": len(clean_points),
             "startDate": clean_points[0]["time"] if clean_points else None,
             "endDate": clean_points[-1]["time"] if clean_points else None,
@@ -450,7 +456,7 @@ def load_routes(r: redis.Redis[str], routes_df: pd.DataFrame) -> list[UploadFail
             "points": clean_points,
         }
 
-        key = f"route:{doc['workoutId']}"
+        key = f"route:workout:{doc['workoutId']}:{doc.get('startDate')}"
         pipe.json().set(key, "$", doc)
         keys.append(key)
 

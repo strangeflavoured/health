@@ -419,6 +419,7 @@ def _make_routes_df(n_files: int = 1, points_per_file: int = 2) -> pd.DataFrame:
                     "course": 90.0,
                     "hAcc": 4.0,
                     "vAcc": 3.0,
+                    "workout_id": str(f),
                 }
             )
     return pd.DataFrame(rows)
@@ -469,14 +470,6 @@ class TestLoadRoutes:
         doc = json_set.call_args.args[2]
         assert doc["startDate"] == doc["points"][0]["time"]
         assert doc["endDate"] == doc["points"][-1]["time"]
-
-    def test_workout_id_derived_from_filename(self, mock_redis):
-        df = _make_routes_df(n_files=1, points_per_file=1)
-        _setup_pipe_responses(mock_redis, 1)
-        load_routes(mock_redis, df)
-        json_set = mock_redis.pipeline.return_value.json.return_value.set
-        doc = json_set.call_args.args[2]
-        assert doc["workoutId"] == "route_0"
 
     def test_redis_error_returns_batch_failure(self, mock_redis):
         df = _make_routes_df(n_files=1)

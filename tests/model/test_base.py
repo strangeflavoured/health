@@ -5,7 +5,8 @@ from __future__ import annotations
 import pytest
 
 from src.model import (
-    CATEGORICAL_IDENTIFIER_MAPS,
+    CATEGORY_MAP,
+    UNIT_MAP,
     HKCategoryTypeIdentifierRegistry,
     HKCorrelationTypeIdentifierRegistry,
     HKMiscTypeIdentifierRegistry,
@@ -19,8 +20,10 @@ from src.model.base import (
     Fitness,
     Hearing,
     HKCategoryTypeIdentifier,
+    HKCorrelationTypeIdentifier,
     HKGroup,
     HKIdentifier,
+    HKMiscTypeIdentifier,
     HKQuantityTypeIdentifier,
     LabTestResults,
     Mindfulness,
@@ -55,6 +58,12 @@ class TestHKIdentifierHierarchy:
 
     def test_category_identifier_type(self):
         assert HKCategoryTypeIdentifier.identifier_type == "category"
+
+    def test_correlation_identifier_type(self):
+        assert HKCorrelationTypeIdentifier.identifier_type == "correlation"
+
+    def test_misc_identifier_type(self):
+        assert HKMiscTypeIdentifier.identifier_type == "miscellaneous"
 
 
 class TestHKCategoryTypeIdentifier:
@@ -151,10 +160,16 @@ class TestHKGroups:
 
 class TestRegistryCompleteness:
     def test_quantity_registry_len(self):
-        assert len(HKQuantityTypeIdentifierRegistry) > 50
+        assert len(HKQuantityTypeIdentifierRegistry) == 119
 
     def test_category_registry_len(self):
-        assert len(HKCategoryTypeIdentifierRegistry) > 20
+        assert len(HKCategoryTypeIdentifierRegistry) == 70
+
+    def test_correlation_registry_len(self):
+        assert len(HKCorrelationTypeIdentifierRegistry) == 2
+
+    def test_misc_registry_len(self):
+        assert len(HKMiscTypeIdentifierRegistry) == 1
 
     def test_category_registry_is_immutable(self):
         with pytest.raises(TypeError):
@@ -164,21 +179,34 @@ class TestRegistryCompleteness:
         for k, _v in HKQuantityTypeIdentifierRegistry.items():
             assert k.startswith("HKQuantityTypeIdentifier")
 
-    def test_categorical_identifier_maps_built_correctly(self):
-        assert len(CATEGORICAL_IDENTIFIER_MAPS) > 0
-        for _k, v in CATEGORICAL_IDENTIFIER_MAPS.items():
-            assert isinstance(v, dict)
-            assert all(isinstance(i, int) for i in v.values())
+    def test_category_maps_built_correctly(self):
+        assert len(CATEGORY_MAP) == 249
+        for k, v in CATEGORY_MAP.items():
+            assert isinstance(k, tuple)
+            assert len(k) == 2
+            assert isinstance(k[0], str)
+            assert isinstance(k[1], str)
+            assert isinstance(v, int)
 
-    def test_categorical_maps_is_immutable(self):
+    def test_category_maps_is_immutable(self):
         with pytest.raises(TypeError):
-            CATEGORICAL_IDENTIFIER_MAPS["X"] = {}  # type: ignore[ty:invalid-assignment]
+            CATEGORY_MAP["X"] = {}  # type: ignore[ty:invalid-assignment]
 
     def test_quantity_is_subclass_of_hk_identifier(self):
         assert issubclass(HKQuantityTypeIdentifier, HKIdentifier)
 
     def test_category_is_subclass_of_hk_identifier(self):
         assert issubclass(HKCategoryTypeIdentifier, HKIdentifier)
+
+    def test_unit_map_built_correctly(self):
+        assert len(UNIT_MAP) == 192
+        for k, v in UNIT_MAP.items():
+            assert isinstance(k, str)
+            assert isinstance(v, str)
+
+    def test_unit_map_is_immutable(self):
+        with pytest.raises(TypeError):
+            UNIT_MAP["X"] = {}  # ty: ignore[invalid-assignment]
 
 
 class TestGroupClasses:
